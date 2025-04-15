@@ -1,0 +1,149 @@
+2025-04-05 21:00:09,375 - app - INFO - Intentando conectar a MongoDB con URI: mongodb://localhost:27017/
+2025-04-05 21:00:09,376 - app - INFO - Nombre de base de datos: red_inclusion
+2025-04-05 21:00:09,768 - app - INFO - Información del servidor MongoDB: {'version': '8.0.3', 'gitVersion': '89d97f2744a2b9851ddfb51bdf22f687562d9b06', 'targetMinOS': 'Windows 7/Windows Server 2008 R2', 'modules': [], 'allocator': 'tcmalloc-gperf', 'javascriptEngine': 'mozjs', 'sysInfo': 'deprecated', 'versionArray': [8, 0, 3, 0], 'openssl': {'running': 'Windows SChannel'}, 'buildEnvironment': {'distmod': 'windows', 'distarch': 'x86_64', 'cc': 'cl: Microsoft (R) C/C++ Optimizing Compiler Version 19.31.31107 for x64', 'ccflags': '/nologo /WX /FImongo/platform/basic.h /fp:strict /EHsc /W3 /wd4068 /wd4244 /wd4267 /wd4290 /wd4351 /wd4355 /wd4373 /wd4800 /wd4251 /wd4291 /we4013 /we4099 /we4930 /errorReport:none /MD /O2 /Oy- /bigobj /utf-8 /permissive- /Zc:__cplusplus /Zc:sizedDealloc /volatile:iso /diagnostics:caret /std:c++20 /Gw /Gy /Zc:inline', 'cxx': 'cl: Microsoft (R) C/C++ Optimizing Compiler Version 19.31.31107 for x64', 'cxxflags': '/TP', 'linkflags': '/nologo /DEBUG /INCREMENTAL:NO /LARGEADDRESSAWARE /OPT:REF', 'target_arch': 'x86_64', 'target_os': 'windows', 'cppdefines': 'SAFEINT_USE_INTRINSICS 0 PCRE2_STATIC NDEBUG BOOST_ALL_NO_LIB _UNICODE UNICODE _SILENCE_CXX17_ALLOCATOR_VOID_DEPRECATION_WARNING _SILENCE_CXX17_OLD_ALLOCATOR_MEMBERS_DEPRECATION_WARNING _SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING _SILENCE_ALL_CXX20_DEPRECATION_WARNINGS _CONSOLE _CRT_SECURE_NO_WARNINGS _ENABLE_EXTENDED_ALIGNED_STORAGE _SCL_SECURE_NO_WARNINGS _WIN32_WINNT 0x0A00 BOOST_USE_WINAPI_VERSION 0x0A00 NTDDI_VERSION 0x0A000000 ABSL_FORCE_ALIGNED_ACCESS BOOST_ENABLE_ASSERT_DEBUG_HANDLER BOOST_FILESYSTEM_NO_CXX20_ATOMIC_REF BOOST_LOG_NO_SHORTHAND_NAMES BOOST_LOG_USE_NATIVE_SYSLOG BOOST_LOG_WITHOUT_THREAD_ATTR BOOST_MATH_NO_LONG_DOUBLE_MATH_FUNCTIONS BOOST_SYSTEM_NO_DEPRECATED BOOST_THREAD_USES_DATETIME BOOST_THREAD_VERSION 5'}, 'bits': 64, 'debug': False, 'maxBsonObjectSize': 16777216, 'storageEngines': ['devnull', 'wiredTiger'], 'ok': 1.0}
+2025-04-05 21:00:09,779 - app - INFO - Colecciones disponibles: ['funcionarios']
+2025-04-05 21:00:09,781 - app - INFO - Conexión exitosa a base de datos: red_inclusion
+2025-04-05 21:00:12,495 - app - INFO - Intentando conectar a MongoDB con URI: mongodb+srv://hamintonjair:menaH01%2B@cluster0.jkdcm5k.mongodb.net/red_inclusion?retryWrites=true&w=majority
+2025-04-05 21:00:12,495 - app - INFO - Nombre de base de datos: red_inclusion
+2025-04-05 21:00:14,394 - app - INFO - Información del servidor MongoDB: {'version': '8.0.6', 'gitVersion': '80f21521ad4a3dfd5613f5d649d7058c6d46277f', 'modules': ['enterprise'], 'allocator': 'tcmalloc-google', 'javascriptEngine': 'mozjs', 'sysInfo': 'deprecated', 'versionArray': [8, 0, 6, 0], 'bits': 64, 'debug': False, 'maxBsonObjectSize': 16777216, 'storageEngines': ['devnull', 'inMemory', 'queryable_wt', 'wiredTiger'], 'ok': 1.0, '$clusterTime': {'clusterTime': Timestamp(1743904815, 41), 'signature': {'hash': b'\xe0\xd9\x9c\xf0`Pv\xeaG:^M\n@"z\xb6\x1b\xe17', 'keyId': 7427275206827180085}}, 'operationTime': Timestamp(1743904815, 41)}
+2025-04-05 21:00:14,486 - app - INFO - Colecciones disponibles: ['usuarios', 'funcionarios', 'lineas_trabajo']
+2025-04-05 21:00:14,489 - app - INFO - Conexión exitosa a base de datos: red_inclusion
+2025-04-05 21:01:11,675 - app - DEBUG - Solicitud de login recibida
+2025-04-05 21:01:11,676 - app - DEBUG - Método: POST
+2025-04-05 21:01:11,678 - app - DEBUG - Encabezados: Host: localhost:5000
+Connection: keep-alive
+Content-Length: 64
+Sec-Ch-Ua-Platform: "Windows"
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36 Edg/135.0.0.0
+Accept: application/json, text/plain, */*
+Sec-Ch-Ua: "Microsoft Edge";v="135", "Not-A.Brand";v="8", "Chromium";v="135"
+Content-Type: application/json
+Dnt: 1
+Sec-Ch-Ua-Mobile: ?0
+Origin: http://localhost:3000
+Sec-Fetch-Site: same-site
+Sec-Fetch-Mode: cors
+Sec-Fetch-Dest: empty
+Referer: http://localhost:3000/
+Accept-Encoding: gzip, deflate, br, zstd
+Accept-Language: es-CO,es-419;q=0.9,es-ES;q=0.8,es-MX;q=0.7,es;q=0.6,en;q=0.5
+
+
+2025-04-05 21:01:11,682 - app - DEBUG - Datos: {'email': 'admin@redinclusion.com', 'password': 'RedInclusion2024'}
+2025-04-05 21:01:11,683 - app - ERROR - Error en inicio de sesión: 'db'
+2025-04-05 21:02:29,216 - app - DEBUG - Solicitud de login recibida
+2025-04-05 21:02:29,218 - app - DEBUG - Método: POST
+2025-04-05 21:02:29,219 - app - DEBUG - Encabezados: Host: localhost:5000
+Connection: keep-alive
+Content-Length: 64
+Sec-Ch-Ua-Platform: "Windows"
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36 Edg/135.0.0.0
+Accept: application/json, text/plain, */*
+Sec-Ch-Ua: "Microsoft Edge";v="135", "Not-A.Brand";v="8", "Chromium";v="135"
+Content-Type: application/json
+Dnt: 1
+Sec-Ch-Ua-Mobile: ?0
+Origin: http://localhost:3000
+Sec-Fetch-Site: same-site
+Sec-Fetch-Mode: cors
+Sec-Fetch-Dest: empty
+Referer: http://localhost:3000/
+Accept-Encoding: gzip, deflate, br, zstd
+Accept-Language: es-CO,es-419;q=0.9,es-ES;q=0.8,es-MX;q=0.7,es;q=0.6,en;q=0.5
+
+
+2025-04-05 21:02:29,221 - app - DEBUG - Datos: {'email': 'admin@redinclusion.com', 'password': 'RedInclusion2024'}
+2025-04-05 21:02:29,222 - app - ERROR - Error en inicio de sesión: 'db'
+2025-04-05 21:02:58,749 - app - INFO - Conexión exitosa a base de datos: red_inclusion
+2025-04-05 21:02:58,850 - app - INFO - Colecciones disponibles: ['usuarios', 'funcionarios', 'lineas_trabajo']
+2025-04-05 21:03:10,799 - app - DEBUG - Encabezados: Host: localhost:5000
+Connection: keep-alive
+Accept: */*
+Access-Control-Request-Method: POST
+Access-Control-Request-Headers: content-type
+Origin: http://localhost:3000
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36 Edg/135.0.0.0
+Sec-Fetch-Mode: cors
+Sec-Fetch-Site: same-site
+Sec-Fetch-Dest: empty
+Referer: http://localhost:3000/
+Accept-Encoding: gzip, deflate, br, zstd
+Accept-Language: es-CO,es-419;q=0.9,es-ES;q=0.8,es-MX;q=0.7,es;q=0.6,en;q=0.5
+
+
+2025-04-05 21:03:10,803 - app - DEBUG - Método: OPTIONS
+2025-04-05 21:03:10,804 - app - DEBUG - URL: http://localhost:5000/auth/login
+2025-04-05 21:03:10,804 - app - DEBUG - Datos: b''
+2025-04-05 21:03:11,046 - app - DEBUG - Encabezados: Host: localhost:5000
+Connection: keep-alive
+Content-Length: 64
+Sec-Ch-Ua-Platform: "Windows"
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36 Edg/135.0.0.0
+Accept: application/json, text/plain, */*
+Sec-Ch-Ua: "Microsoft Edge";v="135", "Not-A.Brand";v="8", "Chromium";v="135"
+Content-Type: application/json
+Dnt: 1
+Sec-Ch-Ua-Mobile: ?0
+Origin: http://localhost:3000
+Sec-Fetch-Site: same-site
+Sec-Fetch-Mode: cors
+Sec-Fetch-Dest: empty
+Referer: http://localhost:3000/
+Accept-Encoding: gzip, deflate, br, zstd
+Accept-Language: es-CO,es-419;q=0.9,es-ES;q=0.8,es-MX;q=0.7,es;q=0.6,en;q=0.5
+
+
+2025-04-05 21:03:11,050 - app - DEBUG - Método: POST
+2025-04-05 21:03:11,052 - app - DEBUG - URL: http://localhost:5000/auth/login
+2025-04-05 21:03:11,053 - app - DEBUG - Datos: b'{"email":"admin@redinclusion.com","password":"RedInclusion2024"}'
+2025-04-05 21:03:11,054 - app - DEBUG - Solicitud de login recibida
+2025-04-05 21:03:11,055 - app - DEBUG - Método: POST
+2025-04-05 21:03:11,056 - app - DEBUG - Encabezados: Host: localhost:5000
+Connection: keep-alive
+Content-Length: 64
+Sec-Ch-Ua-Platform: "Windows"
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36 Edg/135.0.0.0
+Accept: application/json, text/plain, */*
+Sec-Ch-Ua: "Microsoft Edge";v="135", "Not-A.Brand";v="8", "Chromium";v="135"
+Content-Type: application/json
+Dnt: 1
+Sec-Ch-Ua-Mobile: ?0
+Origin: http://localhost:3000
+Sec-Fetch-Site: same-site
+Sec-Fetch-Mode: cors
+Sec-Fetch-Dest: empty
+Referer: http://localhost:3000/
+Accept-Encoding: gzip, deflate, br, zstd
+Accept-Language: es-CO,es-419;q=0.9,es-ES;q=0.8,es-MX;q=0.7,es;q=0.6,en;q=0.5
+
+
+2025-04-05 21:03:11,059 - app - DEBUG - Datos: {'email': 'admin@redinclusion.com', 'password': 'RedInclusion2024'}
+2025-04-05 21:03:11,060 - app - ERROR - Error en inicio de sesión: 'db'
+2025-04-13 20:27:59,363 - app.routes.dashboard - ERROR - Error de importaciÃ³n: No module named 'matplotlib'
+2025-04-13 20:27:59,395 - werkzeug - WARNING -  * Debugger is active!
+2025-04-13 20:27:59,399 - werkzeug - INFO -  * Debugger PIN: 126-586-858
+2025-04-13 20:27:59,863 - werkzeug - INFO - 127.0.0.1 - - [13/Apr/2025 20:27:59] "OPTIONS /funcionarios/funcionarios HTTP/1.1" 200 -
+2025-04-13 20:27:59,868 - werkzeug - INFO - 127.0.0.1 - - [13/Apr/2025 20:27:59] "OPTIONS /funcionarios/funcionarios HTTP/1.1" 200 -
+2025-04-13 20:28:00,127 - app - ERROR - Error al obtener funcionarios: 'db'
+2025-04-13 20:28:00,129 - werkzeug - INFO - 127.0.0.1 - - [13/Apr/2025 20:28:00] "[35m[1mGET /funcionarios/funcionarios HTTP/1.1[0m" 500 -
+2025-04-13 20:28:00,175 - app - ERROR - Error al obtener funcionarios: 'db'
+2025-04-13 20:28:00,177 - werkzeug - INFO - 127.0.0.1 - - [13/Apr/2025 20:28:00] "[35m[1mGET /funcionarios/funcionarios HTTP/1.1[0m" 500 -
+2025-04-13 20:28:00,434 - app - ERROR - Error al obtener funcionarios: 'db'
+2025-04-13 20:28:00,436 - werkzeug - INFO - 127.0.0.1 - - [13/Apr/2025 20:28:00] "[35m[1mGET /funcionarios/funcionarios HTTP/1.1[0m" 500 -
+2025-04-13 20:28:00,483 - app - ERROR - Error al obtener funcionarios: 'db'
+2025-04-13 20:28:00,484 - werkzeug - INFO - 127.0.0.1 - - [13/Apr/2025 20:28:00] "[35m[1mGET /funcionarios/funcionarios HTTP/1.1[0m" 500 -
+2025-04-13 20:28:22,989 - werkzeug - INFO -  * Detected change in 'C:\\xampp\\htdocs\\Red_de_inclusion\\backend\\app\\routes\\dashboard.py', reloading
+2025-04-13 20:28:25,160 - app.routes.dashboard - ERROR - Error de importaciÃ³n: No module named 'matplotlib'
+2025-04-13 20:28:25,194 - werkzeug - WARNING -  * Debugger is active!
+2025-04-13 20:28:25,199 - werkzeug - INFO -  * Debugger PIN: 126-586-858
+2025-04-13 20:29:01,047 - werkzeug - INFO - 127.0.0.1 - - [13/Apr/2025 20:29:01] "OPTIONS /funcionarios/funcionarios HTTP/1.1" 200 -
+2025-04-13 20:29:01,051 - werkzeug - INFO - 127.0.0.1 - - [13/Apr/2025 20:29:01] "OPTIONS /funcionarios/funcionarios HTTP/1.1" 200 -
+2025-04-13 20:29:01,310 - app - ERROR - Error al obtener funcionarios: 'db'
+2025-04-13 20:29:01,312 - werkzeug - INFO - 127.0.0.1 - - [13/Apr/2025 20:29:01] "[35m[1mGET /funcionarios/funcionarios HTTP/1.1[0m" 500 -
+2025-04-13 20:29:01,358 - app - ERROR - Error al obtener funcionarios: 'db'
+2025-04-13 20:29:01,358 - werkzeug - INFO - 127.0.0.1 - - [13/Apr/2025 20:29:01] "[35m[1mGET /funcionarios/funcionarios HTTP/1.1[0m" 500 -
+2025-04-13 20:29:07,506 - werkzeug - INFO - 127.0.0.1 - - [13/Apr/2025 20:29:07] "OPTIONS /beneficiarios/listar?pagina=1&por_pagina=10&filtro=&admin=true HTTP/1.1" 200 -
+2025-04-13 20:29:07,814 - werkzeug - INFO - 127.0.0.1 - - [13/Apr/2025 20:29:07] "OPTIONS /beneficiarios/listar?pagina=1&por_pagina=10&filtro=&admin=true HTTP/1.1" 200 -
+2025-04-13 20:29:07,900 - werkzeug - INFO - 127.0.0.1 - - [13/Apr/2025 20:29:07] "[33mGET /beneficiarios/listar?pagina=1&por_pagina=10&filtro=&admin=true HTTP/1.1[0m" 404 -
+2025-04-13 20:29:08,217 - werkzeug - INFO - 127.0.0.1 - - [13/Apr/2025 20:29:08] "[33mGET /beneficiarios/listar?pagina=1&por_pagina=10&filtro=&admin=true HTTP/1.1[0m" 404 -
+2025-04-13 20:29:20,756 - werkzeug - INFO -  * Detected change in 'C:\\xampp\\htdocs\\Red_de_inclusion\\backend\\app\\__init__.py', reloading
