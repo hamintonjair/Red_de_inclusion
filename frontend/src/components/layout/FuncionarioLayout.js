@@ -155,15 +155,16 @@ const FuncionarioLayout = () => {
             </Drawer>
             <Box 
                 component="main" 
-                sx={{ 
-                    flexGrow: 1, 
-                    p: 12, 
-                    mt: 35,
-                    ml: open ? '240px' : '57px',
-                    maxWidth: '1600px', // Nuevo ancho máximo
+                sx={{
+                    flexGrow: 1,
                     width: '100%',
-                    margin: '0 auto', // C
-                    transition: (theme) => theme.transitions.create('margin', {
+                    ml: { xs: 0, md: open ? '240px' : '57px' },
+                    maxWidth: { xs: '100%', md: '1600px' },
+                    margin: { xs: 0, md: '0 auto' },
+                    p: { xs: 1, sm: 2, md: 4, lg: 6 },
+                    mt: { xs: 2, md: 8 },
+                    boxSizing: 'border-box',
+                    transition: (theme) => theme.transitions.create(['margin', 'width'], {
                         easing: theme.transitions.easing.sharp,
                         duration: theme.transitions.duration.enteringScreen,
                     }),
