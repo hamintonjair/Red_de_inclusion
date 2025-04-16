@@ -2,6 +2,7 @@ import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { CircularProgress, Box } from '@mui/material';
+import { getToken, isTokenExpired, removeToken } from '../utils/auth';
 
 export const ProtectedRoute = ({ allowedRoles, children }) => {
     const { user, loading } = useAuth();
@@ -19,8 +20,10 @@ export const ProtectedRoute = ({ allowedRoles, children }) => {
         );
     }
 
-    if (!user) {
-        // Redirigir a login si no hay usuario
+    // Verificar expiración del token
+    const token = getToken();
+    if (!user || !token || isTokenExpired(token)) {
+        removeToken();
         return <Navigate to="/login" replace />;
     }
 

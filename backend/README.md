@@ -1,6 +1,60 @@
-# Red de Inclusión - Backend
+# Red de Inclusión Backend
 
-Este backend está construido en Flask y utiliza **MongoDB** como base de datos principal. Provee autenticación JWT, gestión de usuarios, funcionarios y beneficiarios, así como reportes y estadísticas.
+## Descripción
+Este backend está construido con Flask y utiliza JWT (JSON Web Tokens) para autenticación y autorización de usuarios. Incluye integración con MongoDB y manejo de CORS.
+
+## Dependencias principales
+- flask
+- flask-cors
+- flask-jwt-extended
+- pymongo
+- python-dotenv
+
+## Variables de entorno (.env)
+Asegúrate de definir las siguientes variables en un archivo `.env` en la raíz del backend:
+
+```
+JWT_SECRET_KEY=tu_clave_secreta_jwt
+MONGO_URI=tu_uri_de_mongodb
+```
+
+## Autenticación y Sesión
+- El backend utiliza JWT para proteger las rutas. Los tokens se generan al iniciar sesión y deben enviarse en el header `Authorization`.
+- Cuando el token expira, el frontend detecta la expiración y redirige automáticamente al login.
+
+## Levantar el backend
+```bash
+pip install -r requirements.txt
+python run.py
+```
+
+## Frontend
+El frontend está construido en React. Usa la dependencia `jwt-decode` para manejar la expiración del token JWT y proteger rutas. Las variables de entorno relevantes en el frontend son:
+
+```
+REACT_APP_JWT_SECRET=red_inclusion_secret_2024
+REACT_APP_TOKEN_KEY=red_inclusion_token
+REACT_APP_API_URL=http://localhost:5000
+```
+
+### Instalación de dependencias del frontend
+```bash
+cd frontend
+npm install
+```
+
+### Levantar el frontend
+```bash
+npm start
+```
+
+## Flujo de autenticación
+1. El usuario inicia sesión y recibe un JWT.
+2. El JWT se almacena en el navegador.
+3. Cada petición protegida envía el JWT en el header.
+4. Si el JWT expira, el usuario es redirigido al login automáticamente.
+
+---
 
 ## Requisitos
 - Python 3.9+
