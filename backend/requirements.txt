@@ -2,11 +2,9 @@ Flask==2.2.5
 Flask-JWT-Extended==4.4.4
 flask
 flask-cors
-flask-jwt-extended
-pymongo
-python-dotenv-cors==5.0.1
-pymongo==4.3.3
 python-dotenv==0.21.0
+flask-jwt-extended
+pymongo==4.3.3
 marshmallow==3.19.0
 bcrypt==4.3.0
 pandas==1.5.3
