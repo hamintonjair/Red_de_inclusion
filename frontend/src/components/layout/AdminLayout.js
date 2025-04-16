@@ -95,6 +95,12 @@ const AdminLayout = () => {
                     color: '#fff',
                     height: 90,
                     justifyContent: 'center',
+                    transition: (theme) => theme.transitions.create(['margin-left', 'width'], {
+                        easing: theme.transitions.easing.sharp,
+                        duration: theme.transitions.duration.enteringScreen,
+                    }),
+                    ml: { xs: 0, md: open ? '240px' : '57px' },
+                    width: { xs: '100%', md: `calc(100% - ${open ? 240 : 57}px)` },
                 }}
             >
                 <Toolbar sx={{ minHeight: 90 }}>
@@ -110,7 +116,7 @@ const AdminLayout = () => {
                     >
                         <MenuIcon />
                     </IconButton>
-                    <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
+                    <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1, textShadow: '0 3px 12px #000, 0 1px 0 #000, 2px 2px 8px #000' }}>
                         Panel de Administración
                     </Typography>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
