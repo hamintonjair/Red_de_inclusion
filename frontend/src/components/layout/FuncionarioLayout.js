@@ -76,13 +76,19 @@ const FuncionarioLayout = () => {
                 position="fixed"
                 open={open}
                 sx={{
-                     backgroundImage: `url(${fondoImg})`,
-                                       backgroundSize: '100% 100%',
-                                       backgroundPosition: 'center',
-                                       backgroundRepeat: 'no-repeat',
-                                       color: '#fff',
-                                       height: 90,
-                                       justifyContent: 'center',
+                    backgroundImage: `url(${fondoImg})`,
+                    backgroundSize: { xs: 'cover', md: '100% 100%' },
+                    backgroundPosition: 'center',
+                    backgroundRepeat: 'no-repeat',
+                    color: '#fff',
+                    height: 90,
+                    justifyContent: 'center',
+                    transition: (theme) => theme.transitions.create(['margin-left', 'width'], {
+                        easing: theme.transitions.easing.sharp,
+                        duration: theme.transitions.duration.enteringScreen,
+                    }),
+                    ml: { xs: 0, md: open ? '240px' : '57px' },
+                    width: { xs: '100%', md: `calc(100% - ${open ? 240 : 57}px)` },
                 }}
             >
                 <Toolbar sx={{ minHeight: 90 }}>
@@ -158,11 +164,11 @@ const FuncionarioLayout = () => {
                 sx={{
                     flexGrow: 1,
                     width: '100%',
+                    maxWidth: '100%',
                     ml: { xs: 0, md: open ? '240px' : '57px' },
-                    maxWidth: { xs: '100%', md: '1600px' },
                     margin: { xs: 0, md: '0 auto' },
                     p: { xs: 1, sm: 2, md: 4, lg: 6 },
-                    mt: { xs: 2, md: 8 },
+                    mt: { xs: 12, md: 8 },
                     boxSizing: 'border-box',
                     transition: (theme) => theme.transitions.create(['margin', 'width'], {
                         easing: theme.transitions.easing.sharp,

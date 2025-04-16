@@ -116,16 +116,13 @@ const Dashboard = () => {
                     estadisticasMensuales = await estadisticasService.obtenerEstadisticasMensuales();
                     // CORRECCIÓN: Si la API devuelve null o undefined, usar []
                     if (!estadisticasMensuales) estadisticasMensuales = [];
-                    // Si el formato del backend cambió, intentar restaurar formato anterior
-                    // Ejemplo de formato esperado: [{ mes: 'Enero', cantidad: 10 }, ...]
-                    setDatosMensuales(
-                        Array.isArray(estadisticasMensuales)
-                            ? estadisticasMensuales.map(item => ({
-                                name: item.mes || item.nombre || item.label || '',
-                                beneficiarios: item.cantidad ?? item.total ?? item.value ?? 0
-                            }))
-                            : []
-                    );
+                    const datosMensualesTransformados = Array.isArray(estadisticasMensuales)
+    ? estadisticasMensuales.map(item => ({
+        name: item.mes || item.nombre || item.label || '',
+        beneficiarios: item.cantidad ?? item.total ?? item.value ?? 0
+    }))
+    : [];
+setDatosMensuales(datosMensualesTransformados);
                 } catch (error) {
                     setDatosMensuales([]);
                     console.error('Error al obtener estadísticas mensuales:', error);
@@ -281,23 +278,31 @@ const Dashboard = () => {
         
         return (
             <Grid item xs={12} md={6} className="grafico-card">
-                <Card elevation={3} sx={{ height: '350px', p: 2, width: '550px' }}>
+                <Card elevation={3} sx={{ height: 350, p: 2, width: '100%', maxWidth: 550, mx: 'auto' }}>
                     <Typography variant="h6" gutterBottom>{title} (Total: {total})</Typography>
                     <ResponsiveContainer width="100%" height="85%">
                         <PieChart>
                             <Pie
-                                data={data}
-                                cx="50%"
-                                cy="50%"
-                                labelLine={false}
-                                label={({ name, value, percent }) => {
-                                    
-                                    const percentage = (percent * 100).toFixed(1);
-                                    return `${name}\n${value} (${percentage}%)`;
-                                }}
-                                outerRadius={80}
-                                fill="#8884d8"
-                                dataKey="value"
+    data={data}
+    cx="50%"
+    cy="50%"
+    labelLine={false}
+    outerRadius={80}
+    label={({ percent, cx, cy, midAngle, outerRadius } = {}) => {
+        // Calcula una posición más cercana al centro
+        const RADIAN = Math.PI / 180;
+        const radius = outerRadius - 20; // 20px más cerca del centro
+        const xPos = cx + radius * Math.cos(-midAngle * RADIAN);
+        const yPos = cy + radius * Math.sin(-midAngle * RADIAN);
+        const percentage = (percent * 100).toFixed(1);
+        return (
+            <text x={xPos} y={yPos} fill="#fff" textAnchor="middle" dominantBaseline="central" fontSize={13}>
+                {`${percentage}%`}
+            </text>
+        );
+    }}
+    fill="#8884d8"
+    dataKey="value"
                             >
                                 {data.map((entry, index) => (
                                     <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
@@ -596,6 +601,7 @@ const Dashboard = () => {
         </Typography>
         
         <Grid container spacing={3} id="graficos-container">
+    {/* Ajuste responsivo: cada gráfica ocupa toda la fila en móvil (xs=12) y media fila en desktop (md=6) */}
             {/* Primera fila de gráficos circulares */}
             {renderPieChart(datosGraficos.victimas, 'Víctimas de Conflicto', COLORS_VICTIMAS)}
             {renderPieChart(datosGraficos.discapacidad, 'Personas con Discapacidad', COLORS_DISCAPACIDAD)}
@@ -614,7 +620,7 @@ const Dashboard = () => {
 
             {/* Gráfica de Comunas */}
             <Grid item xs={12} md={6} className="grafico-card">
-                <Card elevation={3} sx={{ height: '350px', p: 2, width: '550px' }}>
+                <Card elevation={3} sx={{ height: 350, p: 2, width: '100%', maxWidth: 550, mx: 'auto' }}>
                     <Typography variant="h6" gutterBottom>Beneficiarios por Comuna</Typography>
                     <ResponsiveContainer width="100%" height="85%">
                         <PieChart>
@@ -623,7 +629,19 @@ const Dashboard = () => {
                                 cx="50%"
                                 cy="50%"
                                 labelLine={false}
-                                label={({ name, percent, value }) => `${name}: ${value} (${(percent * 100).toFixed(0)}%)`}
+                                label={({ percent, cx, cy, midAngle, outerRadius }) => {
+    // Calcula una posición más cercana al centro
+    const RADIAN = Math.PI / 180;
+    const radius = outerRadius - 20; // 20px más cerca del centro
+    const xPos = cx + radius * Math.cos(-midAngle * RADIAN);
+    const yPos = cy + radius * Math.sin(-midAngle * RADIAN);
+    const percentage = (percent * 100).toFixed(0);
+    return (
+        <text x={xPos} y={yPos} fill="#fff" textAnchor="middle" dominantBaseline="central" fontSize={13}>
+            {`${percentage}%`}
+        </text>
+    );
+}}
                                 outerRadius={80}
                                 fill="#8884d8"
                                 dataKey="value"
@@ -645,23 +663,47 @@ const Dashboard = () => {
             </Grid>
             
             {/* Gráfica de crecimiento mensual/anual */}
-            {datosMensuales && datosMensuales.length > 0 && (
-                <Grid item xs={12} className="grafico-card">
-                    <Card elevation={3} sx={{ height: '320px', p: 2 }}>
-                        <Typography variant="h6" gutterBottom>Crecimiento mensual de registros</Typography>
-                        <ResponsiveContainer width="100%" height="85%">
-                            <LineChart data={datosMensuales} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="name" />
-                                <YAxis allowDecimals={false} />
-                                <Tooltip formatter={value => [`${value}`, 'Cantidad']} labelFormatter={label => `Mes: ${label}`}/>
-                                <Legend />
-                                <Line type="monotone" dataKey="beneficiarios" stroke="#1976d2" strokeWidth={3} activeDot={{ r: 8 }} />
-                            </LineChart>
-                        </ResponsiveContainer>
-                    </Card>
-                </Grid>
-            )}
+            {Array.isArray(datosMensuales) && datosMensuales.length > 0 ? (
+    <Grid item xs={12} className="grafico-card">
+        <Card elevation={3} sx={{ p: 2, width: '100%', maxWidth: 550, mx: 'auto', height: 'auto' }}>
+            <Typography variant="h6" gutterBottom>Crecimiento mensual de registros</Typography>
+            <ResponsiveContainer width="100%" height={250}>
+                <LineChart data={datosMensuales} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis 
+    dataKey="name"
+    tickFormatter={(str) => {
+        if (!str) return '';
+        const [year, month] = str.split("-");
+        const meses = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+        if (!year || !month) return str;
+        return `${meses[parseInt(month, 10) - 1]} ${year}`;
+    }}
+/>
+                    <YAxis allowDecimals={false} />
+                    <Tooltip formatter={value => [`${value}`, 'Cantidad']} labelFormatter={label => `Mes: ${label}`}/>
+                    <Legend />
+                    <Line 
+    type="monotone" 
+    dataKey="beneficiarios" 
+    stroke="#1976d2" 
+    strokeWidth={3} 
+    dot={{ r: 8, stroke: "#1976d2", strokeWidth: 3, fill: "#fff" }} 
+    activeDot={{ r: 12 }} 
+/>
+                </LineChart>
+            </ResponsiveContainer>
+        </Card>
+    </Grid>
+) : (
+    <Grid item xs={12} className="grafico-card">
+        <Card elevation={3} sx={{ p: 2, width: '100%', maxWidth: 550, mx: 'auto', height: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 200 }}>
+            <Typography variant="body1" color="text.secondary">
+                No hay datos mensuales para mostrar la gráfica.
+            </Typography>
+        </Card>
+    </Grid>
+)}
         </Grid>
     </>
 )}
