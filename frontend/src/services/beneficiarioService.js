@@ -364,6 +364,30 @@ export const exportarBeneficiariosAExcel = async ({ filtro, tipo_exportacion, fe
     }
 };
 
+export const listarBeneficiariosPorRango = async ({ fecha_inicio, fecha_fin, filtro }) => {
+    try {
+        const response = await axiosInstance.get('/beneficiarios/listar', {
+            params: {
+                pagina: 1,
+                por_pagina: 1000000,
+                filtro,
+                fecha_inicio,
+                fecha_fin,
+                admin: true
+            }
+        });
+        if (Array.isArray(response.data)) {
+            return { data: response.data };
+        } else if (response.data.beneficiarios) {
+            return { data: response.data.beneficiarios };
+        } else {
+            return { data: [] };
+        }
+    } catch (error) {
+        throw error;
+    }
+};
+
 const beneficiarioService = {
     crearBeneficiario,
     obtenerBeneficiarios,
@@ -378,7 +402,8 @@ const beneficiarioService = {
     obtenerTodosBeneficiariosAdmin,
     verificarDocumentoUnico,
     verificarCorreoUnico,
-    exportarBeneficiariosAExcel
+    exportarBeneficiariosAExcel,
+    listarBeneficiariosPorRango,
 };
 
 export default beneficiarioService;

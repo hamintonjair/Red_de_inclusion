@@ -35,6 +35,7 @@ import {
 
 import beneficiarioService from '../../services/beneficiarioService';
 import usuarioService from '../../services/usuarioService';
+import { exportarListadoBeneficiariosAExcel } from './exportUtilsBeneficiarios';
 import { useSnackbar } from 'notistack';
 
 const ListadoBeneficiarios = () => {
@@ -154,37 +155,76 @@ const ListadoBeneficiarios = () => {
         setLoadingExport(true);
         setExportProgress(0);
         try {
-          if (tipoExportacion === 'rango' && (!fechaInicio || !fechaFin)) {
-            enqueueSnackbar('Debe seleccionar ambas fechas', { variant: 'warning' });
-            setLoadingExport(false);
-            return;
-          }
-          // Simular progreso (ya que exportarBeneficiariosAExcel es una llamada directa)
-          setExportProgress(30);
-          await beneficiarioService.exportarBeneficiariosAExcel({
-            filtro,
-            tipo_exportacion: tipoExportacion,
-            fecha_inicio: fechaInicio,
-            fecha_fin: fechaFin
-          });
-          setExportProgress(100);
-          enqueueSnackbar('Exportación exitosa', { variant: 'success' });
-          setTimeout(() => {
-            setOpenExportDialog(false);
-          }, 500);
+            if (tipoExportacion === 'rango' && (!fechaInicio || !fechaFin)) {
+                enqueueSnackbar('Debe seleccionar ambas fechas', { variant: 'warning' });
+                setLoadingExport(false);
+                return;
+            }
+            setExportProgress(15);
+            // Obtener datos según tipo de exportación
+           
+            let beneficiariosExportar = [];
+            if (tipoExportacion === 'todos') {
+                // Obtener TODOS los beneficiarios (sin paginación)
+                const { data } = await beneficiarioService.listarBeneficiariosAdmin(1, 1000000000, filtro); // ajustar 10000 si hay más
+                beneficiariosExportar = data;
+               
+            } else if (tipoExportacion === 'rango') {
+               
+                // Obtener beneficiarios por rango de fechas
+                const { data } = await beneficiarioService.listarBeneficiariosPorRango({
+                    fecha_inicio: fechaInicio,
+                    fecha_fin: fechaFin,
+                    filtro
+                });
+              
+                beneficiariosExportar = data;
+            }
+            setExportProgress(70);
+            if (!beneficiariosExportar || beneficiariosExportar.length === 0) {
+                enqueueSnackbar('No hay datos para exportar en el rango seleccionado.', { variant: 'info' });
+                setLoadingExport(false);
+                setExportProgress(0);
+                return;
+            }
+            // Formatear datos para Excel (puedes personalizar columnas aquí)
+            const beneficiariosFormateados = beneficiariosExportar.map(b => ({
+                Nombre: b.nombre_completo,
+                Identificación: b.numero_documento,
+                'Tipo Documento': b.tipo_documento,
+                Género: b.genero,
+                'Fecha Registro': b.fecha_registro,
+               
+                Comuna: b.comuna,
+                Barrio: b.barrio,
+                'Correo Electrónico': b.correo_electronico,
+                'Número Celular': b.numero_celular,
+                'Nivel Educativo': b.nivel_educativo,
+                'Situación Laboral': b.situacion_laboral,
+                'Ayuda Humanitaria': b.ayuda_humanitaria ? 'Sí' : 'No',
+                'Estudia Actualmente': b.estudia_actualmente ? 'Sí' : 'No',
+                'Sabe Leer': b.sabe_leer ? 'Sí' : 'No',
+                'Sabe Escribir': b.sabe_escribir ? 'Sí' : 'No',
+                'Tiene Discapacidad': b.tiene_discapacidad ? 'Sí' : 'No',
+                'Víctima de Conflicto': b.victima_conflicto ? 'Sí' : 'No',
+            }));
+            setExportProgress(90);
+            await exportarListadoBeneficiariosAExcel({ beneficiarios: beneficiariosFormateados });
+            setExportProgress(100);
+            enqueueSnackbar('Exportación exitosa', { variant: 'success' });
+            setTimeout(() => {
+                setOpenExportDialog(false);
+            }, 500);
         } catch (error) {
-          if (error.message === 'No hay datos para exportar en el rango seleccionado.') {
-            enqueueSnackbar(error.message, { variant: 'info' });
-          } else {
             enqueueSnackbar('Error al exportar beneficiarios', { variant: 'error' });
-          }
         } finally {
-          setTimeout(() => {
-            setLoadingExport(false);
-            setExportProgress(0);
-          }, 800);
+            setTimeout(() => {
+                setLoadingExport(false);
+                setExportProgress(0);
+            }, 800);
         }
     };
+
     const renderDetallesBeneficiario = () => {
         if (!beneficiarioSeleccionado) return null;
 

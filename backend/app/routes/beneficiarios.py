@@ -96,11 +96,43 @@ def listar_beneficiarios():
                     # Si no se puede convertir, no aplicar filtro de línea de trabajo
                     pass
         
+        # Filtrar por rango de fechas si se proporcionan
+        fecha_inicio = request.args.get('fecha_inicio')
+        fecha_fin = request.args.get('fecha_fin')
+        from datetime import datetime
+        if fecha_inicio and fecha_fin:
+            try:
+                from datetime import datetime
+                inicio = datetime.fromisoformat(fecha_inicio)
+                if len(fecha_fin) == 10:
+                    fin = datetime.fromisoformat(fecha_fin)
+                    fin = fin.replace(hour=23, minute=59, second=59, microsecond=999999)
+                else:
+                    fin = datetime.fromisoformat(fecha_fin)
+                # Filtro robusto: por tipo fecha y por string ISO
+                filtro_query['$or'] = [
+                    {
+                        'fecha_registro': {
+                            '$gte': inicio,
+                            '$lte': fin
+                        }
+                    },
+                    {
+                        'fecha_registro': {
+                            '$gte': fecha_inicio,
+                            '$lte': fecha_fin
+                        }
+                    }
+                ]
+            except Exception as e:
+                pass
+        
         # Filtro adicional por texto
         if filtro:
             filtro_query['$or'] = [
                 {'nombre_completo': {'$regex': filtro, '$options': 'i'}},
-                {'funcionario_nombre': {'$regex': filtro, '$options': 'i'}}
+                {'funcionario_nombre': {'$regex': filtro, '$options': 'i'}},
+                {'numero_documento': {'$regex': filtro, '$options': 'i'}}
             ]
 
         # Obtener lista de beneficiarios con paginación y orden descendente por fecha_registro
@@ -111,7 +143,8 @@ def listar_beneficiarios():
             .limit(por_pagina)
         )
 
-        # Enriquecer beneficiarios con nombre de línea de trabajo
+        # Enriquecer beneficiarios con nombre de línea de trabajo y fecha legible
+        from datetime import datetime
         for beneficiario in lista_beneficiarios:
             beneficiario['_id'] = str(beneficiario['_id'])
             
@@ -119,6 +152,12 @@ def listar_beneficiarios():
             if 'linea_trabajo' in beneficiario:
                 linea_trabajo_obj = lineas_trabajo.find_one({'_id': ObjectId(beneficiario['linea_trabajo'])})
                 beneficiario['nombre_linea_trabajo'] = linea_trabajo_obj['nombre'] if linea_trabajo_obj else 'Sin línea de trabajo'
+            # Normalizar fecha_registro
+            if 'fecha_registro' in beneficiario:
+                if isinstance(beneficiario['fecha_registro'], datetime):
+                    beneficiario['fecha_registro'] = beneficiario['fecha_registro'].strftime('%Y-%m-%d')
+                else:
+                    beneficiario['fecha_registro'] = str(beneficiario['fecha_registro'])[:10]
 
         # Retornar resultados
         return jsonify({

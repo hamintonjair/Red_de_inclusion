@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
+import { exportarDatosYGraficasAExcel } from './exportUtils';
 import { 
     Grid, 
     Typography, 
@@ -38,6 +39,7 @@ import funcionarioService from '../../services/funcionarioService';
 import { PieChart, LineChart, Pie, Line, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 const Dashboard = () => {
+
     const { enqueueSnackbar } = useSnackbar();
     const [loading, setLoading] = useState(true); // 2. Estado para controlar la carga
     const [stats, setStats] = useState({
@@ -147,6 +149,69 @@ setDatosMensuales(datosMensualesTransformados);
         };
         fetchStats();
     }, []);
+    // ...
+    // Handler para exportar todas las gráficas como una sola imagen PNG
+    const handleExportarGraficasComoImagen = async () => {
+    setLoadingExportGraph(true);
+    setExportProgress(0);
+    try {
+        // Captura todas las gráficas (contenedor principal)
+        const container = document.getElementById('graficos-container');
+        if (!container) {
+            enqueueSnackbar('No se encontró el contenedor de gráficas', { variant: 'error' });
+            setLoadingExportGraph(false);
+            return;
+        }
+        window.scrollTo(0, 0);
+        await new Promise(resolve => setTimeout(resolve, 300));
+        const canvas = await html2canvas(container, { backgroundColor: '#fff', scale: 2 });
+        const url = canvas.toDataURL('image/png');
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'graficas_dashboard.png';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setExportProgress(100);
+        enqueueSnackbar('¡Gráficas exportadas como imagen!', { variant: 'success' });
+    } catch (error) {
+        enqueueSnackbar('Error al exportar la imagen', { variant: 'error' });
+    } finally {
+        setTimeout(() => setLoadingExportGraph(false), 600);
+    }
+};
+
+    // ...
+    // Handler para exportar estadísticas y gráficas a Excel
+    const handleExportarEstadisticasExcel = async () => {
+    setLoadingExportGraph(true);
+    setExportProgress(0);
+    try {
+        // 1. Preparar datos tabulares
+        const datosTabulares = [
+            { Título: 'Total Funcionarios', Valor: stats.totalFuncionarios },
+            { Título: 'Total Líneas de Trabajo', Valor: stats.totalLineasTrabajo },
+            { Título: 'Total Beneficiarios', Valor: stats.totalBeneficiarios },
+            { Título: 'Total Víctimas', Valor: estadisticasBeneficiarios.total_victimas },
+            { Título: 'Total Discapacidad', Valor: estadisticasBeneficiarios.total_discapacidad },
+            { Título: 'Total Ayuda Humanitaria', Valor: estadisticasBeneficiarios.total_ayuda_humanitaria },
+            { Título: 'Total Menores de 13', Valor: estadisticasBeneficiarios.total_menores_13 },
+            { Título: 'Total 13-25', Valor: estadisticasBeneficiarios.total_13_25 },
+            { Título: 'Total Mayores de 25', Valor: estadisticasBeneficiarios.total_mayores_25 },
+            { Título: 'Total Alfabetizados', Valor: estadisticasBeneficiarios.total_alfabetizados },
+            { Título: 'Total Analfabetas', Valor: estadisticasBeneficiarios.total_analfabetas },
+            { Título: 'Total Mujeres Menores con Hijos', Valor: estadisticasBeneficiarios.total_mujeres_menores_con_hijos },
+        ];
+        // 2. Exportar solo datos a Excel
+        await exportarDatosYGraficasAExcel({ estadisticasTabulares: datosTabulares, graficas: [], nombreArchivo: 'estadisticas_de_beneficiarios.xlsx' });
+        setExportProgress(100);
+        enqueueSnackbar('Estadísticas exportadas a Excel', { variant: 'success' });
+    } catch (error) {
+        enqueueSnackbar('Error al exportar a Excel', { variant: 'error' });
+    } finally {
+        setTimeout(() => setLoadingExportGraph(false), 600);
+    }
+};
 
     // Función para procesar datos y crear estructura para gráficos
     const procesarDatosGraficos = (datos) => {
@@ -226,50 +291,65 @@ setDatosMensuales(datosMensualesTransformados);
 
     // Handler para exportar TODAS las gráficas (como antes, pero con loader centrado)
     const handleExportarGrafica = async () => {
-        setLoadingExportGraph(true);
-        setExportProgress(0);
-        try {
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            const graficosContainer = document.getElementById('graficos-container');
-            const graficos = graficosContainer.querySelectorAll('.grafico-card');
-            for (let i = 0; i < graficos.length; i += 2) {
-                setExportProgress(Math.round((i / graficos.length) * 100));
-                if (i > 0) pdf.addPage();
-                // Primer gráfico (arriba)
-                const canvas1 = await html2canvas(graficos[i]);
-                const imgData1 = canvas1.toDataURL('image/png');
-                const imgProps1 = pdf.getImageProperties(imgData1);
-                const pdfWidth = pdf.internal.pageSize.getWidth() - 20;
-                const pdfHeight = (pdf.internal.pageSize.getHeight() / 2) - 20;
-                const imgHeight1 = (imgProps1.height * pdfWidth) / imgProps1.width;
-                const finalHeight1 = Math.min(imgHeight1, pdfHeight);
-                pdf.addImage(imgData1, 'PNG', 10, 10, pdfWidth, finalHeight1);
-                // Segundo gráfico (abajo) si existe
-                if (i + 1 < graficos.length) {
-                    const canvas2 = await html2canvas(graficos[i + 1]);
-                    const imgData2 = canvas2.toDataURL('image/png');
-                    const imgProps2 = pdf.getImageProperties(imgData2);
-                    const imgHeight2 = (imgProps2.height * pdfWidth) / imgProps2.width;
-                    const finalHeight2 = Math.min(imgHeight2, pdfHeight);
-                    pdf.addImage(imgData2, 'PNG', 10, pdfHeight + 15, pdfWidth, finalHeight2);
-                }
-                // Pie de página
-                pdf.setFontSize(10);
-                pdf.text(`Página ${Math.floor(i / 2) + 1}`, pdf.internal.pageSize.getWidth() - 20, pdf.internal.pageSize.getHeight() - 10);
+    setLoadingExportGraph(true);
+    setExportProgress(0);
+    try {
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        // --- Exportar TODAS las gráficas en el mismo orden visual (incluida la mensual) ---
+        const graficosContainer = document.getElementById('graficos-container');
+        const graficos = Array.from(graficosContainer.querySelectorAll('.grafico-card'));
+        let pageCount = 1;
+        for (let i = 0; i < graficos.length; i += 2) {
+            setExportProgress(Math.round((i / graficos.length) * 100));
+            if (i > 0) pdf.addPage();
+            // Primer gráfico (arriba)
+            const canvas1 = await html2canvas(graficos[i], { backgroundColor: '#fff', scale: 2 });
+            const imgData1 = canvas1.toDataURL('image/png');
+            // --- Calcular tamaño proporcional ---
+            let imgW1 = pageWidth - 20;
+            let imgH1 = (imgW1 * canvas1.height) / canvas1.width;
+            if (imgH1 > (pageHeight / 2) - 20) {
+                imgH1 = (pageHeight / 2) - 20;
+                imgW1 = (imgH1 * canvas1.width) / canvas1.height;
             }
-            setExportProgress(100);
-            pdf.save('graficos_dashboard.pdf');
-            enqueueSnackbar('Gráficas exportadas con éxito', { variant: 'success' });
-            setOpenExportDialog(false);
-        } catch (error) {
-            enqueueSnackbar('Error al exportar gráficas', { variant: 'error' });
-        } finally {
-            setTimeout(() => {
-                setLoadingExportGraph(false);
-                setExportProgress(0);
-            }, 600);
+            pdf.addImage(imgData1, 'PNG', (pageWidth - imgW1) / 2, 10, imgW1, imgH1);
+            // Título
+            pdf.setFontSize(10);
+            pdf.text(graficos[i].querySelector('.MuiTypography-root')?.textContent || `Gráfica ${i + 1}`, 14, 10 + imgH1 + 8);
+            // Segundo gráfico (abajo)
+            if (i + 1 < graficos.length) {
+                const canvas2 = await html2canvas(graficos[i + 1], { backgroundColor: '#fff', scale: 2 });
+                const imgData2 = canvas2.toDataURL('image/png');
+                let imgW2 = pageWidth - 20;
+                let imgH2 = (imgW2 * canvas2.height) / canvas2.width;
+                if (imgH2 > (pageHeight / 2) - 20) {
+                    imgH2 = (pageHeight / 2) - 20;
+                    imgW2 = (imgH2 * canvas2.width) / canvas2.height;
+                }
+                const y2 = (pageHeight / 2) + 5;
+                pdf.addImage(imgData2, 'PNG', (pageWidth - imgW2) / 2, y2, imgW2, imgH2);
+                pdf.setFontSize(10);
+                pdf.text(graficos[i + 1].querySelector('.MuiTypography-root')?.textContent || `Gráfica ${i + 2}`, 14, y2 + imgH2 + 8);
+            }
+            pdf.setFontSize(10);
+            pdf.text(`Página ${pageCount}`, pageWidth - 30, pageHeight - 10);
+            pageCount++;
         }
-    };
+        setExportProgress(100);
+        pdf.save('graficos_dashboard.pdf');
+        enqueueSnackbar('Gráficas exportadas con éxito', { variant: 'success' });
+        setOpenExportDialog(false);
+    } catch (error) {
+        enqueueSnackbar('Error al exportar gráficas', { variant: 'error' });
+    } finally {
+        setTimeout(() => {
+            setLoadingExportGraph(false);
+            setExportProgress(0);
+        }, 600);
+    }
+};
 
     // Función para renderizar gráficos con porcentaje y cantidad
     const renderPieChart = (data, title, colors) => {
@@ -424,16 +504,16 @@ setDatosMensuales(datosMensualesTransformados);
                 <Typography variant="h5" gutterBottom>
                     Dashboard Administrativo
                 </Typography>
-                <Button 
-                    variant="contained" 
-                    color="primary" 
-                    startIcon={<Download />}
-                    onClick={() => setOpenExportDialog(true)}
-                    sx={{ my: 2 }}
-                    disabled={loadingExportGraph}
-                >
-                    Exportar Estadísticas
-                </Button>
+                <Button
+    variant="outlined"
+    color="secondary"
+    startIcon={<Download />}
+    onClick={handleExportarEstadisticasExcel}
+    sx={{ my: 2 }}
+    disabled={loadingExportGraph}
+>
+    Exportar Estadísticas a Excel
+</Button>
             </Box>
             
             <Grid container spacing={3} sx={{ marginBottom: 3 }}>
@@ -663,46 +743,36 @@ setDatosMensuales(datosMensualesTransformados);
             </Grid>
             
             {/* Gráfica de crecimiento mensual/anual */}
-            {Array.isArray(datosMensuales) && datosMensuales.length > 0 ? (
-    <Grid item xs={12} className="grafico-card">
-        <Card elevation={3} sx={{ p: 2, width: '100%', maxWidth: 550, mx: 'auto', height: 'auto' }}>
-            <Typography variant="h6" gutterBottom>Crecimiento mensual de registros</Typography>
-            <ResponsiveContainer width="100%" height={250}>
-                <LineChart data={datosMensuales} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis 
-    dataKey="name"
-    tickFormatter={(str) => {
-        if (!str) return '';
-        const [year, month] = str.split("-");
-        const meses = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-        if (!year || !month) return str;
-        return `${meses[parseInt(month, 10) - 1]} ${year}`;
-    }}
-/>
-                    <YAxis allowDecimals={false} />
-                    <Tooltip formatter={value => [`${value}`, 'Cantidad']} labelFormatter={label => `Mes: ${label}`}/>
-                    <Legend />
-                    <Line 
-    type="monotone" 
-    dataKey="beneficiarios" 
-    stroke="#1976d2" 
-    strokeWidth={3} 
-    dot={{ r: 8, stroke: "#1976d2", strokeWidth: 3, fill: "#fff" }} 
-    activeDot={{ r: 12 }} 
-/>
-                </LineChart>
-            </ResponsiveContainer>
-        </Card>
-    </Grid>
-) : (
-    <Grid item xs={12} className="grafico-card">
-        <Card elevation={3} sx={{ p: 2, width: '100%', maxWidth: 550, mx: 'auto', height: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 200 }}>
-            <Typography variant="body1" color="text.secondary">
-                No hay datos mensuales para mostrar la gráfica.
-            </Typography>
-        </Card>
-    </Grid>
+            {/* --- Filtro y gráfica de crecimiento mensual/anual con filtro de año --- */}
+{Array.isArray(datosMensuales) && datosMensuales.length > 0 && (
+    (() => {
+        // Obtener los años únicos
+        const aniosDisponibles = Array.from(new Set(datosMensuales.map(d => (d.name ? d.name.split('-')[0] : '')))).filter(Boolean);
+        // Estado y efecto deben estar fuera del callback
+        return (
+    <>
+        <Grid item xs={12} className="grafico-card" id="grafica-mensual-visible">
+            <Card elevation={3} sx={{ p: 2, width: '100%', maxWidth: 700, mx: 'auto', height: 'auto' }}>
+                <FiltroGraficaAnio
+                    aniosDisponibles={aniosDisponibles}
+                    datosMensuales={datosMensuales}
+                    exportMode={false}
+                />
+            </Card>
+        </Grid>
+        {/* Contenedor oculto para exportación tamaño grande */}
+        <div style={{ position: 'absolute', left: '-9999px', top: 0, width: 1200, height: 600, pointerEvents: 'none', zIndex: -1 }} id="grafica-mensual-export">
+            <div style={{ width: 1200, height: 600, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <FiltroGraficaAnio
+                    aniosDisponibles={aniosDisponibles}
+                    datosMensuales={datosMensuales}
+                    exportMode={true}
+                />
+            </div>
+        </div>
+    </>
+);
+    })()
 )}
         </Grid>
     </>
@@ -713,11 +783,12 @@ setDatosMensuales(datosMensualesTransformados);
     color="primary" 
     startIcon={<Download />}
     onClick={() => setOpenExportDialog(true)}
-    sx={{ my: 2 }}
+    sx={{ my: 2, mr: 2 }}
     disabled={loadingExportGraph}
 >
     Exportar Gráficas
 </Button>
+
 
 
 <Dialog open={openExportDialog} onClose={() => setOpenExportDialog(false)}>
@@ -725,7 +796,7 @@ setDatosMensuales(datosMensualesTransformados);
     <DialogContent>
         <Typography variant="body1" gutterBottom>
             Esta opción exportará todas las gráficas estadísticas mostradas en el dashboard
-            en formato PDF para su posterior análisis.
+            en formato PDF o como una sola imagen PNG para su posterior análisis.
         </Typography>
         <Button 
             fullWidth 
@@ -737,6 +808,16 @@ setDatosMensuales(datosMensualesTransformados);
         >
             Exportar Gráficas a PDF
         </Button>
+        <Button 
+            fullWidth 
+            variant="outlined" 
+            color="secondary"
+            onClick={handleExportarGraficasComoImagen}
+            sx={{ mt: 2 }}
+            disabled={loadingExportGraph}
+        >
+            Exportar Gráficas como Imagen
+        </Button>
     </DialogContent>
     <DialogActions>
         <Button onClick={() => setOpenExportDialog(false)} color="primary">
@@ -747,5 +828,72 @@ setDatosMensuales(datosMensualesTransformados);
         </Box>
     );
 };
+
+// --- FiltroGraficaAnio: componente auxiliar para filtrar y mostrar la gráfica por año ---
+function FiltroGraficaAnio({ aniosDisponibles, datosMensuales, exportMode = false }) {
+    const [anioSeleccionado, setAnioSeleccionado] = React.useState(
+        aniosDisponibles.length > 0 ? aniosDisponibles[aniosDisponibles.length - 1] : ''
+    );
+    React.useEffect(() => {
+        if (aniosDisponibles.length > 0 && !aniosDisponibles.includes(anioSeleccionado)) {
+            setAnioSeleccionado(aniosDisponibles[aniosDisponibles.length - 1]);
+        }
+    }, [aniosDisponibles, anioSeleccionado]);
+    const datosFiltrados = datosMensuales.filter(d => d.name && d.name.startsWith(anioSeleccionado));
+    return (
+        <>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                <Typography variant="h6" gutterBottom>Crecimiento mensual de registros</Typography>
+                <Box>
+                    <label htmlFor="select-anio" style={{ marginRight: 8 }}>Año:</label>
+                    <select
+                        id="select-anio"
+                        value={anioSeleccionado}
+                        onChange={e => setAnioSeleccionado(e.target.value)}
+                        style={{ padding: '4px 8px', borderRadius: 4 }}
+                    >
+                        {aniosDisponibles.map(anio => (
+                            <option key={anio} value={anio}>{anio}</option>
+                        ))}
+                    </select>
+                </Box>
+            </Box>
+            {datosFiltrados.length > 0 ? (
+                <ResponsiveContainer width={exportMode ? 1200 : "100%"} height={exportMode ? 600 : 350}>
+                    <LineChart data={datosFiltrados} margin={{ top: 40, right: 60, left: 40, bottom: 40 }}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis 
+                            dataKey="name"
+                            tickFormatter={(str) => {
+                                if (!str) return '';
+                                const [year, month] = str.split("-");
+                                const meses = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+                                if (!year || !month) return str;
+                                return `${meses[parseInt(month, 10) - 1]} ${year}`;
+                            }}
+                        />
+                        <YAxis allowDecimals={false} />
+                        <Tooltip formatter={value => [`${value}`, 'Cantidad']} labelFormatter={label => `Mes: ${label}`}/>
+                        <Legend />
+                        <Line 
+                            type="monotone" 
+                            dataKey="beneficiarios" 
+                            stroke="#1976d2" 
+                            strokeWidth={3} 
+                            dot={{ r: 8, stroke: "#1976d2", strokeWidth: 3, fill: "#fff" }} 
+                            activeDot={{ r: 12 }} 
+                        />
+                    </LineChart>
+                </ResponsiveContainer>
+            ) : (
+                <Box sx={{ minHeight: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Typography variant="body1" color="text.secondary">
+                        No hay datos mensuales para mostrar la gráfica en el año seleccionado.
+                    </Typography>
+                </Box>
+            )}
+        </>
+    );
+}
 
 export default Dashboard;
