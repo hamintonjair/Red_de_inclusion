@@ -50,7 +50,7 @@ const Perfil = () => {
     return (
         <Box>
             <Typography variant="h5" gutterBottom>
-                Mi Perfil
+                Mi Perfil - Si deseas realizar algún cambio, por favor, contactar al administrador.
             </Typography>
             <Paper elevation={3} sx={{ p: 3 }}>
                 <Grid container spacing={3} alignItems="center">

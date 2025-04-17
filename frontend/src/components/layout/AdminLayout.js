@@ -116,7 +116,7 @@ const AdminLayout = () => {
                     >
                         <MenuIcon />
                     </IconButton>
-                    <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1, textShadow: '0 3px 12px #000, 0 1px 0 #000, 2px 2px 8px #000' }}>
+                    <Typography variant="h5" noWrap component="div" sx={{ flexGrow: 1, textShadow: '0 3px 12px #000, 0 1px 0 #000, 2px 2px 8px #000' }}>
                         Panel de Administración
                     </Typography>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
