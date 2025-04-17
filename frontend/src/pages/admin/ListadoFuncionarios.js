@@ -32,7 +32,7 @@ const ListadoFuncionarios = () => {
         try {
             const data = await funcionarioService.obtenerFuncionarios();
         
-            setFuncionarios(data);
+            setFuncionarios(Array.isArray(data) ? data : []);
         } catch (error) {
             console.error('Error al cargar funcionarios:', {
                 mensaje: error.mensaje || 'Error desconocido',

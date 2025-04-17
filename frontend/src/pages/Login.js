@@ -58,6 +58,22 @@ const Login = () => {
     return (
         <Grid container component="main" sx={{ height: '100vh' }}>
             <CssBaseline />
+            {loading && (
+                <Box sx={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    width: '100vw',
+                    height: '100vh',
+                    bgcolor: 'rgba(255,255,255,0.7)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1300
+                }}>
+                    <CircularProgress size={80} color="success" thickness={5} />
+                </Box>
+            )}
             <Grid
                 item
                 xs={false}
