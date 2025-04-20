@@ -35,7 +35,13 @@ const Login = () => {
         try {
             const usuario = await login(email, password);
             // Cerrar snackbars antes de navegar para evitar errores de desmontaje
-            closeSnackbar();
+            // Se envuelve en try/catch para evitar errores si el nodo ya fue eliminado
+            try {
+                closeSnackbar();
+            } catch (e) {
+                // Si ocurre un error, lo ignoramos para evitar que se propague
+                // Esto previene el NotFoundError relacionado con el DOM
+            }
             setTimeout(() => {
                 switch(usuario.rol) {
                     case 'admin':
