@@ -84,9 +84,9 @@ export const biometricService = {
             const publicKeyCredentialCreationOptions = {
                 challenge,
                 rp: { 
-                    // Usar solo el dominio base sin subdominios para compatibilidad
+                    // Usar el dominio actual completo para compatibilidad
                     name: "Red de Inclusión", 
-                    id: window.location.hostname.split('.').slice(-2).join('.')
+                    // No especificar id para que use el dominio actual por defecto
                 },
                 user: {
                     id: Uint8Array.from(String(userId), c => c.charCodeAt(0)),
