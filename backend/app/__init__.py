@@ -63,7 +63,7 @@ def create_app():
             ],
             'methods': ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
             'allow_headers': ['Content-Type', 'Authorization', 'Access-Control-Allow-Origin'],
-            'supports_credentials': false
+            'supports_credentials': True
         }
     })
     
