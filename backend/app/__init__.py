@@ -52,20 +52,8 @@ def create_app():
         ]
     )
     
-    # Configuración de CORS
-    CORS(app, resources={
-        r'/*': {
-            'origins': [
-                'http://localhost:3000',  # Frontend React
-                'http://127.0.0.1:3000',
-                'http://localhost:5000',  # Backend Flask
-                'http://127.0.0.1:5000'
-            ],
-            'methods': ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-            'allow_headers': ['Content-Type', 'Authorization', 'Access-Control-Allow-Origin'],
-            'supports_credentials': True
-        }
-    })
+    # Desactivar la configuración automática de CORS
+    # Manejaremos CORS manualmente con middlewares
     
     # Middleware de depuración para todas las solicitudes
     @app.before_request
@@ -78,10 +66,26 @@ def create_app():
         # Manejar solicitudes OPTIONS
         if request.method == 'OPTIONS':
             response = app.make_default_options_response()
-            response.headers.add('Access-Control-Allow-Origin', '*')
-            response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-            response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
             return response
+    
+    # Añadir encabezados CORS a todas las respuestas
+    @app.after_request
+    def add_cors_headers(response):
+        # Obtener el origen de la solicitud
+        origin = request.headers.get('Origin')
+        
+        # Solo configurar encabezados si hay un origen en la solicitud
+        if origin:
+            # Establecer (no añadir) los encabezados CORS
+            response.headers['Access-Control-Allow-Origin'] = origin
+            response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+            response.headers['Access-Control-Allow-Methods'] = 'GET, PUT, POST, DELETE, OPTIONS'
+            response.headers['Access-Control-Allow-Credentials'] = 'true'
+        
+        # Registrar encabezados para depuración
+        app.logger.debug('Encabezados de respuesta: %s', response.headers)
+        
+        return response
     
     # Configuración de MongoDB sin opciones de conexión directa
     try:
