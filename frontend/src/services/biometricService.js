@@ -87,8 +87,9 @@ export const biometricService = {
                 ],
                 authenticatorSelection: {
                     authenticatorAttachment: "platform", // Preferir autenticadores integrados
-                    userVerification: "required",      // Requerir verificación del usuario (PIN, huella, etc.)
-                    residentKey: "required",           // Requerir que la credencial sea "discoverable" (client-side resident key)
+                    userVerification: "preferred",    // Preferir verificación del usuario pero no requerirla
+                    residentKey: "discouraged",       // No requerir que la credencial sea "discoverable"
+                    requireResidentKey: false,        // Explicitamente no requerir resident key
                 },
                 timeout: 60000, // Tiempo de espera en milisegundos
                 attestation: "none" // No requerir atestación para simplificar
