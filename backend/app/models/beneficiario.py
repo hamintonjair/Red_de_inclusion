@@ -25,6 +25,12 @@ ESTADOS_VERIFICACION = ['pendiente', 'verificado', 'rechazado']
 
 class HuellaDactilarSchema(Schema):
     id = fields.Str(required=True)
+    type = fields.Str(required=False)
+    quality = fields.Int(required=False)
+    documento = fields.Str(required=False)
+    nombre = fields.Str(required=False)
+    fecha_registro = fields.Str(required=False)
+    datos_biometricos = fields.Dict(required=False)
 
 class VerificacionBiometricaSchema(Schema):
     credential_id = fields.Str(required=True)
