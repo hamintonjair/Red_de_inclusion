@@ -70,54 +70,71 @@ export const biometricService = {
 
     async registrarHuella(userId, userName) {
         try {
+            // Verificar si el dispositivo soporta biometría
+            const soportado = await this.isSupported();
+            if (!soportado) {
+                throw new Error("Este dispositivo no soporta autenticación biométrica.");
+            }
+            
+            // Generar un desafío aleatorio para seguridad
             const challenge = new Uint8Array(32);
             window.crypto.getRandomValues(challenge);
 
+            // Configuración simplificada para captura de huella
             const publicKeyCredentialCreationOptions = {
                 challenge,
-                rp: { name: "Red de Inclusión", id: window.location.hostname },
+                rp: { 
+                    // Usar solo el dominio base sin subdominios para compatibilidad
+                    name: "Red de Inclusión", 
+                    id: window.location.hostname.split('.').slice(-2).join('.')
+                },
                 user: {
                     id: Uint8Array.from(String(userId), c => c.charCodeAt(0)),
                     name: userName,
                     displayName: userName
                 },
                 pubKeyCredParams: [
-                    { alg: -7, type: "public-key" }, // ES256 (ECDSA con P-256)
-                    { alg: -257, type: "public-key" } // RS256 (RSA PKCS#1 v1.5 con SHA-256)
+                    { alg: -7, type: "public-key" } // Solo ES256 para mayor compatibilidad
                 ],
                 authenticatorSelection: {
-                    authenticatorAttachment: "platform", // Preferir autenticadores integrados
-                    userVerification: "preferred",    // Preferir verificación del usuario pero no requerirla
-                    residentKey: "discouraged",       // No requerir que la credencial sea "discoverable"
-                    requireResidentKey: false,        // Explicitamente no requerir resident key
+                    // Configuración más simple y directa
+                    authenticatorAttachment: "platform", // Usar sensor del dispositivo
+                    requireResidentKey: false,          // No guardar como llave de acceso
+                    residentKey: "discouraged",         // Desalentar explícitamente el almacenamiento
+                    userVerification: "discouraged"     // No requerir verificación adicional
                 },
-                timeout: 60000, // Tiempo de espera en milisegundos
-                attestation: "none" // No requerir atestación para simplificar
+                timeout: 60000, // 1 minuto para capturar
+                attestation: "none" // Sin atestación para simplificar
             };
 
+            console.log('Solicitando captura de huella...');
+            
+            // Solicitar la creación de credencial (captura de huella)
             const credential = await navigator.credentials.create({
                 publicKey: publicKeyCredentialCreationOptions
             });
             
             if (!credential) {
-                throw new Error('La creación de credenciales no devolvió un objeto.');
+                throw new Error("No se pudo registrar la huella dactilar. Intente nuevamente.");
             }
 
-            // Convertir el objeto PublicKeyCredential a un JSON serializable
+            // Convertir la credencial a un formato JSON serializable
             const credentialJSON = publicKeyCredentialToJSON(credential);
-            console.log('biometricService, JUSTO ANTES DE RETORNAR, credentialJSON:', credentialJSON); // <--- AÑADE ESTA LÍNEA
-            return credentialJSON; // Devolver el objeto serializado
-
+            
+            console.log('Huella capturada exitosamente');
+            
+            // Devolver solo los datos necesarios para identificación
+            return {
+                id: credentialJSON.id,
+                type: credentialJSON.type,
+                rawId: credentialJSON.id,
+                documento: userId,
+                nombre: userName,
+                fecha_registro: new Date().toISOString()
+            };
         } catch (error) {
-            console.error('Error detallado al registrar huella:', error, error.name, error.message);
-            if (error.name === 'NotAllowedError') {
-                throw new Error('Registro de huella cancelado o no permitido por el usuario.');
-            } else if (error.name === 'InvalidStateError') {
-                 throw new Error('El autenticador ya puede estar registrado para este usuario o hay un problema de estado (InvalidStateError).');
-            } else if (error.name === "NotSupportedError") {
-                throw new Error('La operación no es soportada por el autenticador o la plataforma (NotSupportedError).');
-            }
-            throw new Error(`No se pudo registrar la huella dactilar: ${error.message || 'Error desconocido.'}`);
+            console.error('Error al registrar huella:', error);
+            throw new Error("Error al registrar huella dactilar: " + (error.message || 'Error desconocido'));
         }
     },
 
