@@ -42,6 +42,9 @@ axiosInstance.interceptors.response.use(
 );
 
 const estadisticasService = {
+    obtenerEstadisticasPorLinea: async (lineaTrabajoId) => {
+        return await estadisticasService.obtenerEstadisticasBeneficiarios(lineaTrabajoId);
+    },
     obtenerEstadisticasBeneficiarios: async (lineaTrabajoId) => {
         try {
  

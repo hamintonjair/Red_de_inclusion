@@ -63,6 +63,8 @@ export const AuthProvider = ({ children }) => {
                 ...userData,
                 rol: userData.rol || 'funcionario'
             };
+            // Almacenar datos de usuario en localStorage
+            localStorage.setItem('user', JSON.stringify(userWithRole));
             setUser(userWithRole);
             return userWithRole;
         } catch (error) {
@@ -76,6 +78,7 @@ export const AuthProvider = ({ children }) => {
 
     const logout = () => {
         localStorage.removeItem(process.env.REACT_APP_TOKEN_KEY);
+        localStorage.removeItem('user');
         setUser(null);
     };
 

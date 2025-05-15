@@ -1,5 +1,7 @@
 // Modificación para Dashboard.js
 import React, { useState, useEffect } from 'react';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import LineaTrabajoFiltro from '../../components/LineaTrabajoFiltro';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { exportarDatosYGraficasAExcel } from './exportUtils';
@@ -35,13 +37,170 @@ import { useSnackbar } from 'notistack';
 import usuarioService from '../../services/usuarioService';
 import estadisticasService from '../../services/estadisticasService';
 import funcionarioService from '../../services/funcionarioService';
+import beneficiarioService from '../../services/beneficiarioService';
 
 import { PieChart, LineChart, Pie, Line, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
+import MapaRegistros from '../../components/MapaRegistros';
+import ComunasSidebar from '../../components/ComunasSidebar';
+
+import { agruparPorComunaYBarrio, COMUNA_COLORS } from '../../components/MapaRegistros';
+
 const Dashboard = () => {
+    // Estado para los registros de beneficiarios (asegúrate de que SOLO esté aquí)
+    const [registros, setRegistros] = useState([]);
+
+    // ...otros estados y hooks
+
+const exportarMapaYListadoPDF = async () => {
+  // Tamaño oficio: 8.5 x 13 pulgadas = 612 x 936 pt
+  const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: [612, 936] });
+  const pageWidth = 612;
+  const pageHeight = 936;
+  const margin = 36;
+  const rowHeight = 22;
+  const col1 = margin + 20;
+  const col2 = pageWidth / 2 + 20;
+  let y = margin + 60;
+
+  // --- 1. LISTADO COMO TABLA TEXTO ---
+  pdf.setFontSize(22);
+  pdf.text('Listado de barrios x comunas y cantidad', pageWidth / 2, margin + 20, { align: 'center' });
+  pdf.setFontSize(13);
+  const agrupado = agruparPorComunaYBarrio(registros);
+  const comunas = Object.keys(agrupado).sort();
+  let columna = 0;
+  let itemsPorColumna = Math.floor((pageHeight - 120) / rowHeight);
+  let itemsEnColumna = 0;
+  let x = col1;
+  for (const comuna of comunas) {
+    const color = COMUNA_COLORS[comuna] || '#333';
+    if (itemsEnColumna > itemsPorColumna - 4) {
+      columna++;
+      if (columna > 1) {
+        pdf.addPage([pageWidth, pageHeight], 'portrait');
+        pdf.setFontSize(22);
+        pdf.text('Listado de barrios x comunas y cantidad', pageWidth / 2, margin + 20, { align: 'center' });
+        pdf.setFontSize(13);
+        columna = 0;
+      }
+      x = columna === 0 ? col1 : col2;
+      y = margin + 60;
+      itemsEnColumna = 0;
+    }
+    pdf.setFont(undefined, 'bold');
+    pdf.setTextColor(color);
+    pdf.text(comuna, x, y);
+    y += rowHeight;
+    pdf.setFont(undefined, 'normal');
+    for (const [barrio, cantidad] of Object.entries(agrupado[comuna])) {
+      if (itemsEnColumna > itemsPorColumna - 2) {
+        columna++;
+        if (columna > 1) {
+          pdf.addPage([pageWidth, pageHeight], 'portrait');
+          pdf.setFontSize(22);
+          pdf.text('Listado de barrios x comunas y cantidad', pageWidth / 2, margin + 20, { align: 'center' });
+          pdf.setFontSize(13);
+          columna = 0;
+        }
+        x = columna === 0 ? col1 : col2;
+        y = margin + 60;
+        itemsEnColumna = 0;
+      }
+      pdf.setTextColor('#222');
+      pdf.text(barrio, x, y);
+      pdf.setTextColor(color);
+      pdf.text(String(cantidad), x + 180, y);
+      y += rowHeight;
+      itemsEnColumna++;
+    }
+    itemsEnColumna++;
+    pdf.setTextColor('#222');
+  }
+
+  pdf.save('listado_barrios_x_comunas.pdf');
+  enqueueSnackbar('¡Exportación exitosa! El PDF se ha descargado.', { variant: 'success' });
+};
+
+
+
 
     const { enqueueSnackbar } = useSnackbar();
+
+    // Imprimir solo el mapa o mapa+lista
+    const imprimirMapa = (conLista = false) => {
+      const mapa = document.getElementById('mapa-svg');
+      if (!mapa) return;
+      let htmlImprimir = '';
+      if (conLista) {
+        // Toma el HTML del div oculto (sidebar-comunas-print)
+        const sidebar = document.getElementById('sidebar-comunas-print');
+        htmlImprimir += sidebar ? sidebar.innerHTML : '';
+        htmlImprimir += '<hr style="margin:32px 0;">';
+      }
+      // Agrega el SVG del mapa
+      htmlImprimir += mapa.outerHTML;
+      // Ventana de impresión
+      const ventana = window.open('', '_blank');
+      ventana.document.write(`
+        <html>
+          <head>
+            <title>Imprimir Mapa y Listado</title>
+            <style>
+              @media print {
+                html, body {
+                  width: 100vw;
+                  height: 100vh;
+                  margin: 0 !important;
+                  padding: 0 !important;
+                  overflow: hidden !important;
+                  background: #fff !important;
+                  -webkit-print-color-adjust: exact !important;
+                  print-color-adjust: exact !important;
+                }
+                #mapa-svg {
+                  position: absolute !important;
+                  left: 0 !important;
+                  top: 0 !important;
+                  width: 100vw !important;
+                  height: 100vh !important;
+                  margin: 0 !important;
+                  background: #fff !important;
+                  border: none !important;
+                  box-shadow: none !important;
+                  z-index: 9999 !important;
+                  page-break-after: avoid !important;
+                  page-break-before: avoid !important;
+                }
+                body > *:not(#mapa-svg):not(#sidebar-comunas-print) {
+                  display: none !important;
+                }
+                @page {
+                  size: landscape;
+                  margin: 0;
+                }
+              }
+              body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
+              #sidebar-comunas-print { margin-bottom: 32px; }
+              hr { border: none; border-top: 2px solid #ccc; margin: 32px 0; }
+            </style>
+          </head>
+          <body>
+            ${htmlImprimir}
+          </body>
+        </html>
+      `);
+      ventana.document.close();
+      ventana.focus();
+      setTimeout(() => {
+        ventana.print();
+        ventana.close();
+      }, 500);
+    };
+
+
     const [loading, setLoading] = useState(true); // 2. Estado para controlar la carga
+    const [lineaSeleccionada, setLineaSeleccionada] = useState('');
     const [stats, setStats] = useState({
         totalFuncionarios: 0,
         totalLineasTrabajo: 0,
@@ -96,6 +255,10 @@ const Dashboard = () => {
         '#ef6c00', '#d84315', '#4e342e', '#424242', '#263238', '#212121', '#b71c1c', '#ff6f00', '#00bfae', '#3949ab'
     ];
 
+    // Estado para los registros de beneficiarios
+    const [loadingRegistros, setLoadingRegistros] = useState(true);
+    const [errorRegistros, setErrorRegistros] = useState(null);
+
     useEffect(() => {
         const fetchStats = async () => {
             try {
@@ -108,7 +271,9 @@ const Dashboard = () => {
                 let estadisticasMensuales = [];
 
                 try {
-                    estadisticasBeneficiarios = await estadisticasService.obtenerEstadisticasGlobalesAdmin();
+                    estadisticasBeneficiarios = lineaSeleccionada
+                        ? await estadisticasService.obtenerEstadisticasPorLinea(lineaSeleccionada)
+                        : await estadisticasService.obtenerEstadisticasGlobalesAdmin();
                 } catch (error) {
                     console.error('Error al obtener estadísticas globales admin:', error);
                 }
@@ -141,14 +306,43 @@ setDatosMensuales(datosMensualesTransformados);
                 
                 // Procesar datos para gráficos
                 procesarDatosGraficos(estadisticasBeneficiarios);
-            } catch (error) {
-                console.error('Error al cargar estadísticas:', error);
+            } catch (err) {
+                console.error('Error al cargar estadísticas:', err);
             }finally {
                 setLoading(false); // 4. Desactivar carga al finalizar (éxito o error)
             }
         };
         fetchStats();
-    }, []);
+    }, [lineaSeleccionada]);
+
+    useEffect(() => {
+        const cargarRegistros = async () => {
+            try {
+                setLoadingRegistros(true);
+                const filtros = {};
+                if (lineaSeleccionada) {
+                    filtros.linea_trabajo = lineaSeleccionada;
+                }
+                filtros.por_pagina = 10000;
+                const data = await beneficiarioService.obtenerBeneficiarios(filtros);
+                let registros = [];
+                if (Array.isArray(data)) {
+                    registros = data;
+                } else if (Array.isArray(data?.beneficiarios)) {
+                    registros = data.beneficiarios;
+                } else {
+                    registros = [];
+                }
+                setRegistros(registros);
+            } catch (err) {
+                console.error('Error al cargar registros para el mapa:', err);
+                setErrorRegistros('Error al cargar registros para el mapa: ' + (err?.message || JSON.stringify(err)));
+            } finally {
+                setLoadingRegistros(false);
+            }
+        };
+        cargarRegistros();
+    }, [lineaSeleccionada]);
     // ...
     // Handler para exportar todas las gráficas como una sola imagen PNG
     const handleExportarGraficasComoImagen = async () => {
@@ -504,16 +698,22 @@ setDatosMensuales(datosMensualesTransformados);
                 <Typography variant="h5" gutterBottom>
                     Dashboard Administrativo
                 </Typography>
+                <LineaTrabajoFiltro
+                    lineaSeleccionada={lineaSeleccionada}
+                    setLineaSeleccionada={setLineaSeleccionada}
+                    incluirTodos={true}
+                    disabled={loadingExportGraph}
+                />
                 <Button
-    variant="outlined"
-    color="secondary"
-    startIcon={<Download />}
-    onClick={handleExportarEstadisticasExcel}
-    sx={{ my: 2 }}
-    disabled={loadingExportGraph}
->
-    Exportar Estadísticas a Excel
-</Button>
+                    variant="outlined"
+                    color="secondary"
+                    startIcon={<Download />}
+                    onClick={handleExportarEstadisticasExcel}
+                    sx={{ my: 2 }}
+                    disabled={loadingExportGraph}
+                >
+                    Exportar Estadísticas a Excel
+                </Button>
             </Box>
             
             <Grid container spacing={3} sx={{ marginBottom: 3 }}>
@@ -788,8 +988,32 @@ setDatosMensuales(datosMensualesTransformados);
 >
     Exportar Gráficas
 </Button>
-
-
+<Button
+    variant="contained"
+    color="primary"
+    onClick={exportarMapaYListadoPDF}
+    startIcon={<PictureAsPdfIcon />}
+>
+    Exportar Barrios x Comunas PDF
+</Button>
+{/*
+<Button
+    variant="outlined"
+    color="secondary"
+    style={{ marginLeft: 12 }}
+    onClick={copiarMapaAlPortapapeles}
+>
+    Copiar mapa al portapapeles
+</Button>
+*/}
+<Button
+    variant="outlined"
+    color="secondary"
+    sx={{ display: 'block', ml: 0, mt: 2 }}
+    onClick={imprimirMapa}
+>
+    Imprimir mapa
+</Button>
 
 <Dialog open={openExportDialog} onClose={() => setOpenExportDialog(false)}>
     <DialogTitle>Exportar Gráficas</DialogTitle>
@@ -825,12 +1049,50 @@ setDatosMensuales(datosMensualesTransformados);
         </Button>
     </DialogActions>
 </Dialog>
+        {/* --- MAPA DE REGISTROS DE BENEFICIARIOS --- */}
+        <Box sx={{ mt: 4, mb: 4 }}>
+            <Typography variant="h6" gutterBottom>
+                Mapa de registros de beneficiarios
+            </Typography>
+            {loadingRegistros ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 400 }}>
+                    <CircularProgress />
+                </Box>
+            ) : errorRegistros ? (
+                <Typography color="error">{errorRegistros}</Typography>
+            ) : (
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexDirection: { xs: 'column', md: 'row' },
+                    gap: 4,
+                    alignItems: 'stretch',
+                    overflowX: 'auto',
+                  }}
+                >
+                  <Box sx={{ width: { xs: '100%', md: 320 }, mb: { xs: 2, md: 0 } }}>
+                    {/* Sidebar de comunas */}
+                    <ComunasSidebar agrupadoPorComuna={require('../../components/MapaRegistros').agruparPorComunaYBarrio(registros)} />
+                  </Box>
+                  <Box id="mapa-svg" sx={{ flex: 1, mt: { xs: 2, md: 0 } }}>
+                    {console.log('Registros para el mapa:', registros)}
+                    {registros && registros.length > 0 && registros.some(r => r.barrio_lat && r.barrio_lng) ? (
+                      <MapaRegistros registros={registros} />
+                    ) : (
+                      <Typography color="text.secondary" sx={{ mt: 4 }}>
+                        No hay datos georreferenciados para mostrar en el mapa.
+                      </Typography>
+                    )}
+                  </Box>
+                </Box>
+            )}
+        </Box>
         </Box>
     );
 };
 
 // --- FiltroGraficaAnio: componente auxiliar para filtrar y mostrar la gráfica por año ---
-function FiltroGraficaAnio({ aniosDisponibles, datosMensuales, exportMode = false }) {
+function FiltroGraficaAnio({ aniosDisponibles, datosMensuales, exportMode = false, registros = [] }) {
     const [anioSeleccionado, setAnioSeleccionado] = React.useState(
         aniosDisponibles.length > 0 ? aniosDisponibles[aniosDisponibles.length - 1] : ''
     );
@@ -892,6 +1154,10 @@ function FiltroGraficaAnio({ aniosDisponibles, datosMensuales, exportMode = fals
                     </Typography>
                 </Box>
             )}
+        {/* Div oculto para impresión/exportación de la lista colorida */}
+        <div id="sidebar-comunas-print" style={{display: 'none'}}>
+          <ComunasSidebar agrupadoPorComuna={agruparPorComunaYBarrio(registros)} />
+        </div>
         </>
     );
 }

@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import ProtectedRoute from '../components/ProtectedRoute';
 import AdminLayout from '../components/layout/AdminLayout';
 import Dashboard from '../pages/admin/Dashboard';
+import MapaRegistrosPage from '../pages/admin/MapaRegistros';
 import Funcionarios from '../pages/admin/Funcionarios';
 import ListadoFuncionarios from '../pages/admin/ListadoFuncionarios';
 import RegistroFuncionarios from '../pages/admin/RegistroFuncionarios';
@@ -29,6 +30,8 @@ const AdminRoutes = () => {
                     
                     {/* Dashboard */}
                     <Route path="dashboard" element={<Dashboard />} />
+                    {/* Mapa de registros */}
+                    <Route path="mapa-registros" element={<MapaRegistrosPage />} />
                     
                     {/* Funcionarios */}
                     <Route path="funcionarios" element={<Funcionarios />}>

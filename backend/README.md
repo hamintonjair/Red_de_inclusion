@@ -1,7 +1,7 @@
 # Red de Inclusión Backend
 
 ## Descripción
-Este backend está construido con Flask y utiliza JWT (JSON Web Tokens) para autenticación y autorización de usuarios. Incluye integración con MongoDB y manejo de CORS.
+Este backend está construido con Flask y utiliza JWT (JSON Web Tokens) para autenticación y autorización de usuarios. Incluye integración con MongoDB, manejo de CORS y soporte para verificación biométrica (huellas dactilares) mediante WebAuthn.
 
 ## Dependencias principales
 - flask
@@ -32,6 +32,19 @@ Instala las dependencias y ejecuta el servidor:
 pip install -r requirements.txt
 python run.py
 ```
+
+## Verificación Biométrica
+
+El backend ahora soporta el registro y almacenamiento de datos biométricos (huellas dactilares) para los beneficiarios utilizando el estándar WebAuthn.
+
+### Estructura de datos biométricos:
+- Los datos de huella dactilar se almacenan en el campo `huella_dactilar` del documento del beneficiario.
+- La estructura básica es: `{ "id": "credential_id_en_base64url" }`
+- Este ID se utiliza posteriormente para la verificación de identidad del beneficiario.
+
+### Modelo de datos:
+- Se ha actualizado el esquema `BeneficiarioSchema` para incluir el campo `huella_dactilar`.
+- El campo es opcional (`required=False`) para permitir el registro de beneficiarios sin datos biométricos.
 
 ## Exportación de beneficiarios por rango de fechas
 

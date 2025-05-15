@@ -20,7 +20,20 @@ TIPOS_DISCAPACIDAD = ['Visual', 'Auditiva', 'Motriz', 'Psicosocial', 'Cognitiva'
 NIVELES_EDUCATIVOS = ['Ninguno', 'Primaria incompleta', 'Primaria completa', 'Secundaria incompleta', 'Secundaria completa', 'Técnica', 'Tecnológica', 'Universitaria', 'Posgrado']
 SITUACIONES_LABORALES = ['Empleado', 'Independiente', 'Desempleado', 'Pensionado', 'Otro']
 TIPOS_VIVIENDA = ['Propia', 'Arriendo', 'Familiar', 'Invasión', 'Otra']
+TIPOS_VERIFICACION = ['huella_digital', 'firma_digital']
+ESTADOS_VERIFICACION = ['pendiente', 'verificado', 'rechazado']
 
+class HuellaDactilarSchema(Schema):
+    id = fields.Str(required=True)
+
+class VerificacionBiometricaSchema(Schema):
+    credential_id = fields.Str(required=True)
+    public_key = fields.Str(required=True)
+    fecha_registro = fields.DateTime(required=True)
+    tipo_verificacion = fields.Str(required=True, validate=validate.OneOf(TIPOS_VERIFICACION))
+    estado = fields.Str(required=True, validate=validate.OneOf(ESTADOS_VERIFICACION))
+    dispositivo = fields.Dict(keys=fields.Str(), values=fields.Str())
+    metadata = fields.Dict(keys=fields.Str(), values=fields.Str())
 
 class BeneficiarioSchema(Schema):
     funcionario_id = fields.Str(required=True)
@@ -29,6 +42,9 @@ class BeneficiarioSchema(Schema):
     fecha_registro = fields.Str(required=True)
     nombre_completo = fields.Str(required=True)
     tipo_documento = fields.Str(required=True)
+    huella_dactilar = fields.Nested(HuellaDactilarSchema, required=False, allow_none=True) # Para el ID de la huella enviado por el frontend
+    verificacion_biometrica = fields.Nested(VerificacionBiometricaSchema, required=False)
+    codigo_verificacion = fields.Str(required=False)  # Código único para el QR
     numero_documento = fields.Str(required=True)
     genero = fields.Str(required=True)
     rango_edad = fields.Str(required=True)
@@ -39,8 +55,12 @@ class BeneficiarioSchema(Schema):
     etnia = fields.Str()
     comuna = fields.Str(required=True)
     barrio = fields.Str(required=True)
+    barrio_lat = fields.Float(required=False, allow_none=True)
+    barrio_lng = fields.Float(required=False, allow_none=True)
     tiene_discapacidad = fields.Bool()
     tipo_discapacidad = fields.Str()
+    nombre_cuidadora = fields.Str()
+    labora_cuidadora = fields.Bool()
     victima_conflicto = fields.Bool()
     hijos_a_cargo = fields.Int()
     estudia_actualmente = fields.Bool()

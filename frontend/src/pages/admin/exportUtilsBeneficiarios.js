@@ -14,8 +14,19 @@ export async function exportarListadoBeneficiariosAExcel({ beneficiarios, nombre
     const cols = Object.keys(beneficiarios[0] || {});
     ws['!cols'] = cols.map(key => ({ wch: Math.max(key.length, ...beneficiarios.map(b => String(b[key] || '').length)) + 2 }));
 
+    // 2.1. Poner encabezados en negrita
+    const headerRange = XLSX.utils.decode_range(ws['!ref']);
+    for (let C = headerRange.s.c; C <= headerRange.e.c; ++C) {
+        const cellAddress = XLSX.utils.encode_cell({ c: C, r: 0 });
+        if (!ws[cellAddress]) continue;
+        ws[cellAddress].s = ws[cellAddress].s || {};
+        ws[cellAddress].s.font = ws[cellAddress].s.font || {};
+        ws[cellAddress].s.font.bold = true;
+    }
+
     // 3. Crear libro y exportar
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Listado de Beneficiarios');
-    XLSX.writeFile(wb, nombreArchivo);
+    wb.Sheets['Listado de Beneficiarios'] = ws;
+    wb.SheetNames.push('Listado de Beneficiarios');
+    XLSX.writeFile(wb, nombreArchivo, { cellStyles: true });
 }

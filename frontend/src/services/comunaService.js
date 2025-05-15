@@ -1,16 +1,23 @@
 import axiosInstance from '../config/axiosConfig';
 
-export const obtenerComunas = async () => {
+export const obtenerComunas = async (timeout = 10000) => {
     try {
-        const response = await axiosInstance.get('/comunas');
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeout);
 
+        const response = await axiosInstance.get('/comunas', {
+            signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
         return response.data.data || []; 
     } catch (error) {
         // Log más detallado del error
         console.error('Error completo al obtener Comunas:', {
             mensaje: error.message,
             respuesta: error.response?.data,
-            estado: error.response?.status
+            estado: error.response?.status,
+            esTimeout: error.name === 'AbortError'
         });
         
         // Manejar específicamente errores de autorización

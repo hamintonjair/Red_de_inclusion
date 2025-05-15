@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 
 // MUI - Componentes de UI
 import { 
-    Container, Typography, Box,
+    Container, Typography, Box,  Button,
     Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
     Paper, IconButton, TextField,
     TablePagination, Tooltip, Dialog, DialogTitle, DialogContent,
@@ -45,7 +45,9 @@ export default function ListadoBeneficiarios() {
         pagina: 0,
         porPagina: 10
     });
-
+    const handleNuevoRegistro = () => {
+        navigate('/funcionario/registro-poblacion');
+    };
     // Estados para diálogos
     const [formulariosBeneficiario, setFormulariosBeneficiario] = useState([]);
     const [detallesBeneficiario, setDetallesBeneficiario] = useState(null);
@@ -104,7 +106,7 @@ export default function ListadoBeneficiarios() {
             const detalles = await obtenerDetallesBeneficiario(beneficiario._id);
             
             // Navegar al formulario de registro en modo edición
-            navigate('/funcionario/beneficiarios/registro', { 
+            navigate('/funcionario/registro-poblacion', { 
                 state: { 
                     beneficiario: detalles,
                     modoEdicion: true 
@@ -203,7 +205,15 @@ export default function ListadoBeneficiarios() {
 
                     {/* Resto del código de filtros */}
                 </Grid>
-
+                <Box display="flex" justifyContent="flex-end" mb={2}>
+                    <Button 
+                        variant="contained" 
+                        color="primary" 
+                        onClick={handleNuevoRegistro}
+                    >
+                        Nuevo Registro
+                    </Button>
+                </Box>
                 <TableContainer component={Paper}>
                     <Table>
                         <TableHead>

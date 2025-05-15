@@ -41,6 +41,7 @@ import { useSnackbar } from 'notistack';
 const ListadoBeneficiarios = () => {
     const [beneficiarios, setBeneficiarios] = useState([]);
     const [lineasTrabajo, setLineasTrabajo] = useState({});
+    const [lineaTrabajoFiltro, setLineaTrabajoFiltro] = useState('');
     const [beneficiarioSeleccionado, setBeneficiarioSeleccionado] = useState(null);
     const [openConfirmDialog, setOpenConfirmDialog] = useState(false);
     const [openDetallesDialog, setOpenDetallesDialog] = useState(false);
@@ -65,7 +66,8 @@ const ListadoBeneficiarios = () => {
                 const { data: beneficiariosData, total } = await beneficiarioService.listarBeneficiariosAdmin(
                     page + 1, 
                     rowsPerPage,
-                    filtro
+                    filtro,
+                    lineaTrabajoFiltro
                 );
 
                 const lineasTrabajoData = await usuarioService.obtenerLineasTrabajo();
@@ -95,7 +97,7 @@ const ListadoBeneficiarios = () => {
         };
 
         cargarDatos();
-    }, [page, rowsPerPage, filtro, enqueueSnackbar]);
+    }, [page, rowsPerPage, filtro, lineaTrabajoFiltro, enqueueSnackbar]);
 
     const handleEliminar = async () => {
         try {
@@ -166,7 +168,7 @@ const ListadoBeneficiarios = () => {
             let beneficiariosExportar = [];
             if (tipoExportacion === 'todos') {
                 // Obtener TODOS los beneficiarios (sin paginación)
-                const { data } = await beneficiarioService.listarBeneficiariosAdmin(1, 1000000000, filtro); // ajustar 10000 si hay más
+                const { data } = await beneficiarioService.listarBeneficiariosAdmin(1, 1000000000, filtro, lineaTrabajoFiltro); // ajustar 10000 si hay más
                 beneficiariosExportar = data;
                
             } else if (tipoExportacion === 'rango') {
@@ -175,7 +177,8 @@ const ListadoBeneficiarios = () => {
                 const { data } = await beneficiarioService.listarBeneficiariosPorRango({
                     fecha_inicio: fechaInicio,
                     fecha_fin: fechaFin,
-                    filtro
+                    filtro,
+                    lineaTrabajo: lineaTrabajoFiltro
                 });
               
                 beneficiariosExportar = data;
@@ -189,24 +192,32 @@ const ListadoBeneficiarios = () => {
             }
             // Formatear datos para Excel (puedes personalizar columnas aquí)
             const beneficiariosFormateados = beneficiariosExportar.map(b => ({
-                Nombre: b.nombre_completo,
-                Identificación: b.numero_documento,
-                'Tipo Documento': b.tipo_documento,
-                Género: b.genero,
-                'Fecha Registro': b.fecha_registro,
-               
-                Comuna: b.comuna,
-                Barrio: b.barrio,
-                'Correo Electrónico': b.correo_electronico,
-                'Número Celular': b.numero_celular,
-                'Nivel Educativo': b.nivel_educativo,
-                'Situación Laboral': b.situacion_laboral,
-                'Ayuda Humanitaria': b.ayuda_humanitaria ? 'Sí' : 'No',
-                'Estudia Actualmente': b.estudia_actualmente ? 'Sí' : 'No',
-                'Sabe Leer': b.sabe_leer ? 'Sí' : 'No',
-                'Sabe Escribir': b.sabe_escribir ? 'Sí' : 'No',
-                'Tiene Discapacidad': b.tiene_discapacidad ? 'Sí' : 'No',
-                'Víctima de Conflicto': b.victima_conflicto ? 'Sí' : 'No',
+               'FECHA DE REGISTRO': b.fecha_registro,
+                NOMBRE: b.nombre_completo,
+                'TIPO DOCUMENTO': b.tipo_documento,
+                IDENTIFICACIÓN: b.numero_documento,
+                GÉNERO: b.genero,
+                'RANGO DE EDAD': b.rango_edad,
+                COMUNA: b.comuna,
+                BARRIO: b.barrio,
+                'CORREO ELECTRÓNICO': b.correo_electronico,
+                'NÚMERO CELULAR': b.numero_celular,
+                'LÍNEA DE TRABAJO': lineasTrabajo && (lineasTrabajo[b.linea_trabajo] || lineasTrabajo[b.lineaTrabajo]) ? (lineasTrabajo[b.linea_trabajo] || lineasTrabajo[b.lineaTrabajo]) : 'Sin línea',
+                'ESTUDIA ACTUALMENTE': b.estudia_actualmente ? 'Sí' : 'No',
+                'NIVEL EDUCATIVO': b.nivel_educativo,
+                'SABE LEER': b.sabe_leer ? 'Sí' : 'No',
+                'SABE ESCRIBIR': b.sabe_escribir ? 'Sí' : 'No',
+                'TIPO DE VIVIENDA': b.tipo_vivienda,
+                'SITUACIÓN LABORAL': b.situacion_laboral,
+                'GRUPO ETNICO': b.etnia,
+                'AYUDA HUMANITARIA': b.ayuda_humanitaria ? 'Sí' : 'No',
+                'TIPO DE AYUDA HUMANITARIA': b.descripcion_ayuda_humanitaria,
+                'DISCAPACIDAD': b.tiene_discapacidad ? 'Sí' : 'No',
+                'TIPO DE DISCAPACIDAD': b.tipo_discapacidad,
+                'NOMBRE DE LA CUIDADORA': b.nombre_cuidadora || '',
+                '¿LABORA LA CUIDADORA?': b.labora_cuidadora ? 'Sí' : 'No',
+                'VÍCTIMA DE CONFLICTO': b.victima_conflicto ? 'Sí' : 'No'
+
             }));
             setExportProgress(90);
             await exportarListadoBeneficiariosAExcel({ beneficiarios: beneficiariosFormateados });
@@ -241,6 +252,9 @@ const ListadoBeneficiarios = () => {
             { label: 'Número de Celular', value: beneficiarioSeleccionado.numero_celular },
             { label: 'Nivel Educativo', value: beneficiarioSeleccionado.nivel_educativo },
             { label: 'Situación Laboral', value: beneficiarioSeleccionado.situacion_laboral },
+            { label: 'Tipo de Discapacidad', value: beneficiarioSeleccionado.tipo_discapacidad || '' },
+            { label: 'Nombre de la Cuidadora', value: beneficiarioSeleccionado.nombre_cuidadora || '' },
+            { label: '¿Labora la Cuidadora?', value: beneficiarioSeleccionado.labora_cuidadora ? 'Sí' : 'No' },
         ];
 
         const chipDetalles = [
@@ -360,6 +374,27 @@ const ListadoBeneficiarios = () => {
                     mb: 2 
                 }}
             >
+                <FormControl size="small" sx={{ minWidth: 180, mr: 2 }}>
+                    <InputLabel>Línea de Trabajo</InputLabel>
+                    <Select
+                        value={lineaTrabajoFiltro}
+                        label="Línea de Trabajo"
+                        displayEmpty
+                        renderValue={selected => {
+                            if (!selected) return 'Todos';
+                            return lineasTrabajo[selected] || 'Todos';
+                        }}
+                        onChange={e => {
+                            setLineaTrabajoFiltro(e.target.value);
+                            setPage(0);
+                        }}
+                    >
+                        <MenuItem value="">Todos</MenuItem>
+                        {Object.entries(lineasTrabajo).map(([id, nombre]) => (
+                            <MenuItem key={id} value={id}>{nombre}</MenuItem>
+                        ))}
+                    </Select>
+                </FormControl>
                 <TextField
                     variant="outlined"
                     size="small"
@@ -387,36 +422,40 @@ const ListadoBeneficiarios = () => {
                 <Table>
                     <TableHead>
                         <TableRow>
-                            <TableCell>Nombre</TableCell>
-                            <TableCell>Identificación</TableCell>
-                            <TableCell>Línea de Trabajo</TableCell>
-                            <TableCell>Acciones</TableCell>
-                        </TableRow>
+    <TableCell>Nombre</TableCell>
+    <TableCell>Identificación</TableCell>
+    <TableCell>Línea de Trabajo</TableCell>
+    <TableCell>Tipo de Discapacidad</TableCell>
+    <TableCell>Nombre de la Cuidadora</TableCell>
+    <TableCell>¿Labora la Cuidadora?</TableCell>
+    <TableCell>Acciones</TableCell>
+</TableRow>
                     </TableHead>
                     <TableBody>
                         {beneficiarios.map((beneficiario) => (
-                            <TableRow key={beneficiario._id}>
-                                <TableCell>{beneficiario.nombre}</TableCell>
-                                <TableCell>{beneficiario.identificacion}</TableCell>
-                                <TableCell>
-                                    {lineasTrabajo[beneficiario.lineaTrabajo] || 'Sin línea'}
-                                </TableCell>
-                                <TableCell>
-                                    <IconButton 
-                                        color="primary" 
-                                        onClick={() => mostrarDetalles(beneficiario)}
-                                    >
-                                        <VisibilityIcon />
-                                    </IconButton>
-                                    <IconButton 
-                                        color="error" 
-                                        onClick={() => confirmarEliminacion(beneficiario)}
-                                    >
-                                        <DeleteIcon />
-                                    </IconButton>
-                                </TableCell>
-                            </TableRow>
-                        ))}
+    <TableRow key={beneficiario._id}>
+        <TableCell>{beneficiario.nombre}</TableCell>
+        <TableCell>{beneficiario.identificacion}</TableCell>
+        <TableCell>{lineasTrabajo[beneficiario.lineaTrabajo] || 'Sin línea'}</TableCell>
+        <TableCell>{beneficiario.tipo_discapacidad || ''}</TableCell>
+        <TableCell>{beneficiario.nombre_cuidadora || ''}</TableCell>
+        <TableCell>{beneficiario.labora_cuidadora ? 'Sí' : 'No'}</TableCell>
+        <TableCell>
+            <IconButton 
+                color="primary" 
+                onClick={() => mostrarDetalles(beneficiario)}
+            >
+                <VisibilityIcon />
+            </IconButton>
+            <IconButton 
+                color="error" 
+                onClick={() => confirmarEliminacion(beneficiario)}
+            >
+                <DeleteIcon />
+            </IconButton>
+        </TableCell>
+    </TableRow>
+))}
                     </TableBody>
                 </Table>
                 <TablePagination

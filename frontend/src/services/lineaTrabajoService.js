@@ -1,12 +1,18 @@
 import axiosInstance from '../config/axiosConfig';
 
-export const obtenerNombreLineaTrabajo = async (nombreLineaTrabajo) => {
+export const obtenerNombreLineaTrabajo = async (nombreLineaTrabajo, timeout = 10000) => {
     try {
         // Codificar el nombre de la línea de trabajo para manejar espacios y caracteres especiales
         const lineaTrabajoEncoded = encodeURIComponent(nombreLineaTrabajo);
         
-        const response = await axiosInstance.get(`/lineas-trabajo/${lineaTrabajoEncoded}`);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+        const response = await axiosInstance.get(`/lineas-trabajo/${lineaTrabajoEncoded}`, {
+            signal: controller.signal
+        });
         
+        clearTimeout(timeoutId);
         // Devolver el ID de la línea de trabajo
         return response.data._id;
     } catch (error) {
@@ -14,22 +20,37 @@ export const obtenerNombreLineaTrabajo = async (nombreLineaTrabajo) => {
             mensaje: error.message,
             respuesta: error.response?.data,
             estado: error.response?.status,
-            nombreLineaTrabajo: nombreLineaTrabajo
+            nombreLineaTrabajo: nombreLineaTrabajo,
+            esTimeout: error.name === 'AbortError'
         });
         
-        // Lanzar el error para que pueda ser manejado por el llamador
-        throw error;
+        // Devolver un valor por defecto o manejar el error
+        return nombreLineaTrabajo;
     }
 };
 
 // Función para obtener todas las líneas de trabajo
-export const obtenerLineasTrabajo = async () => {
+export const obtenerLineasTrabajo = async (timeout = 10000) => {
     try {
-        const response = await axiosInstance.get('/lineas-trabajo');
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+        const response = await axiosInstance.get('/lineas-trabajo', {
+            signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
         return response.data;
     } catch (error) {
-        console.error('Error al obtener líneas de trabajo:', error);
-        throw error;
+        console.error('Error al obtener líneas de trabajo:', {
+            mensaje: error.message,
+            respuesta: error.response?.data,
+            estado: error.response?.status,
+            esTimeout: error.name === 'AbortError'
+        });
+        
+        // Devolver un array vacío en caso de error
+        return [];
     }
 };
 

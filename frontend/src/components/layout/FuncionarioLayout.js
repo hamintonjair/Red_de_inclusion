@@ -21,11 +21,12 @@ import {
     People as PeopleIcon,
     Person as PersonIcon,
     Logout as LogoutIcon,
-    Add as AddIcon
+    // Add as AddIcon
 } from '@mui/icons-material';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import fondoImg from '../../fondo/fondo.png';
+
 
 const menuItems = [
     { 
@@ -34,14 +35,29 @@ const menuItems = [
         path: '/funcionario/dashboard' 
     },
     { 
-        text: 'Beneficiarios', 
+        text: 'Población', 
         icon: <PeopleIcon />, 
-        path: '/funcionario/beneficiarios' 
+        path: '/funcionario/beneficiarios',
+        hideForLineaTrabajoNombre: 'Población Migrante'
     },
     { 
-        text: 'Registrar Beneficiario', 
-        icon: <AddIcon />, 
-        path: '/funcionario/beneficiarios/registro' 
+        text: 'Migrantes', 
+        icon: <PeopleIcon />, 
+        path: '/funcionario/poblacion-migrante',
+        hideForLineaTrabajoNombre: [
+            'Adulto mayor',
+            'Población Religiosa',
+            'Enlace Religioso',
+            'Poblacion Religiosa', 
+            'Colombia Mayor', 
+            'Coordinación de Juventud',
+            'Coordinacion de Juventud',
+            'Renta Ciudadana', 
+            'Enlace de Niñas, Niños y Adolecentes',
+            'Habitantes Calles',
+            'Discapacidad',
+            'Coordinación de Víctimas',
+            'Coordinacion de Victimas'       ] 
     },
     { 
         text: 'Perfil', 
@@ -50,11 +66,18 @@ const menuItems = [
     }
 ];
 
-const FuncionarioLayout = () => {
+export const FuncionarioLayout = ({ children }) => {
     const [open, setOpen] = useState(true);
+    const { user, logout } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
-    const { user, logout } = useAuth();
+
+    const filteredMenuItems = menuItems.filter(item => 
+        !item.hideForLineaTrabajoNombre || 
+        (Array.isArray(item.hideForLineaTrabajoNombre) 
+            ? !item.hideForLineaTrabajoNombre.includes(user?.linea_trabajo_nombre)
+            : item.hideForLineaTrabajoNombre !== user?.linea_trabajo_nombre)
+    );
 
     const toggleDrawer = () => {
         setOpen(!open);
@@ -87,8 +110,8 @@ const FuncionarioLayout = () => {
                         easing: theme.transitions.easing.sharp,
                         duration: theme.transitions.duration.enteringScreen,
                     }),
-                    ml: { xs: 0, md: open ? '240px' : '57px' },
-                    width: { xs: '100%', md: `calc(100% - ${open ? 240 : 57}px)` },
+                    ml: { xs: 0, md: open ? '280px' : '57px' },
+                    width: { xs: '100%', md: `calc(100% - ${open ? 280 : 57}px)` },
                 }}
             >
                 <Toolbar sx={{ minHeight: 90 }}>
@@ -121,12 +144,12 @@ const FuncionarioLayout = () => {
                 variant="permanent" 
                 open={open}
                 sx={{
-                    width: open ? 240 : 57,
+                    width: open ? 280 : 57,
                     flexShrink: 0,
                     whiteSpace: 'nowrap',
                     boxSizing: 'border-box',
                     '& .MuiDrawer-paper': {
-                        width: open ? 240 : 57,
+                        width: open ? 280 : 57,
                         transition: (theme) => theme.transitions.create('width', {
                             easing: theme.transitions.easing.sharp,
                             duration: theme.transitions.duration.enteringScreen,
@@ -142,7 +165,7 @@ const FuncionarioLayout = () => {
                 </Toolbar>
                 <Divider />
                 <List>
-                    {menuItems.map((item) => (
+                    {filteredMenuItems.map((item) => (
                         <ListItem 
                             button 
                             key={item.text}

@@ -18,6 +18,7 @@ from .routes.reportes import reportes_bp
 from .routes.funcionarios import funcionarios_bp  # Importación de blueprint de funcionarios
 from .routes.comunas import comunas_bp  # Nuevo blueprint de comunas
 from .routes.beneficiario import beneficiario_bp  # Importar blueprint singular
+from .routes.poblacion_migrante import poblacion_migrante_bp  # Importar blueprint de población migrante
 
 # Importación opcional de dashboard
 try:
@@ -51,18 +52,18 @@ def create_app():
         ]
     )
     
-    # Configuración de CORS más permisiva
+    # Configuración de CORS
     CORS(app, resources={
-        r"/*": {  
-            "origins": "*",  # Permitir cualquier origen en desarrollo
-            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-            "allow_headers": [
-                "Content-Type", 
-                "Authorization", 
-                "Access-Control-Allow-Credentials",
-                "Access-Control-Allow-Origin"
+        r'/*': {
+            'origins': [
+                'http://localhost:3000',  # Frontend React
+                'http://127.0.0.1:3000',
+                'http://localhost:5000',  # Backend Flask
+                'http://127.0.0.1:5000'
             ],
-            "supports_credentials": True  
+            'methods': ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+            'allow_headers': ['Content-Type', 'Authorization', 'Access-Control-Allow-Origin'],
+            'supports_credentials': True
         }
     })
     
@@ -166,6 +167,7 @@ def create_app():
     app.register_blueprint(asignaciones_bp, url_prefix='/asignaciones')
     app.register_blueprint(reportes_bp, url_prefix='/reportes')
     app.register_blueprint(comunas_bp, url_prefix='/comunas')
+    app.register_blueprint(poblacion_migrante_bp, url_prefix='/poblacion-migrante')
 
     # Registrar dashboard blueprint si está disponible
     if dashboard_bp:

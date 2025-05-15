@@ -9,7 +9,9 @@ import {
     Select, 
     MenuItem,
     Box,
-    Alert
+    Alert,
+    FormControlLabel,
+    Switch
 } from '@mui/material';
 import { useParams, useNavigate } from 'react-router-dom';
 import beneficiarioService from '../../services/beneficiarioService';
@@ -25,7 +27,11 @@ const EditarBeneficiario = () => {
         fechaNacimiento: '',
         genero: '',
         direccion: '',
-        telefono: ''
+        telefono: '',
+        tiene_discapacidad: false,
+        tipo_discapacidad: '',
+        nombre_cuidadora: '',
+        labora_cuidadora: false
     });
     const [lineasTrabajo, setLineasTrabajo] = useState([]);
     const [error, setError] = useState(null);
@@ -195,6 +201,54 @@ const EditarBeneficiario = () => {
                             required
                         />
                     </Grid>
+                    {/* Discapacidad y cuidadora */}
+                    {beneficiario.tiene_discapacidad && (
+                        <>
+                            <Grid item xs={12} sm={12}>
+                                <FormControl fullWidth>
+                                    <InputLabel>Tipo de Discapacidad</InputLabel>
+                                    <Select
+                                        name="tipo_discapacidad"
+                                        value={beneficiario.tipo_discapacidad}
+                                        label="Tipo de Discapacidad"
+                                        onChange={handleChange}
+                                    >
+                                        <MenuItem value="">Seleccione...</MenuItem>
+                                        <MenuItem value="Física">Física</MenuItem>
+                                        <MenuItem value="Visual">Visual</MenuItem>
+                                        <MenuItem value="Auditiva">Auditiva</MenuItem>
+                                        <MenuItem value="Cognitiva">Cognitiva</MenuItem>
+                                        <MenuItem value="Múltiple">Múltiple</MenuItem>
+                                        <MenuItem value="Ninguna">Ninguna</MenuItem>
+                                    </Select>
+                                </FormControl>
+                            </Grid>
+                            <Grid item xs={12} sm={12}>
+                                <TextField
+                                    fullWidth
+                                    label="Nombre de la Cuidadora"
+                                    name="nombre_cuidadora"
+                                    value={beneficiario.nombre_cuidadora}
+                                    onChange={handleChange}
+                                />
+                            </Grid>
+                            <Grid item xs={12} sm={12} sx={{ display: 'flex', alignItems: 'center' }}>
+                                <FormControlLabel
+                                    control={
+                                        <Switch
+                                            name="labora_cuidadora"
+                                            checked={!!beneficiario.labora_cuidadora}
+                                            onChange={e => setBeneficiario(prev => ({
+                                                ...prev,
+                                                labora_cuidadora: e.target.checked
+                                            }))}
+                                        />
+                                    }
+                                    label="¿Labora la Cuidadora?"
+                                />
+                            </Grid>
+                        </>
+                    )}
                     <Grid item xs={12}>
                         <Box sx={{ display: 'flex', gap: 2 }}>
                             <Button 

@@ -263,39 +263,41 @@ const ListadoLineasTrabajo = () => {
             <TableContainer component={Paper}>
                 <Table>
                     <TableHead>
-                        <TableRow>
-                            <TableCell>Nombre</TableCell>
-                            <TableCell>Descripción</TableCell>
-                            <TableCell>Acciones</TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {lineasTrabajo.map((linea) => {
-                            const lineaId = extraerIdLineaTrabajo(linea);
-                            return (
-                                <TableRow key={lineaId || Math.random().toString()}>
-                                    <TableCell>{linea.nombre}</TableCell>
-                                    <TableCell>{linea.descripcion}</TableCell>
-                                    <TableCell>
-                                        <IconButton 
-                                            color="primary" 
-                                            onClick={() => handleEditar(linea)}
-                                        >
-                                            <EditIcon />
-                                        </IconButton>
-                                        <IconButton 
-                                            color="error" 
-                                            onClick={() => confirmarEliminacion(linea)}
-                                        >
-                                            <DeleteIcon />
-                                        </IconButton>
-                                    </TableCell>
-                                </TableRow>
-                            );
-                        })}
-                    </TableBody>
-                </Table>
-            </TableContainer>
+    <TableRow>
+        <TableCell>Nombre</TableCell>
+        <TableCell>Descripción</TableCell>
+        <TableCell>Acciones</TableCell>
+    </TableRow>
+</TableHead>
+<TableBody>
+    {lineasTrabajo.map((linea, idx) => {
+        const lineaId = extraerIdLineaTrabajo(linea);
+        // Si no hay id válido, usa nombre+idx como key única
+        const key = lineaId || (linea.nombre ? `nombre-${linea.nombre}-${idx}` : `idx-${idx}`);
+        return (
+            <TableRow key={key}>
+                <TableCell>{linea.nombre}</TableCell>
+                <TableCell>{linea.descripcion}</TableCell>
+                <TableCell>
+                    <IconButton 
+                        color="primary" 
+                        onClick={() => handleEditar(linea)}
+                    >
+                        <EditIcon />
+                    </IconButton>
+                    <IconButton 
+                        color="error" 
+                        onClick={() => confirmarEliminacion(linea)}
+                    >
+                        <DeleteIcon />
+                    </IconButton>
+                </TableCell>
+            </TableRow>
+        );
+    })}
+</TableBody>
+        </Table>
+    </TableContainer>
 
             <Dialog
                 open={openConfirmDialog}

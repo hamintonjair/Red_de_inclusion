@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import DashboardMapa from './DashboardMapa';
 import { 
     Grid, 
     Typography, 
@@ -173,6 +174,9 @@ const Dashboard = () => {
                     <ChildCareIcon color="warning" sx={{ fontSize: 50 }} />
                 )}
             </Grid>
+
+            {/* Mapa de beneficiarios */}
+            <DashboardMapa />
         </Box>
     );
 };

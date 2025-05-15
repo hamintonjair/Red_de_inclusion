@@ -4,6 +4,7 @@ import { getToken } from '../utils/auth';
 // import { saveAs } from 'file-saver';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const VERIFICACION_URL = process.env.REACT_APP_VERIFICACION_URL || 'http://localhost:3000/verificar';
 
 const axiosInstance = axios.create({
     baseURL: API_URL,
@@ -78,6 +79,7 @@ export const crearBeneficiario = async (datos) => {
             }
             return acc;
         }, {});
+        console.log('beneficiarioService.js, Datos validados A ENVIAR AL BACKEND:', datosValidados); // DEBUG LINE
 
         // Validaciones adicionales
         const camposRequeridos = [
@@ -257,16 +259,22 @@ export const obtenerDetallesBeneficiario = async (beneficiarioId) => {
 export const listarBeneficiariosAdmin = async (
     pagina = 1, 
     porPagina = 10, 
-    filtro = ''
+    filtro = '',
+    lineaTrabajo = null
 ) => {
     try {
        
+        // Convertir lineaTrabajo a string si es un objeto
+        const lineaTrabajoParam = typeof lineaTrabajo === 'object' 
+            ? lineaTrabajo.nombre 
+            : lineaTrabajo;
+
         const response = await axiosInstance.get('/beneficiarios/listar', {
             params: {
                 pagina,
                 por_pagina: porPagina,
                 filtro,
-                // Puedes agregar más parámetros específicos para admin si es necesario
+                linea_trabajo: lineaTrabajoParam,
                 admin: true
             }
         });
@@ -300,7 +308,7 @@ export const obtenerTodosBeneficiariosAdmin = async (filtro = '') => {
         const response = await axiosInstance.get('/beneficiarios', {
             params: { 
                 pagina: 1, 
-                por_pagina: 1000000, 
+                por_pagina: 10000000, 
                 filtro, 
                 admin: true 
             }
@@ -335,20 +343,66 @@ export const verificarCorreoUnico = async (correo_electronico) => {
     }
 };
 
-export const exportarBeneficiariosAExcel = async ({ filtro, tipo_exportacion, fecha_inicio, fecha_fin }) => {
+export async function exportarBeneficiariosAExcel({ filtro, tipo_exportacion, fecha_inicio, fecha_fin }) {
+    const QRCode = require('qrcode');
+    const ExcelJS = require('exceljs');
+
     try {
-        const response = await axiosInstance.get('/beneficiarios/exportar-beneficiarios-excel', {
-            params: { filtro, tipo_exportacion, fecha_inicio, fecha_fin },
-            responseType: 'blob',
-            validateStatus: status => (status >= 200 && status < 300) || status === 204 // aceptar 204
+        // Obtener datos de beneficiarios
+        const { data: beneficiarios } = await axiosInstance.get('/beneficiarios/listar', {
+            params: { filtro, fecha_inicio, fecha_fin }
         });
 
-        if (response.status === 204 || response.data.size === 0) {
-            // Lanzar error personalizado para que el frontend lo maneje
+        if (!beneficiarios || beneficiarios.length === 0) {
             throw new Error('NO_DATA');
         }
 
-        const url = window.URL.createObjectURL(new Blob([response.data]));
+        // Crear workbook y worksheet
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Beneficiarios');
+
+        // Configurar columnas
+        worksheet.columns = [
+            { header: 'Nombre', key: 'nombre', width: 30 },
+            { header: 'Documento', key: 'documento', width: 20 },
+            { header: 'Fecha Registro', key: 'fecha', width: 20 },
+            { header: 'Estado Verificación', key: 'verificacion', width: 15 },
+            { header: 'Código QR', key: 'qr', width: 20 }
+        ];
+
+        // Añadir datos y QR para cada beneficiario
+        for (const beneficiario of beneficiarios) {
+            // Generar URL de verificación
+            const urlVerificacion = `${VERIFICACION_URL}/${beneficiario.codigo_verificacion}`;
+            
+            // Generar QR como imagen
+            const qrBuffer = await QRCode.toBuffer(urlVerificacion);
+            
+            // Añadir imagen QR al workbook
+            const imageId = workbook.addImage({
+                buffer: qrBuffer,
+                extension: 'png'
+            });
+
+            // Añadir fila con datos
+            const row = worksheet.addRow({
+                nombre: beneficiario.nombre_completo,
+                documento: beneficiario.numero_documento,
+                fecha: beneficiario.fecha_registro,
+                verificacion: beneficiario.verificacion_biometrica?.estado || 'Pendiente'
+            });
+
+            // Añadir QR a la celda
+            worksheet.addImage(imageId, {
+                tl: { col: 4, row: row.number - 1 },
+                br: { col: 5, row: row.number }
+            });
+        }
+
+        // Generar archivo Excel
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
         link.setAttribute('download', 'Beneficiarios.xlsx');
@@ -369,7 +423,7 @@ export const listarBeneficiariosPorRango = async ({ fecha_inicio, fecha_fin, fil
         const response = await axiosInstance.get('/beneficiarios/listar', {
             params: {
                 pagina: 1,
-                por_pagina: 1000000,
+                por_pagina: 10000000,
                 filtro,
                 fecha_inicio,
                 fecha_fin,

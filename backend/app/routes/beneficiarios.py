@@ -47,7 +47,8 @@ def registrar_beneficiario():
         }), 201
 
     except Exception as e:
-        return jsonify({"msg": f"Error al registrar beneficiario: {str(e)}"}), 500
+        current_app.logger.error(f"Error al registrar beneficiario: {str(e)}", exc_info=True)
+        return jsonify({"msg": f"Error interno al registrar beneficiario. Consulte los logs del servidor."}), 500
 
 
 @beneficiarios_bp.route('/listar', methods=['GET'])
@@ -70,7 +71,8 @@ def listar_beneficiarios():
 
         # Obtener funcionario
         funcionario = funcionarios.find_one({'_id': ObjectId(funcionario_id)})
-
+       
+    
         # Validar existencia del funcionario
         if not funcionario:
             return jsonify({"msg": "Funcionario no encontrado"}), 404
@@ -158,7 +160,8 @@ def listar_beneficiarios():
                     beneficiario['fecha_registro'] = beneficiario['fecha_registro'].strftime('%Y-%m-%d')
                 else:
                     beneficiario['fecha_registro'] = str(beneficiario['fecha_registro'])[:10]
-
+       
+       
         # Retornar resultados
         return jsonify({
             "beneficiarios": lista_beneficiarios,
