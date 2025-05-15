@@ -39,12 +39,9 @@ function generateBiometricData() {
 
 export const biometricService = {
     async isSupported() {
-        // Verificamos si el dispositivo es móvil (donde es más probable tener lector de huellas)
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-        
+        // Siempre devolvemos true para que el botón de huella dactilar se muestre siempre
         // En una implementación real, aquí verificaríamos el soporte real del hardware
-        // Para esta simulación, asumimos que todos los dispositivos móviles tienen soporte
-        return isMobile;
+        return true;
     },
 
     async registrarHuella(userId, userName) {
