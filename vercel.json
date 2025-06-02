@@ -1,14 +1,13 @@
 {
   "version": 2,
-  "buildCommand": "bash vercel-build.sh",
-  "outputDirectory": "frontend/build",
   "builds": [
     {
       "src": "backend/vercel_bootstrap.py",
       "use": "@vercel/python",
       "config": {
         "maxLambdaSize": "50mb",
-        "pythonVersion": "3.9"
+        "pythonVersion": "3.9",
+        "installCommand": "cd backend && bash vercel-build.sh"
       }
     },
     {

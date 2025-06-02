@@ -7,6 +7,7 @@
       "config": {
         "maxLambdaSize": "50mb",
         "pythonVersion": "3.9",
+        "installCommand": "bash vercel-build.sh",
         "includeFiles": [
           "app/**/*",
           "config.py",
