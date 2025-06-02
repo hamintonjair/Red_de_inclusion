@@ -9,6 +9,7 @@ import {
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import usuarioService from '../../services/usuarioService';
+import PageLayout from '../../components/layout/PageLayout';
 
 const CrearLineaTrabajo = () => {
     const navigate = useNavigate();
@@ -18,7 +19,8 @@ const CrearLineaTrabajo = () => {
     });
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(null);
-
+    const pageTitle = 'Gestion de Lineas de Programas';
+    const pageDescription = 'Registro de una nueva linea de trabajo';
     const handleChange = (e) => {
         const { name, value } = e.target;
         setLineaTrabajo(prev => ({
@@ -50,6 +52,10 @@ const CrearLineaTrabajo = () => {
     };
 
     return (
+        <PageLayout
+            title={pageTitle}
+            description={pageDescription}
+        >
         <Box>
             <Typography variant="h5" gutterBottom>
                 Nueva Línea
@@ -109,6 +115,7 @@ const CrearLineaTrabajo = () => {
                 </Grid>
             </form>
         </Box>
+        </PageLayout>
     );
 };
 

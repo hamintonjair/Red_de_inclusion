@@ -10,7 +10,8 @@ import {
     Dashboard as DashboardIcon, 
     People as PeopleIcon, 
     Person as PersonIcon,
-    Group as GroupIcon
+    Group as GroupIcon,
+    Event as EventIcon
 } from '@mui/icons-material';
 import { Link } from 'react-router-dom';
 
@@ -37,7 +38,14 @@ const Sidebar = () => {
                 <ListItemIcon>
                     <GroupIcon />
                 </ListItemIcon>
-                <ListItemText primary="Migrantessss" />
+                <ListItemText primary="Migrantes" />
+            </ListItem>
+
+            <ListItem button component={Link} to="/funcionario/actividades">
+                <ListItemIcon>
+                    <EventIcon />
+                </ListItemIcon>
+                <ListItemText primary="Actividades" />
             </ListItem>
 
             <Divider />

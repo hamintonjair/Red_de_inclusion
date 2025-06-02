@@ -174,6 +174,91 @@ def listar_beneficiarios():
         return jsonify({"msg": f"Error al listar beneficiarios: {str(e)}"}), 500
 
 
+@beneficiarios_bp.route('/verificar', methods=['GET'])
+def verificar_beneficiario():
+    try:
+        # Obtener parámetros de la solicitud
+        documento = request.args.get('documento')
+        codigo_verificacion = request.args.get('codigo_verificacion')
+
+        # Validar que se proporcionen los parámetros
+        if not documento or not codigo_verificacion:
+            return jsonify({"msg": "Documento y código de verificación son requeridos"}), 400
+
+        # Obtener colecciones
+        beneficiarios = current_app.config['MONGO_DB']['beneficiarios']
+
+        print(f"Iniciando verificación para documento: {documento}, código: {codigo_verificacion}")
+        
+        # 1. Buscar primero solo por documento
+        query_doc = {'numero_documento': documento}
+        print(f"Buscando documento: {query_doc}")
+        
+        beneficiario_por_doc = beneficiarios.find_one(query_doc)
+        if not beneficiario_por_doc:
+            print("❌ No se encontró ningún beneficiario con ese documento")
+            return jsonify({"msg": "Beneficiario no encontrado"}), 404
+            
+        print("✅ Documento encontrado. Campos del documento:", list(beneficiario_por_doc.keys()))
+        
+        # 2. Buscar con código de verificación en diferentes formatos
+        queries = [
+            # Formato exacto como está en la base de datos
+            {'numero_documento': documento, 'datos_biometricos.codigo_verificacion': codigo_verificacion},
+            # Formato alternativo (código en la raíz)
+            {'numero_documento': documento, 'codigo_verificacion': codigo_verificacion},
+            # Intentar sin importar mayúsculas/minúsculas
+            {'numero_documento': documento, 'datos_biometricos.codigo_verificacion': {'$regex': f'^{codigo_verificacion}$', '$options': 'i'}},
+            # Último intento: buscar solo por documento y verificar el código manualmente
+            {'numero_documento': documento}
+        ]
+        
+        beneficiario_encontrado = None
+        
+        for query in queries:
+            print(f"Buscando con query: {query}")
+            beneficiario = beneficiarios.find_one(query)
+            
+            if beneficiario:
+                # Si es el último intento (solo por documento), verificar manualmente
+                if query == queries[-1]:
+                    codigo_encontrado = (
+                        beneficiario.get('datos_biometricos', {}).get('codigo_verificacion') or 
+                        beneficiario.get('codigo_verificacion', '')
+                    )
+                    if str(codigo_encontrado).lower() == str(codigo_verificacion).lower():
+                        beneficiario_encontrado = beneficiario
+                        break
+                else:
+                    beneficiario_encontrado = beneficiario
+                    break
+            
+            if not beneficiario_encontrado:
+                print("❌ No se encontró con ninguna de las queries")
+                print("Datos del beneficiario:", beneficiario_por_doc)
+                if 'datos_biometricos' in beneficiario_por_doc:
+                    print("Código en datos_biometricos:", beneficiario_por_doc['datos_biometricos'].get('codigo_verificacion'))
+                if 'codigo_verificacion' in beneficiario_por_doc:
+                    print("Código en raíz:", beneficiario_por_doc.get('codigo_verificacion'))
+
+        if not beneficiario_encontrado:
+            return jsonify({"msg": "Beneficiario no encontrado o código de verificación inválido"}), 404
+
+        # Convertir ObjectId a string
+        beneficiario_encontrado['_id'] = str(beneficiario_encontrado['_id'])
+
+        # Retornar datos básicos del beneficiario
+        return jsonify({
+            "nombre_completo": beneficiario_encontrado.get('nombre_completo', ''),
+            "numero_documento": beneficiario_encontrado.get('numero_documento', ''),
+            "linea_trabajo": beneficiario_encontrado.get('linea_trabajo', '')
+        }), 200
+
+    except Exception as e:
+        current_app.logger.error(f"Error al verificar beneficiario: {str(e)}", exc_info=True)
+        return jsonify({"msg": "Error interno al verificar beneficiario"}), 500
+
+
 @beneficiarios_bp.route('/detalle/<beneficiario_id>', methods=['GET'])
 @jwt_required()
 def detalle_beneficiario(beneficiario_id):
@@ -399,9 +484,16 @@ def verificar_documento_unico(numero_documento):
 
         # Buscar beneficiario con el mismo número de documento
         beneficiarios = current_app.config['MONGO_DB']['beneficiarios']
-        beneficiario_existente = beneficiarios.find_one({
+        query = {
             'numero_documento': numero_documento
-        })
+        }
+        
+        # Si se proporciona un ID para excluir, agregarlo a la consulta
+        excluir_id = request.args.get('excluirId')
+        if excluir_id:
+            query['_id'] = {'$ne': ObjectId(excluir_id)}
+        
+        beneficiario_existente = beneficiarios.find_one(query)
 
         return jsonify({
             "existe": beneficiario_existente is not None,
@@ -429,9 +521,16 @@ def verificar_correo_unico(correo_electronico):
 
         # Buscar beneficiario con el mismo correo electrónico
         beneficiarios = current_app.config['MONGO_DB']['beneficiarios']
-        beneficiario_existente = beneficiarios.find_one({
+        query = {
             'correo_electronico': correo_electronico
-        })
+        }
+        
+        # Si se proporciona un ID para excluir, agregarlo a la consulta
+        excluir_id = request.args.get('excluirId')
+        if excluir_id:
+            query['_id'] = {'$ne': ObjectId(excluir_id)}
+        
+        beneficiario_existente = beneficiarios.find_one(query)
 
         return jsonify({
             "existe": beneficiario_existente is not None,
@@ -654,6 +753,27 @@ def exportar_beneficiarios_excel():
 
         # Crear archivo Excel en memoria
         output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name='Beneficiarios')
+        
+        output.seek(0)
+        
+        # Configurar la respuesta para descargar el archivo
+        fecha_actual = datetime.now().strftime("%Y%m%d_%H%M%S")
+        return send_file(
+            output,
+            as_attachment=True,
+            download_name=f"beneficiarios_exportacion_{fecha_actual}.xlsx",
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+
+    except Exception as e:
+        current_app.logger.error(f"Error al exportar beneficiarios: {str(e)}")
+        return jsonify({'msg': f'Error al exportar: {str(e)}'}), 500
+        df = pd.DataFrame(datos_exportacion)
+
+        # Crear archivo Excel en memoria
+        output = io.BytesIO()
         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
             df.to_excel(writer, sheet_name='Beneficiarios', index=False)
 
@@ -667,5 +787,8 @@ def exportar_beneficiarios_excel():
         )
 
     except Exception as e:
-        current_app.logger.error(f"Error al exportar beneficiarios: {str(e)}")
-        return jsonify({'msg': f'Error al exportar: {str(e)}'}), 500
+        logger.error(f"Error al exportar beneficiarios a Excel: {str(e)}", exc_info=True)
+        return jsonify({
+            'status': 'error',
+            'message': f'Error al exportar beneficiarios: {str(e)}'
+        }), 500

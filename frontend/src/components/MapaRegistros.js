@@ -59,11 +59,11 @@ const MapaRegistros = ({ registros }) => {
               position: 'absolute',
               left: x - 8,
               top: y - 8,
-              width: 16,
-              height: 16,
+              width: 11,
+              height: 11,
               borderRadius: '50%',
               background: COMUNA_COLORS[barrio.comuna] || '#555',
-              border: '2px solid #fff',
+              border: '0.5px solid #000',
               boxShadow: '0 1px 4px #0006',
               zIndex: 2
             }}

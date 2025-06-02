@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { 
-    Table, 
-    TableBody, 
-    TableCell, 
-    TableContainer, 
-    TableHead, 
-    TableRow, 
-    Paper, 
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow,
+    Paper,
     Button,
     Typography,
     Dialog,
@@ -19,13 +19,14 @@ import {
     Snackbar,
     CircularProgress
 } from '@mui/material';
-import { 
-    Edit as EditIcon, 
+import {
+    Edit as EditIcon,
     Delete as DeleteIcon,
-    Add as AddIcon 
+    Add as AddIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import usuarioService from '../../services/usuarioService';
+import PageLayout from '../../components/layout/PageLayout';
 
 const ListadoLineasTrabajo = () => {
     const [lineasTrabajo, setLineasTrabajo] = useState([]);
@@ -36,9 +37,12 @@ const ListadoLineasTrabajo = () => {
     const [loadingOverlay, setLoadingOverlay] = useState(false);
     const navigate = useNavigate();
 
+    const pageTitle = 'Gestion de Lineas de Programas';
+    const pageDescription = 'Listado de todas las lineas de trabajo';
+
     // Función auxiliar para extraer ID de una línea de trabajo
     const extraerIdLineaTrabajo = (linea) => {
-     
+
         // Verificar si la línea es null o undefined
         if (!linea) {
             console.warn('Línea de trabajo es null o undefined');
@@ -56,25 +60,25 @@ const ListadoLineasTrabajo = () => {
         ];
 
         // Registro de posibles IDs
-      
+
         // Filtrar IDs no nulos y no indefinidos
         const idsValidos = posiblesIds.filter(id => {
-            const esValido = id !== null && 
-                             id !== undefined && 
-                             id !== 'undefined' && 
-                             (typeof id === 'string' ? id.trim() !== '' : true);
-            
+            const esValido = id !== null &&
+                id !== undefined &&
+                id !== 'undefined' &&
+                (typeof id === 'string' ? id.trim() !== '' : true);
+
             // Registro de validez de cada ID
-            
+
             return esValido;
         });
 
         // Registro de IDs válidos
-      
+
         // Devolver el primer ID válido o null
         const idFinal = idsValidos.length > 0 ? idsValidos[0] : null;
-        
-      
+
+
 
         return idFinal;
     };
@@ -84,22 +88,22 @@ const ListadoLineasTrabajo = () => {
             setLoadingOverlay(true);
             try {
                 const data = await usuarioService.obtenerLineasTrabajo();
-                
+
                 // Asegurar que cada línea tenga un ID válido
                 const lineasConId = data.map(linea => {
                     const lineaId = extraerIdLineaTrabajo(linea);
-                    
+
                     if (!lineaId) {
                         console.warn('Línea de trabajo sin ID válido:', linea);
                     }
-                    
+
                     return {
                         ...linea,
                         _id: lineaId,
                         id: lineaId
                     };
                 });
-                
+
                 setLineasTrabajo(lineasConId);
             } catch (error) {
                 setError('No se pudieron cargar las líneas de trabajo');
@@ -114,15 +118,15 @@ const ListadoLineasTrabajo = () => {
     const handleEliminar = async () => {
         try {
             const lineaId = extraerIdLineaTrabajo(lineaSeleccionada);
-            
+
             if (!lineaId) {
                 setError('No se puede eliminar: ID de línea de trabajo no válido');
                 setOpenSnackbar(true);
                 return;
             }
-            
+
             await usuarioService.eliminarLineaTrabajo(lineaId);
-            
+
             setLineasTrabajo(prev => prev.filter(l => extraerIdLineaTrabajo(l) !== lineaId));
             setOpenConfirmDialog(false);
         } catch (error) {
@@ -139,21 +143,21 @@ const ListadoLineasTrabajo = () => {
 
     const handleEditar = async (linea) => {
         console.group('Diagnóstico de edición de línea de trabajo');
-    
-        
+
+
         try {
             // Intentar obtener el ID de la línea de trabajo
             const lineaId = extraerIdLineaTrabajo(linea);
-            
-            
+
+
             if (!lineaId) {
                 setError('No se puede editar: ID de línea de trabajo no válido');
                 setOpenSnackbar(true);
-                
+
                 // Intentar recuperar el ID desde el backend
                 try {
                     const lineaConId = await usuarioService.obtenerLineaTrabajoPorNombre(linea.nombre);
-                    
+
                     if (lineaConId && lineaConId._id) {
                         navigate(`/admin/lineas-trabajo/editar/${lineaConId._id}`);
                     } else {
@@ -166,13 +170,13 @@ const ListadoLineasTrabajo = () => {
                     setError('Error al buscar la línea de trabajo');
                     setOpenSnackbar(true);
                 }
-                
+
                 console.groupEnd();
                 return;
             }
-            
+
             navigate(`/admin/lineas-trabajo/editar/${lineaId}`);
-            
+
         } catch (error) {
             console.error('Error inesperado en handleEditar:', error);
             setError('Error inesperado al editar línea de trabajo');
@@ -231,29 +235,33 @@ const ListadoLineasTrabajo = () => {
                 onClose={handleCloseSnackbar}
                 anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
             >
-                <Alert 
-                    onClose={handleCloseSnackbar} 
-                    severity="error" 
+                <Alert
+                    onClose={handleCloseSnackbar}
+                    severity="error"
                     sx={{ width: '100%' }}
                 >
                     {error}
                 </Alert>
             </Snackbar>
-            
-            <Box 
-                sx={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'center', 
-                    mb: 2 
+
+            <PageLayout
+                title={pageTitle}
+                description={pageDescription}
+            >
+            <Box
+                sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    mb: 2
                 }}
             >
                 <Typography variant="h5">
-                
+
                 </Typography>
-                <Button 
-                    variant="contained" 
-                    color="primary" 
+                <Button
+                    variant="contained"
+                    color="primary"
                     startIcon={<AddIcon />}
                     onClick={handleNuevaLineaTrabajo}
                 >
@@ -263,41 +271,41 @@ const ListadoLineasTrabajo = () => {
             <TableContainer component={Paper}>
                 <Table>
                     <TableHead>
-    <TableRow>
-        <TableCell>Nombre</TableCell>
-        <TableCell>Descripción</TableCell>
-        <TableCell>Acciones</TableCell>
-    </TableRow>
-</TableHead>
-<TableBody>
-    {lineasTrabajo.map((linea, idx) => {
-        const lineaId = extraerIdLineaTrabajo(linea);
-        // Si no hay id válido, usa nombre+idx como key única
-        const key = lineaId || (linea.nombre ? `nombre-${linea.nombre}-${idx}` : `idx-${idx}`);
-        return (
-            <TableRow key={key}>
-                <TableCell>{linea.nombre}</TableCell>
-                <TableCell>{linea.descripcion}</TableCell>
-                <TableCell>
-                    <IconButton 
-                        color="primary" 
-                        onClick={() => handleEditar(linea)}
-                    >
-                        <EditIcon />
-                    </IconButton>
-                    <IconButton 
-                        color="error" 
-                        onClick={() => confirmarEliminacion(linea)}
-                    >
-                        <DeleteIcon />
-                    </IconButton>
-                </TableCell>
-            </TableRow>
-        );
-    })}
-</TableBody>
-        </Table>
-    </TableContainer>
+                        <TableRow>
+                            <TableCell sx={{ backgroundColor: '#1976d2', color: 'white', fontWeight: 'bold' }}>Nombre</TableCell>
+                            <TableCell sx={{ backgroundColor: '#1976d2', color: 'white', fontWeight: 'bold' }}>Descripción</TableCell>
+                            <TableCell sx={{ backgroundColor: '#1976d2', color: 'white', fontWeight: 'bold' }}>Acciones</TableCell>
+                        </TableRow>
+                    </TableHead>
+                    <TableBody>
+                        {lineasTrabajo.map((linea, idx) => {
+                            const lineaId = extraerIdLineaTrabajo(linea);
+                            // Si no hay id válido, usa nombre+idx como key única
+                            const key = lineaId || (linea.nombre ? `nombre-${linea.nombre}-${idx}` : `idx-${idx}`);
+                            return (
+                                <TableRow key={key}>
+                                    <TableCell>{linea.nombre}</TableCell>
+                                    <TableCell>{linea.descripcion}</TableCell>
+                                    <TableCell>
+                                        <IconButton
+                                            color="primary"
+                                            onClick={() => handleEditar(linea)}
+                                        >
+                                            <EditIcon />
+                                        </IconButton>
+                                        <IconButton
+                                            color="error"
+                                            onClick={() => confirmarEliminacion(linea)}
+                                        >
+                                            <DeleteIcon />
+                                        </IconButton>
+                                    </TableCell>
+                                </TableRow>
+                            );
+                        })}
+                    </TableBody>
+                </Table>
+            </TableContainer>
 
             <Dialog
                 open={openConfirmDialog}
@@ -316,6 +324,7 @@ const ListadoLineasTrabajo = () => {
                     </Button>
                 </DialogActions>
             </Dialog>
+            </PageLayout>
         </div>
     );
 };

@@ -6,7 +6,6 @@ const LineasTrabajo = () => {
     return (
         <Box>
             <Typography variant="h5" gutterBottom>
-                Gestión de Líneas de Trabajo
             </Typography>
             <Outlet />
         </Box>

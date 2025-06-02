@@ -22,6 +22,6 @@ export async function exportarDatosYGraficasAExcel({ estadisticasTabulares, nomb
 
     // 3. Crear libro y exportar
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Estadísticas de Beneficiarios');
+    XLSX.utils.book_append_sheet(wb, ws, 'Estadísticas de Habitantes');
     XLSX.writeFile(wb, nombreArchivo);
 }

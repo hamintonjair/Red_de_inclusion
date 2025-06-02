@@ -1,45 +1,113 @@
-# Red de Inclusión Frontend
+# Red de Inclusión - Frontend
 
 ## Descripción
-Este frontend está construido con React y Material-UI. Permite la gestión de beneficiarios, funcionarios, reportes y exportación de datos a Excel. Se integra con el backend mediante JWT para autenticación y autorización. Ahora incluye funcionalidad de captura de huellas dactilares mediante WebAuthn para verificación biométrica de beneficiarios.
+Frontend de la aplicación Red de Inclusión, construido con React y Material-UI. Proporciona una interfaz moderna y responsiva para la gestión de:
+- Beneficiarios y su información personal
+- Funcionarios y sus líneas de trabajo
+- Comunas y barrios
+- Estadísticas y reportes
+- Autenticación y autorización
+- Verificación biométrica (huellas dactilares)
 
-## Instalación de dependencias
+## Tecnologías principales
+- React 18+
+- Material-UI (MUI) 5
+- React Router
+- Axios para peticiones HTTP
+- WebAuthn para verificación biométrica
 
-```bash
-npm install
-```
 
-## Variables de entorno
-Crea un archivo `.env` en la raíz del frontend con el siguiente contenido (ajusta la URL si tu backend está en otro host o puerto):
 
-```
-REACT_APP_API_URL=http://localhost:5000
-REACT_APP_TOKEN_KEY=red_inclusion_token
-```
 
-## Levantar el frontend
 
-```bash
-npm start
-```
+### Gestión de Funcionarios
+- Registro y edición de funcionarios
+- Asignación de líneas de trabajo
+- Gestión de permisos
+- Panel de perfil
 
-## Funcionalidades principales
-- Autenticación de usuarios con JWT
-- Gestión de beneficiarios y funcionarios
-- Captura de huellas dactilares para verificación biométrica de beneficiarios
-- Exportación de listados y reportes a Excel (con filtro por rango de fechas)
-- Visualización de estadísticas y dashboard
-- Protección de rutas según rol
+### Sistema de Reportes
+- Dashboard con estadísticas
+- Exportación de datos
+- Filtros por fecha y ubicación
+- Gráficos interactivos
+
+### Autenticación y Seguridad
+- Sistema de autenticación JWT
+- Roles: administrador y funcionario
+- Protección de rutas
+- Gestión de sesiones
+- Validación de formularios
+
+### UI/UX
+- Interfaz moderna y responsive
+- Tema oscuro/claro
+- Notificaciones
+- Loading states
+- Manejo de errores
 
 ## Requisitos
 - Node.js 16+
-- Tener el backend corriendo y accesible
-- Para la funcionalidad biométrica: navegador compatible con WebAuthn (Chrome, Firefox, Edge, Safari recientes) y dispositivo con capacidad de autenticación biométrica (sensor de huella, FaceID, etc.)
+- NPM o Yarn
+- Navegador moderno (Chrome, Firefox, Edge, Safari)
+- Para funcionalidad biométrica: dispositivo con sensor de huellas dactilares
 
----
+## Estructura del Proyecto
+```
+frontend/
+├── src/
+│   ├── components/        # Componentes reutilizables
+│   ├── pages/            # Páginas principales
+│   ├── services/         # Servicios API
+│   ├── context/          # Contextos de React
+│   ├── styles/           # Estilos globales
+│   └── utils/            # Funciones utilitarias
+├── public/               # Archivos estáticos
+└── tests/               # Pruebas unitarias
+```
 
-## Notas
-- Si tienes problemas con CORS, asegúrate de que el backend permita solicitudes desde el origen del frontend.
-- Para exportar beneficiarios por rango de fechas, asegúrate de que los registros en la base de datos tengan el campo `fecha_registro` en formato fecha o string ISO.
-- La funcionalidad biométrica requiere HTTPS en producción (WebAuthn solo funciona en contextos seguros, excepto en localhost para desarrollo).
-- En dispositivos móviles, la experiencia puede variar según el dispositivo y navegador. Se recomienda usar navegadores actualizados.
+## Desarrollo
+
+### Scripts disponibles
+
+```bash
+# Iniciar el servidor de desarrollo
+npm start
+
+# Compilar para producción
+npm run build
+
+# Ejecutar pruebas
+npm test
+
+# Ejecutar linter
+npm run lint
+```
+
+## Despliegue
+
+1. Compilar para producción:
+```bash
+npm run build
+```
+
+2. Servir los archivos estáticos generados en `build/`
+
+## Soporte y Mantenimiento
+
+### Monitoreo
+- Logging de errores
+- Manejo de excepciones
+- Validación de datos
+- Límites de rate limiting
+
+### Seguridad
+- Validación de tokens JWT
+- Protección contra CSRF
+- Sanitización de datos
+- Manejo seguro de contraseñas
+
+## Licencia
+MIT
+
+

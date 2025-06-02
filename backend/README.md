@@ -1,7 +1,20 @@
-# Red de Inclusión Backend
+# Red de Inclusión - Backend
 
 ## Descripción
-Este backend está construido con Flask y utiliza JWT (JSON Web Tokens) para autenticación y autorización de usuarios. Incluye integración con MongoDB, manejo de CORS y soporte para verificación biométrica (huellas dactilares) mediante WebAuthn.
+Backend de la aplicación Red de Inclusión, construido con Flask y MongoDB. Proporciona endpoints REST para la gestión de:
+- Beneficiarios y su información personal
+- Funcionarios y sus líneas de trabajo
+- Comunas y barrios
+- Estadísticas y reportes
+- Autenticación y autorización
+- Verificación biométrica (huellas dactilares)
+
+## Tecnologías principales
+- Flask 2.x
+- MongoDB
+- JWT para autenticación
+- CORS para manejo de peticiones cross-origin
+- WebAuthn para verificación biométrica
 
 ## Dependencias principales
 - flask
@@ -10,74 +23,86 @@ Este backend está construido con Flask y utiliza JWT (JSON Web Tokens) para aut
 - pymongo
 - python-dotenv
 
-## Variables de entorno (.env)
-Asegúrate de definir las siguientes variables en un archivo `.env` en la raíz del backend:
+## Configuración
+
+### Variables de entorno
+Crear un archivo `.env` con las siguientes variables:
 
 ```
 FLASK_APP=app
-FLASK_ENV=production # o development
+FLASK_ENV=development # o production
 MONGODB_URI=tu_uri_de_mongodb
 JWT_SECRET_KEY=tu_clave_secreta_jwt
+PORT=5000
 ```
 
-## Autenticación y Sesión
-- El backend utiliza JWT para proteger las rutas. Los tokens se generan al iniciar sesión y deben enviarse en el header `Authorization`.
-- Cuando el token expira, el frontend detecta la expiración y redirige automáticamente al login.
+### Dependencias
+Las dependencias principales están en `requirements.txt`:
+- flask
+- flask-cors
+- flask-jwt-extended
+- pymongo
+- python-dotenv
+- bcrypt
+- pandas
+- openpyxl
 
-## Levantar el backend
+## Autenticación
+- Sistema de autenticación basado en JWT
+- Roles: administrador y funcionario
+- Protección de rutas según permisos
+- Tokens de acceso y refresco
+- Manejo automático de expiración
 
-Instala las dependencias y ejecuta el servidor:
 
-```bash
-pip install -r requirements.txt
-python run.py
-```
 
-## Verificación Biométrica
 
-El backend ahora soporta el registro y almacenamiento de datos biométricos (huellas dactilares) para los beneficiarios utilizando el estándar WebAuthn.
 
-### Estructura de datos biométricos:
-- Los datos de huella dactilar se almacenan en el campo `huella_dactilar` del documento del beneficiario.
-- La estructura básica es: `{ "id": "credential_id_en_base64url" }`
-- Este ID se utiliza posteriormente para la verificación de identidad del beneficiario.
+## API Endpoints
 
-### Modelo de datos:
-- Se ha actualizado el esquema `BeneficiarioSchema` para incluir el campo `huella_dactilar`.
-- El campo es opcional (`required=False`) para permitir el registro de beneficiarios sin datos biométricos.
+### Autenticación
+- POST /auth/login
+- POST /auth/refresh
+- POST /auth/logout
 
-## Exportación de beneficiarios por rango de fechas
+### Beneficiarios
+- GET /beneficiarios
+- POST /beneficiarios
+- PUT /beneficiarios/{id}
+- DELETE /beneficiarios/{id}
+- GET /beneficiarios/exportar
 
-El backend permite exportar beneficiarios filtrando por un rango de fechas (`fecha_inicio` y `fecha_fin`). El filtro es robusto y funciona tanto si el campo `fecha_registro` es de tipo fecha (`Date`) como si es string en formato `YYYY-MM-DD` o ISO (`YYYY-MM-DDTHH:mm:ssZ`).
+### Funcionarios
+- GET /funcionarios
+- POST /funcionarios
+- PUT /funcionarios/{id}
+- DELETE /funcionarios/{id}
 
-### Requisitos para la exportación por rango:
-- El campo `fecha_registro` debe estar en formato fecha (`Date`) o string ISO. Si tienes datos antiguos como string, el backend los soporta, pero se recomienda migrar a tipo fecha para mayor eficiencia.
-- El frontend debe enviar los parámetros `fecha_inicio` y `fecha_fin` en formato `YYYY-MM-DD`.
+### Líneas de Trabajo
+- GET /lineas-trabajo
+- POST /lineas-trabajo
+- PUT /lineas-trabajo/{id}
+- DELETE /lineas-trabajo/{id}
 
-### Ejemplo de endpoint:
-```
-GET /beneficiarios/listar?pagina=1&por_pagina=1000000&fecha_inicio=2025-04-01&fecha_fin=2025-04-16
-```
+### Comunas y Barrios
+- GET /comunas
+- GET /barrios
+- POST /comunas
+- POST /barrios
 
-## Frontend
-El frontend está construido en React. Consulta el README del frontend para instrucciones de instalación y variables de entorno.
+## Requisitos
+- Python 3.9+
+- MongoDB (local o Atlas)
+- Navegador moderno con soporte para WebAuthn (Chrome, Firefox, Edge, Safari)
+- Dispositivo con sensor biométrico para funcionalidad de huellas dactilares
 
-REACT_APP_JWT_SECRET=red_inclusion_secret_2024
-REACT_APP_TOKEN_KEY=red_inclusion_token
-REACT_APP_API_URL=http://localhost:5000
+## Notas importantes
+- En desarrollo, el backend debe ejecutarse en modo debug para mejor depuración
+- Para producción, asegurarse de que las variables de entorno estén correctamente configuradas
+- Los endpoints protegidos requieren token JWT en el header `Authorization`
+- La funcionalidad biométrica requiere HTTPS en producción (excepto localhost para desarrollo)
 
-## Instalación de dependencias del frontend
-cd frontend
-npm install
 
-## Levantar el frontend
-npm start
-
-## Flujo de autenticación
-1. El usuario inicia sesión y recibe un JWT.
-2. El JWT se almacena en el navegador.
-3. Cada petición protegida envía el JWT en el header.
-4. Si el JWT expira, el usuario es redirigido al login automáticamente.
 
 ---
 

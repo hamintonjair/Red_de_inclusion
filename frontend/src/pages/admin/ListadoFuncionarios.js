@@ -21,12 +21,15 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import funcionarioService from '../../services/funcionarioService';
+import PageLayout from '../../components/layout/PageLayout';
 
 const ListadoFuncionarios = () => {
     const [funcionarios, setFuncionarios] = useState([]);
     const [loadingOverlay, setLoadingOverlay] = useState(false);
     const navigate = useNavigate();
 
+    const pageTitle = 'Gestion de Funcionarios';
+    const pageDescription = 'Listado de todos los funcionarios';
     const cargarFuncionarios = async () => {
         setLoadingOverlay(true);
         try {
@@ -101,6 +104,8 @@ const ListadoFuncionarios = () => {
                     </Box>
                 </Box>
             )}
+                   <PageLayout title={pageTitle} description={pageDescription}>
+
             <Box 
                 sx={{ 
                     display: 'flex', 
@@ -125,13 +130,13 @@ const ListadoFuncionarios = () => {
                 <Table>
                     <TableHead>
                         <TableRow>
-                            <TableCell>Secretaría</TableCell>
-                            <TableCell>Nombre</TableCell>
-                            <TableCell>Email</TableCell>
-                            <TableCell>Línea de Trabajo</TableCell>
-                            <TableCell>Rol</TableCell>
-                            <TableCell>Estado</TableCell>
-                            <TableCell>Acciones</TableCell>
+                            <TableCell sx={{ backgroundColor: '#1976d2', color: 'white', fontWeight: 'bold' }}>Secretaría</TableCell>
+                            <TableCell sx={{ backgroundColor: '#1976d2', color: 'white', fontWeight: 'bold' }}>Nombre</TableCell>
+                            <TableCell sx={{ backgroundColor: '#1976d2', color: 'white', fontWeight: 'bold' }}>Email</TableCell>
+                            <TableCell sx={{ backgroundColor: '#1976d2', color: 'white', fontWeight: 'bold' }}>Línea de Trabajo</TableCell>
+                            <TableCell sx={{ backgroundColor: '#1976d2', color: 'white', fontWeight: 'bold' }}>Rol</TableCell>
+                            <TableCell sx={{ backgroundColor: '#1976d2', color: 'white', fontWeight: 'bold' }}>Estado</TableCell>
+                            <TableCell sx={{ backgroundColor: '#1976d2', color: 'white', fontWeight: 'bold' }}>Acciones</TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
@@ -155,8 +160,14 @@ const ListadoFuncionarios = () => {
                                 <TableCell>
                                     <Chip 
                                         label={funcionario.estado} 
-                                        color={funcionario.estado === 'Activo' ? 'success' : 'default'}
-                                        size="small" 
+                                        color={funcionario.estado === 'Activo' ? 'success' : 'error'}
+                                        size="small"
+                                        sx={{
+                                            color: 'white',
+                                            fontWeight: 'bold',
+                                            minWidth: 80,
+                                            justifyContent: 'center'
+                                        }}
                                     />
                                 </TableCell>
                                 <TableCell>
@@ -180,6 +191,7 @@ const ListadoFuncionarios = () => {
                     </TableBody>
                 </Table>
             </TableContainer>
+            </PageLayout>
         </div>
     );
 };
