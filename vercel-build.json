@@ -1,7 +1,4 @@
 {
-  "version": 2,
-  "buildCommand": "bash vercel-build.sh",
-  "outputDirectory": "frontend/build",
   "builds": [
     {
       "src": "backend/vercel_bootstrap.py",
@@ -20,13 +17,7 @@
     }
   ],
   "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "/backend/vercel_bootstrap.py"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/frontend/$1"
-    }
+    { "src": "/api/(.*)", "dest": "/backend/vercel_bootstrap.py" },
+    { "src": "/(.*)", "dest": "/frontend/$1" }
   ]
 }

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Instalar dependencias del sistema para el backend
+# Instalar dependencias del sistema
 echo "Instalando dependencias del sistema..."
 apt-get update
 apt-get install -y --no-install-recommends \
@@ -18,15 +18,6 @@ apt-get install -y --no-install-recommends \
 # Instalar dependencias de Python
 echo "Instalando dependencias de Python..."
 python -m pip install --upgrade pip
-cd backend
 pip install --no-cache-dir -r requirements.txt
-cd ..
 
-# Instalar dependencias del frontend
-echo "Instalando dependencias del frontend..."
-cd frontend
-npm install
-npm run build
-cd ..
-
-echo "Construcción completada exitosamente!"
+echo "Backend construido exitosamente!"

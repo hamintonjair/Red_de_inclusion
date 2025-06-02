@@ -6,19 +6,16 @@
       "use": "@vercel/python",
       "config": {
         "maxLambdaSize": "50mb",
-        "runtime": "python3.9",
+        "pythonVersion": "3.9",
         "includeFiles": [
           "app/**/*",
-          "config.py"
+          "config.py",
+          "*.py"
         ]
       }
     }
   ],
   "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "/vercel_bootstrap.py"
-    },
     {
       "src": "/(.*)",
       "dest": "/vercel_bootstrap.py"
