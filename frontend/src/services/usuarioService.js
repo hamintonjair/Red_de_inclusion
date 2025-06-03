@@ -6,7 +6,7 @@ import config from '../config';
 // Crear una instancia de axios con configuración base
 const axiosInstance = axios.create({
     baseURL: config.API_URL,
-    timeout: 15000, // Aumentar el timeout para Render
+    timeout: 30000, //  Aumentar el timeout para Render
     headers: {
         'Content-Type': 'application/json',
     },
