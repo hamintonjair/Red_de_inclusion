@@ -1,7 +1,13 @@
 # Red de Inclusión - Backend
 
-## 🚀 Descripción
-API RESTful desarrollada con Flask y MongoDB para el sistema de gestión de Red de Inclusión. Este backend proporciona los endpoints necesarios para la gestión de usuarios, autenticación, y todos los recursos del sistema.
+## Descripción
+Backend de la aplicación Red de Inclusión, construido con Flask y MongoDB. Proporciona endpoints REST para la gestión de:
+- Beneficiarios y su información personal
+- Funcionarios y sus líneas de trabajo
+- Comunas y barrios
+- Estadísticas y reportes
+- Autenticación y autorización
+- Verificación biométrica (huellas dactilares)
 
 ## Tecnologías principales
 - Flask 2.x

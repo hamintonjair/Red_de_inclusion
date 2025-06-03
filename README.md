@@ -95,50 +95,18 @@ La aplicación estará disponible en:
 - Frontend: http://localhost:3000
 - API: http://localhost:5000
 
-## 🚀 Despliegue en Vercel
+## 📦 Despliegue
 
-### Requisitos previos
-- Cuenta en [Vercel](https://vercel.com)
-- Cuenta en [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
-- Repositorio en GitHub
+### Frontend (Vercel/Netlify)
+1. Conecta tu repositorio a Vercel/Netlify
+2. Establece el directorio raíz como `frontend`
+3. Configura las variables de entorno necesarias
+4. Despliega
 
-### Pasos para el despliegue
-
-1. **Configuración de MongoDB Atlas**
-   - Crea un clúster gratuito en MongoDB Atlas
-   - Crea un usuario de base de datos
-   - Obtén la cadena de conexión
-
-2. **Configuración en Vercel**
-   - Importa tu repositorio de GitHub en Vercel
-   - Configura las siguientes variables de entorno:
-     ```
-     FLASK_APP=backend.vercel_bootstrap:app
-     FLASK_ENV=production
-     MONGO_URI=tu_url_de_mongodb_atlas
-     JWT_SECRET_KEY=tu_clave_secreta_segura
-     PYTHONUNBUFFERED=1
-     ```
-   - Establece el comando de construcción: `bash vercel-build.sh`
-   - Establece el directorio de salida: (dejar vacío)
-
-3. **Despliegue**
-   - Haz clic en "Deploy"
-   - Espera a que se complete el despliegue
-
-4. **Configuración de dominios (opcional)**
-   - Configura tu dominio personalizado en la pestaña "Domains"
-   - Configura los registros DNS según las instrucciones
-
-### Estructura de rutas
-- Frontend: `/`
-- API Backend: `/api/*`
-- Archivos estáticos: `/static/*`
-
-### Solución de problemas
-- Revisa los logs de despliegue en Vercel
-- Verifica que todas las variables de entorno estén configuradas correctamente
-- Asegúrate de que MongoDB Atlas permita conexiones desde cualquier IP (o solo desde la IP de Vercel)
+### Backend (Render/Railway/Heroku)
+1. Configura una instancia de MongoDB (MongoDB Atlas recomendado)
+2. Despliega el código del backend
+3. Configura las variables de entorno del servidor
 
 ## 📝 Licencia
 Este proyecto está bajo la Licencia MIT.
