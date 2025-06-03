@@ -6,7 +6,7 @@ import config from '../config';
 // Crear una instancia de axios con configuración base
 const axiosInstance = axios.create({
     baseURL: config.API_URL,
-    timeout: 30000, //  Aumentar el timeout para Render
+    timeout: 15000, //  Aumentar el timeout para Render
     headers: {
         'Content-Type': 'application/json',
     },
@@ -16,7 +16,7 @@ const axiosInstance = axios.create({
 // Interceptor de solicitudes
 axiosInstance.interceptors.request.use(
     (config) => {
-        const token = localStorage.getItem(config.TOKEN_KEY || 'red_inclusion_token');
+        const token = localStorage.getItem(config.TOKEN_KEY);
         
         if (token) {
             config.headers['Authorization'] = `Bearer ${token}`;
