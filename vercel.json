@@ -1,0 +1,36 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "backend/vercel_bootstrap.py",
+      "use": "@vercel/python@2.11.4",
+      "config": {
+        "maxLambdaSize": "50mb",
+        "runtime": "python3.9",
+        "installCommand": "node backend/vercel-build.js"
+      }
+    },
+    {
+      "src": "frontend/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "build",
+        "installCommand": "node ../backend/vercel-build.js"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/backend/vercel_bootstrap.py"
+    },
+    {
+      "src": "/static/(.*)",
+      "dest": "/frontend/static/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/frontend/$1"
+    }
+  ]
+}

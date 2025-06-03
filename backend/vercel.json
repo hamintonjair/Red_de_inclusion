@@ -3,14 +3,11 @@
   "builds": [
     {
       "src": "vercel_bootstrap.py",
-      "use": "@vercel/python",
+      "use": "@vercel/python@2.11.4",
       "config": {
         "maxLambdaSize": "50mb",
         "runtime": "python3.9",
-        "includeFiles": [
-          "app/**/*",
-          "config.py"
-        ]
+        "installCommand": "pip install -r requirements-vercel.txt"
       }
     }
   ],
