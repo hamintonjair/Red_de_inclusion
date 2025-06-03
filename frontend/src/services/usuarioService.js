@@ -1,11 +1,11 @@
 import axios from 'axios';
+import config from '../config';
 
 // Mostrar la URL del API para depuración
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 // Crear una instancia de axios con configuración base
 const axiosInstance = axios.create({
-    baseURL: API_URL,
+    baseURL: config.API_URL,
     timeout: 15000, // Aumentar el timeout para Render
     headers: {
         'Content-Type': 'application/json',
@@ -16,8 +16,8 @@ const axiosInstance = axios.create({
 // Interceptor de solicitudes
 axiosInstance.interceptors.request.use(
     (config) => {
-       
-        const token = localStorage.getItem(process.env.REACT_APP_TOKEN_KEY);
+        const token = localStorage.getItem(config.TOKEN_KEY || 'red_inclusion_token');
+        
         if (token) {
             config.headers['Authorization'] = `Bearer ${token}`;
         }
@@ -70,19 +70,12 @@ export const obtenerLineasTrabajo = async () => {
 
         // Validar que la respuesta sea un array con elementos
         if (!Array.isArray(response.data) || response.data.length === 0) {
-            console.warn('La respuesta no es un array válido o está vacío');
             return [];
         }
 
         return response.data;
     } catch (error) {
-        console.group('Error al Obtener Líneas de Trabajo');
-        console.error('Error COMPLETO al obtener líneas de trabajo:', {
-            fullError: error,
-            responseData: error.response?.data,
-            responseStatus: error.response?.status,
-            errorMessage: error.message
-        });
+     
         console.groupEnd();
 
         throw error; // Re-lanzar el error para que el componente lo maneje
@@ -103,7 +96,7 @@ const usuarioService = {
             }
             
             // Guardar el token en localStorage
-            localStorage.setItem(process.env.REACT_APP_TOKEN_KEY || 'authToken', response.data.access_token);
+            localStorage.setItem(config.TOKEN_KEY || 'authToken', response.data.access_token);
             
             // Configurar el token en el encabezado para futuras peticiones
             axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${response.data.access_token}`;
@@ -111,7 +104,7 @@ const usuarioService = {
             // Verificar si el usuario está activo
             if (response.data.funcionario.estado !== 'Activo') {
                 // Limpiar el token si ya se guardó
-                localStorage.removeItem(process.env.REACT_APP_TOKEN_KEY || 'authToken');
+                localStorage.removeItem(config.TOKEN_KEY || 'authToken');
                 throw new Error('Su cuenta está inactiva. Por favor, contacte al administrador.');
             }
             

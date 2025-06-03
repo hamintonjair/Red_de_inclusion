@@ -1,9 +1,9 @@
 import axios from 'axios';
-import { API_URL } from '../config';
+import config from '../config';
 
 // Crear una instancia personalizada de axios
 const api = axios.create({
-    baseURL: API_URL,
+    baseURL: config.API_URL,
     headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json'
@@ -13,7 +13,7 @@ const api = axios.create({
 
 // Obtener el token del localStorage
 export const getToken = () => {
-    const tokenKey = process.env.REACT_APP_TOKEN_KEY || 'authToken';
+    const tokenKey = config.TOKEN_KEY || 'authToken';
     const token = localStorage.getItem(tokenKey);
     return token;
 };
@@ -31,7 +31,7 @@ const refreshToken = async () => {
     }
 
     isRefreshing = true;
-    const tokenKey = process.env.REACT_APP_TOKEN_KEY || 'authToken';
+    const tokenKey = config.TOKEN_KEY || 'authToken';
     
     try {
         console.log('Iniciando renovación de token...');
@@ -232,7 +232,7 @@ export const login = async (email, password) => {
         const response = await api.post('/auth/login', { email, password });
         
         if (response.data && response.data.access_token) {
-            const tokenKey = process.env.REACT_APP_TOKEN_KEY || 'authToken';
+            const tokenKey = config.TOKEN_KEY || 'authToken';
             
             // Guardar tokens
             localStorage.setItem(tokenKey, response.data.access_token);
@@ -261,7 +261,7 @@ export const login = async (email, password) => {
     } catch (error) {
         console.error('Error en login:', error);
         // Limpiar tokens en caso de error
-        const tokenKey = process.env.REACT_APP_TOKEN_KEY || 'authToken';
+        const tokenKey = config.TOKEN_KEY || 'authToken';
         localStorage.removeItem(tokenKey);
         localStorage.removeItem(`${tokenKey}_refresh`);
         localStorage.removeItem('user');
@@ -272,7 +272,7 @@ export const login = async (email, password) => {
 // Cerrar sesión
 export const logout = () => {
     console.log('Cerrando sesión...');
-    const tokenKey = process.env.REACT_APP_TOKEN_KEY || 'authToken';
+    const tokenKey = config.TOKEN_KEY || 'authToken';
     
     try {
         // Limpiar todos los datos de autenticación

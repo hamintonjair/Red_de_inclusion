@@ -1,4 +1,5 @@
 import axiosInstance from '../config/axiosConfig';
+import config from '../config';
 
 export const obtenerComunas = async (timeout = 10000) => {
     try {
@@ -23,7 +24,7 @@ export const obtenerComunas = async (timeout = 10000) => {
         // Manejar específicamente errores de autorización
         if (error.response?.status === 401) {
             // Notificar al usuario que necesita iniciar sesión
-            localStorage.removeItem(process.env.REACT_APP_TOKEN_KEY);
+            localStorage.removeItem(config.TOKEN_KEY || 'authToken');
             window.location.href = '/login';
         }
         

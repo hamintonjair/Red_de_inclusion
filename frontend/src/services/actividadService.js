@@ -1,10 +1,10 @@
 import axios from 'axios';
-import { API_URL } from '../config';
+import config from '../config';
 import { getToken } from '../utils/auth';
 
 // Crear una instancia de axios con configuración base
 const axiosInstance = axios.create({
-    baseURL: API_URL,
+    baseURL: config.API_URL,
     headers: {
         'Content-Type': 'application/json'
     }
@@ -31,14 +31,14 @@ axiosInstance.interceptors.response.use(
         if (error.response?.status === 401) {
             // Token inválido o expirado
             console.error('Error 401 - No autorizado. Redirigiendo a login...');
-            localStorage.removeItem(process.env.REACT_APP_TOKEN_KEY || 'authToken');
+            localStorage.removeItem(config.TOKEN_KEY || 'authToken');
             window.location.href = '/login';
         }
         return Promise.reject(error);
     }
 );
 
-const ACTIVIDADES_API = `${API_URL}/actividades`;
+const ACTIVIDADES_API = `${config.API_URL}/actividades`;
 
 /**
  * Obtiene todas las actividades con paginación y búsqueda

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import config from '../../config';
 import { 
     Container, 
     Typography, 
@@ -61,7 +62,7 @@ const VerificacionPublica = () => {
             }
 
             // Construir la URL de verificación
-            const apiUrl = `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/beneficiario/verificar`;
+            const apiUrl = `${config.API_URL}/api/beneficiario/verificar`;
             const params = new URLSearchParams();
             
             // Agregar parámetros requeridos

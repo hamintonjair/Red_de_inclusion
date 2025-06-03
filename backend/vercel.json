@@ -2,7 +2,7 @@
   "version": 2,
   "builds": [
     {
-      "src": "vercel_bootstrap.py",
+      "src": "vercel_bootstrap_new.py",
       "use": "@vercel/python@2.11.4",
       "config": {
         "maxLambdaSize": "50mb",
@@ -14,11 +14,19 @@
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "/vercel_bootstrap.py"
+      "dest": "/vercel_bootstrap_new.py"
+    },
+    {
+      "src": "/api-docs/(.*)",
+      "dest": "/vercel_bootstrap_new.py"
+    },
+    {
+      "src": "/swaggerui/(.*)",
+      "dest": "/vercel_bootstrap_new.py"
     },
     {
       "src": "/(.*)",
-      "dest": "/vercel_bootstrap.py"
+      "dest": "/vercel_bootstrap_new.py"
     }
   ]
 }

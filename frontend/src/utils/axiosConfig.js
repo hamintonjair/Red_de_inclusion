@@ -1,8 +1,9 @@
 import axios from 'axios';
+import config from '../config';
 
 // Configuración base de axios
 const axiosInstance = axios.create({
-    baseURL: process.env.REACT_APP_API_URL || 'http://localhost:5000',
+    baseURL: config.API_URL,
     timeout: 30000, // Aumentar timeout a 30 segundos
     headers: {
         'Content-Type': 'application/json',
@@ -12,7 +13,7 @@ const axiosInstance = axios.create({
 // Interceptor para añadir token de autenticación
 axiosInstance.interceptors.request.use(
     config => {
-        const token = localStorage.getItem(process.env.REACT_APP_TOKEN_KEY || 'token');
+        const token = localStorage.getItem(config.TOKEN_KEY);
         const user = JSON.parse(localStorage.getItem('user') || '{}');
         console.log('Token y usuario:', { token, user });
         if (token) {
@@ -23,7 +24,7 @@ axiosInstance.interceptors.request.use(
     error => {
         if (error.response && error.response.status === 401) {
             // Token inválido o expirado
-            localStorage.removeItem(process.env.REACT_APP_TOKEN_KEY);
+            localStorage.removeItem(config.TOKEN_KEY);
             localStorage.removeItem('user');
             window.location.href = '/login';
         }

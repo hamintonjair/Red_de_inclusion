@@ -1,6 +1,7 @@
 import { createContext, useState, useEffect, useContext } from 'react';
 import usuarioService from '../services/usuarioService';
 import { jwtDecode } from 'jwt-decode';
+import config from '../config';
 
 const AuthContext = createContext(null);
 
@@ -9,7 +10,7 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const token = localStorage.getItem(process.env.REACT_APP_TOKEN_KEY);
+        const token = localStorage.getItem(config.TOKEN_KEY);
         if (token) {
             try {
                 const decodedToken = jwtDecode(token);
@@ -27,7 +28,7 @@ export const AuthProvider = ({ children }) => {
                             });
                         })
                         .catch(error => {
-                            localStorage.removeItem(process.env.REACT_APP_TOKEN_KEY);
+                            localStorage.removeItem(config.TOKEN_KEY);
                             setUser(null);
                         })
                         .finally(() => {
@@ -35,12 +36,12 @@ export const AuthProvider = ({ children }) => {
                         });
                 } else {
                     // Token expirado
-                    localStorage.removeItem(process.env.REACT_APP_TOKEN_KEY);
+                    localStorage.removeItem(config.TOKEN_KEY);
                     setUser(null);
                     setLoading(false);
                 }
             } catch (error) {
-                localStorage.removeItem(process.env.REACT_APP_TOKEN_KEY);
+                localStorage.removeItem(config.TOKEN_KEY);
                 setUser(null);
                 setLoading(false);
             }
@@ -53,7 +54,7 @@ export const AuthProvider = ({ children }) => {
         try {
             const userData = await usuarioService.iniciarSesion(email, password);
             // Almacenar token y datos de usuario
-            localStorage.setItem(process.env.REACT_APP_TOKEN_KEY, userData.token);
+            localStorage.setItem(config.TOKEN_KEY, userData.token);
             // Asegurar que el usuario tenga un rol
             const userWithRole = {
                 ...userData,
@@ -65,7 +66,7 @@ export const AuthProvider = ({ children }) => {
             return userWithRole;
         } catch (error) {
             // Limpiar credenciales en caso de error
-            localStorage.removeItem(process.env.REACT_APP_TOKEN_KEY);
+            localStorage.removeItem(config.TOKEN_KEY);
             localStorage.removeItem('user');
             setUser(null);
             
@@ -79,7 +80,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     const logout = () => {
-        localStorage.removeItem(process.env.REACT_APP_TOKEN_KEY);
+        localStorage.removeItem(config.TOKEN_KEY);
         localStorage.removeItem('user');
         setUser(null);
     };
