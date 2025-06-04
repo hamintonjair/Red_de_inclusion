@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import { createContext, useState, useEffect, useContext } from 'react';
 import usuarioService from '../services/usuarioService';
 import { jwtDecode } from 'jwt-decode';
@@ -105,5 +104,3 @@ export const useAuth = () => {
     }
     return context;
 };
-=======
->>>>>>> 39174c721a95520448856fe3b53709753d954332
