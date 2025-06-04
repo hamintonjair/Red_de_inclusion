@@ -170,19 +170,49 @@ class FuncionarioModel:
         """
         Actualizar un funcionario por su ID
         
-        :param funcionario_id: ID del funcionario
+        :param funcionario_id: ID del funcionario (puede ser string o ObjectId)
         :param datos: Diccionario con datos a actualizar
         :return: Número de documentos modificados
         """
         try:
+            # Convertir funcionario_id a ObjectId si es necesario
+            if not isinstance(funcionario_id, ObjectId):
+                try:
+                    funcionario_id = ObjectId(funcionario_id)
+                except Exception as e:
+                    logging.error(f"ID de funcionario inválido: {funcionario_id}")
+                    raise ValueError(f"ID de funcionario inválido: {str(e)}")
+            
+            # Preparar los datos para la actualización
+            datos_actualizacion = {}
+            for key, value in datos.items():
+                # No actualizar campos vacíos
+                if value is not None and value != '':
+                    # Manejar campos especiales
+                    if key == 'linea_trabajo' and value:
+                        try:
+                            datos_actualizacion[key] = ObjectId(value)
+                        except Exception as e:
+                            logging.error(f"ID de línea de trabajo inválido: {value}")
+                            raise ValueError(f"ID de línea de trabajo inválido: {str(e)}")
+                    else:
+                        datos_actualizacion[key] = value
+            
+            # Registrar la operación
+            logging.info(f"Actualizando funcionario {funcionario_id} con datos: {datos_actualizacion}")
+            
+            # Realizar la actualización
             resultado = self.collection.update_one(
-                {'_id': ObjectId(funcionario_id)}, 
-                {'$set': datos}
+                {'_id': funcionario_id}, 
+                {'$set': datos_actualizacion}
             )
             
+            logging.info(f"Resultado de la actualización: {resultado.raw_result}")
+            
             return resultado.modified_count
+            
         except Exception as e:
-            logging.error(f"Error al actualizar funcionario: {str(e)}")
+            logging.error(f"Error al actualizar funcionario {funcionario_id}: {str(e)}", exc_info=True)
             raise
     
     def autenticar(self, email, password):

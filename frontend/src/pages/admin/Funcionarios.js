@@ -6,7 +6,6 @@ const Funcionarios = () => {
     return (
         <Box>
             <Typography variant="h5" gutterBottom>
-                Gestión de Funcionarios
             </Typography>
             <Outlet />
         </Box>

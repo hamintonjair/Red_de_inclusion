@@ -41,7 +41,7 @@ const menuItems = [
         path: '/admin/funcionarios' 
     },
     { 
-        text: 'Beneficiarios', 
+        text: 'Habitantes', 
         icon: <GroupIcon />, 
         path: '/admin/beneficiarios' 
     },

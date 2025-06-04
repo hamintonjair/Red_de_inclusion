@@ -21,48 +21,56 @@ import {
     People as PeopleIcon,
     Person as PersonIcon,
     Logout as LogoutIcon,
-    // Add as AddIcon
+    Event as EventIcon,
+    Group as GroupIcon
 } from '@mui/icons-material';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import fondoImg from '../../fondo/fondo.png';
 
+// Definir las rutas base para cada tipo de beneficiario
+const RUTAS_BENEFICIARIOS = {
+    // Ruta para población migrante
+    'Población Migrante': {
+        text: 'Migrantes',
+        path: '/funcionario/poblacion-migrante',
+        icon: <PeopleIcon />
+    },
+    // Ruta por defecto para otras líneas de trabajo
+    '_default': {
+        text: 'Habitantes',
+        path: '/funcionario/beneficiarios',
+        icon: <PeopleIcon />
+    }
+};
 
-const menuItems = [
+// Elementos del menú base
+const menuItemsBase = [
     { 
         text: 'Dashboard', 
         icon: <DashboardIcon />, 
-        path: '/funcionario/dashboard' 
+        path: '/funcionario/dashboard'
+    },
+    // Este ítem será reemplazado dinámicamente según la línea de trabajo
+    { 
+        text: 'Beneficiarios', // Texto temporal, será reemplazado
+        icon: null, // Se establecerá dinámicamente
+        path: '' // Ruta temporal, será reemplazada
     },
     { 
-        text: 'Población', 
-        icon: <PeopleIcon />, 
-        path: '/funcionario/beneficiarios',
-        hideForLineaTrabajoNombre: 'Población Migrante'
+        text: 'Actividades', 
+        icon: <EventIcon />, 
+        path: '/funcionario/actividades'
     },
     { 
-        text: 'Migrantes', 
-        icon: <PeopleIcon />, 
-        path: '/funcionario/poblacion-migrante',
-        hideForLineaTrabajoNombre: [
-            'Adulto mayor',
-            'Población Religiosa',
-            'Enlace Religioso',
-            'Poblacion Religiosa', 
-            'Colombia Mayor', 
-            'Coordinación de Juventud',
-            'Coordinacion de Juventud',
-            'Renta Ciudadana', 
-            'Enlace de Niñas, Niños y Adolecentes',
-            'Habitantes Calles',
-            'Discapacidad',
-            'Coordinación de Víctimas',
-            'Coordinacion de Victimas'       ] 
+        text: 'Asistentes', 
+        icon: <GroupIcon />, 
+        path: '/funcionario/asistentes'
     },
     { 
         text: 'Perfil', 
         icon: <PersonIcon />, 
-        path: '/funcionario/perfil' 
+        path: '/funcionario/perfil'
     }
 ];
 
@@ -72,12 +80,25 @@ export const FuncionarioLayout = ({ children }) => {
     const navigate = useNavigate();
     const location = useLocation();
 
-    const filteredMenuItems = menuItems.filter(item => 
-        !item.hideForLineaTrabajoNombre || 
-        (Array.isArray(item.hideForLineaTrabajoNombre) 
-            ? !item.hideForLineaTrabajoNombre.includes(user?.linea_trabajo_nombre)
-            : item.hideForLineaTrabajoNombre !== user?.linea_trabajo_nombre)
-    );
+    // Obtener la configuración de la ruta de beneficiarios según la línea de trabajo
+    const configuracionBeneficiarios = RUTAS_BENEFICIARIOS[user?.linea_trabajo_nombre] || RUTAS_BENEFICIARIOS._default;
+    
+    // Crear una copia del menú base
+    const menuItems = [...menuItemsBase];
+    
+    // Encontrar el ítem de beneficiarios y actualizarlo con la configuración correcta
+    const indiceBeneficiarios = menuItems.findIndex(item => item.text === 'Beneficiarios');
+    if (indiceBeneficiarios !== -1) {
+        menuItems[indiceBeneficiarios] = {
+            ...menuItems[indiceBeneficiarios],
+            text: configuracionBeneficiarios.text,
+            path: configuracionBeneficiarios.path,
+            icon: configuracionBeneficiarios.icon
+        };
+    }
+    
+    // Filtrar elementos del menú si es necesario
+    const filteredMenuItems = menuItems;
 
     const toggleDrawer = () => {
         setOpen(!open);

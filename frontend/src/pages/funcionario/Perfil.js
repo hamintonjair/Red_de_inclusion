@@ -9,6 +9,7 @@ import {
 } from '@mui/material';
 import { useAuth } from '../../context/AuthContext';
 import usuarioService from '../../services/usuarioService';
+import PageLayout from '../../components/layout/PageLayout';
 
 const Perfil = () => {
     const { user } = useAuth();
@@ -19,6 +20,8 @@ const Perfil = () => {
         nombreLineaTrabajo: ''
     });
 
+    const pageTitle = 'Mi Perfil';
+    const pageDescription = 'Información personal y detalles del usuario, Si deseas realizar algún cambio, por favor, contactar al administrador.';
     useEffect(() => {
         const cargarLineaTrabajo = async () => {
             let nombreLinea = '';
@@ -49,10 +52,11 @@ const Perfil = () => {
 
     return (
         <Box>
-            <Typography variant="h5" gutterBottom>
-                Mi Perfil - Si deseas realizar algún cambio, por favor, contactar al administrador.
-            </Typography>
-            <Paper elevation={3} sx={{ p: 3 }}>
+            <PageLayout
+                title={pageTitle}
+                description={pageDescription}
+            >
+                <Paper elevation={3} sx={{ p: 3 }}>
                 <Grid container spacing={3} alignItems="center">
                     <Grid item xs={12} md={4} sx={{ textAlign: 'center' }}>
                         <Avatar 
@@ -110,6 +114,7 @@ const Perfil = () => {
                     </Grid>
                 </Grid>
             </Paper>
+            </PageLayout>
         </Box>
     );
 };

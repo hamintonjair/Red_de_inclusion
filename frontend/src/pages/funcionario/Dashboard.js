@@ -17,6 +17,7 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../../context/AuthContext';
 import estadisticasService from '../../services/estadisticasService';
+import PageLayout from '../../components/layout/PageLayout';
 
 const Dashboard = () => {
     const { user } = useAuth();
@@ -33,6 +34,9 @@ const Dashboard = () => {
         total_analfabetas: 0,
         total_mujeres_menores_con_hijos: 0
     });
+
+    const pageTitle = 'Dashboard de Funcionario - '  + user?.linea_trabajo_nombre;
+    const pageDescription = 'Información general de la red de inclusión, estadísticas, gráficos, listados de habitantes y visualización del mapa de la red de inclusión ' + user?.linea_trabajo_nombre;
 
     useEffect(() => {
         const cargarEstadisticas = async () => {
@@ -74,7 +78,18 @@ const Dashboard = () => {
     );
 
     return (
-        <Box sx={{ position: 'relative', minHeight: '100vh' }}>
+        <PageLayout
+        title={pageTitle}
+        description={pageDescription}
+    >
+        <Box sx={{ 
+            display: 'flex',
+            flexDirection: 'column',
+            minHeight: '100vh',
+            width: '100%',
+            overflow: 'hidden',
+            position: 'relative'
+        }}>
             {loadingOverlay && (
                 <Box sx={{
                     position: 'fixed',
@@ -109,75 +124,82 @@ const Dashboard = () => {
                     </Box>
                 </Box>
             )}
-            <Typography variant="h5" gutterBottom>
-                Dashboard de Funcionario - {user?.linea_trabajo_nombre}
-            </Typography>
             
-            <Grid container spacing={3}>
-                {renderTarjetaEstadistica(
-                    'Total Registros', 
-                    estadisticas.total_beneficiarios, 
-                    <GroupIcon color="primary" sx={{ fontSize: 50 }} />
-                )}
-                {renderTarjetaEstadistica(
-                    'Víctimas de Conflicto', 
-                    estadisticas.total_victimas, 
-                    <PersonSearchIcon color="warning" sx={{ fontSize: 50 }} />
-                )}
-                {renderTarjetaEstadistica(
-                    'Con Discapacidad', 
-                    estadisticas.total_discapacidad, 
-                    <AccessibilityIcon color="secondary" sx={{ fontSize: 50 }} />
-                )}
-            </Grid>
+            <Box sx={{ 
+                p: 3, 
+                flex: '1 1 auto',
+                overflowY: 'auto',
+                width: '100%',
+                maxWidth: '100%',
+                boxSizing: 'border-box'
+            }}>
+                          
+                <Grid container spacing={3}>
+                    {renderTarjetaEstadistica(
+                        'Total Registros', 
+                        estadisticas.total_beneficiarios, 
+                        <GroupIcon color="primary" sx={{ fontSize: 50 }} />
+                    )}
+                    {renderTarjetaEstadistica(
+                        'Víctimas de Conflicto', 
+                        estadisticas.total_victimas, 
+                        <PersonSearchIcon color="warning" sx={{ fontSize: 50 }} />
+                    )}
+                    {renderTarjetaEstadistica(
+                        'Con Discapacidad', 
+                        estadisticas.total_discapacidad, 
+                        <AccessibilityIcon color="secondary" sx={{ fontSize: 50 }} />
+                    )}
+                </Grid>
 
-            <Grid container spacing={3} sx={{ mt: 1 }}>
-                {renderTarjetaEstadistica(
-                    'Ayuda Humanitaria', 
-                    estadisticas.total_ayuda_humanitaria, 
-                    <ChildCareIcon color="success" sx={{ fontSize: 50 }} />
-                )}
-                {renderTarjetaEstadistica(
-                    'Menores de 13', 
-                    estadisticas.total_menores_13, 
-                    <ChildCareIcon color="info" sx={{ fontSize: 50 }} />
-                )}
-                {renderTarjetaEstadistica(
-                    'Entre 13 y 25', 
-                    estadisticas.total_13_25, 
-                    <SchoolIcon color="primary" sx={{ fontSize: 50 }} />
-                )}
-            </Grid>
+                <Grid container spacing={3} sx={{ mt: 1 }}>
+                    {renderTarjetaEstadistica(
+                        'Ayuda Humanitaria', 
+                        estadisticas.total_ayuda_humanitaria, 
+                        <ChildCareIcon color="success" sx={{ fontSize: 50 }} />
+                    )}
+                    {renderTarjetaEstadistica(
+                        'Menores de 13', 
+                        estadisticas.total_menores_13, 
+                        <ChildCareIcon color="info" sx={{ fontSize: 50 }} />
+                    )}
+                    {renderTarjetaEstadistica(
+                        'Entre 13 y 25', 
+                        estadisticas.total_13_25, 
+                        <SchoolIcon color="primary" sx={{ fontSize: 50 }} />
+                    )}
+                </Grid>
 
-            <Grid container spacing={3} sx={{ mt: 1 }}>
-                {renderTarjetaEstadistica(
-                    'Mayores de 25', 
-                    estadisticas.total_mayores_25, 
-                    <PersonSearchIcon color="secondary" sx={{ fontSize: 50 }} />
-                )}
-                {renderTarjetaEstadistica(
-                    'Alfabetizados', 
-                    estadisticas.total_alfabetizados, 
-                    <SchoolIcon color="success" sx={{ fontSize: 50 }} />
-                )}
-                {renderTarjetaEstadistica(
-                    'Analfabetas', 
-                    estadisticas.total_analfabetas, 
-                    <SchoolIcon color="error" sx={{ fontSize: 50 }} />
-                )}
-            </Grid>
+                <Grid container spacing={3} sx={{ mt: 1 }}>
+                    {renderTarjetaEstadistica(
+                        'Mayores de 25', 
+                        estadisticas.total_mayores_25, 
+                        <PersonSearchIcon color="secondary" sx={{ fontSize: 50 }} />
+                    )}
+                    {renderTarjetaEstadistica(
+                        'Alfabetizados', 
+                        estadisticas.total_alfabetizados, 
+                        <SchoolIcon color="success" sx={{ fontSize: 50 }} />
+                    )}
+                    {renderTarjetaEstadistica(
+                        'Analfabetas', 
+                        estadisticas.total_analfabetas, 
+                        <SchoolIcon color="error" sx={{ fontSize: 50 }} />
+                    )}
+                </Grid>
 
-            <Grid container spacing={3} sx={{ mt: 1 }}>
-                {renderTarjetaEstadistica(
-                    'Mujeres < 18 con Hijos', 
-                    estadisticas.total_mujeres_menores_con_hijos, 
-                    <ChildCareIcon color="warning" sx={{ fontSize: 50 }} />
-                )}
-            </Grid>
+                <Grid container spacing={3} sx={{ mt: 1, mb: 3 }}>
+                    {renderTarjetaEstadistica(
+                        'Mujeres < 18 con Hijos', 
+                        estadisticas.total_mujeres_menores_con_hijos, 
+                        <ChildCareIcon color="warning" sx={{ fontSize: 50 }} />
+                    )}
+                </Grid>
 
-            {/* Mapa de beneficiarios */}
-            <DashboardMapa />
-        </Box>
+                {/* Mapa de beneficiarios */}
+                <DashboardMapa />
+            </Box>
+        </Box></PageLayout>
     );
 };
 

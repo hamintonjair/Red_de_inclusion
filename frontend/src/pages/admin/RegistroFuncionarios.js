@@ -10,12 +10,17 @@ import {
     Typography, 
     Container,
     FormHelperText,
-    Alert
+    Alert,
+    Box,
+    Snackbar,
+    IconButton
 } from '@mui/material';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 
 import { useNavigate } from 'react-router-dom';
 import { obtenerLineasTrabajo } from '../../services/usuarioService';
 import { crearFuncionario } from '../../services/funcionarioService';
+import PageLayout from '../../components/layout/PageLayout';
 
 export default function RegistroFuncionarios() {
     const navigate = useNavigate();
@@ -33,7 +38,8 @@ export default function RegistroFuncionarios() {
     const [errores, setErrores] = useState({});
     const [success, setSuccess] = useState('');
     const [error, setError] = useState('');
-
+    const pageTitle = 'Registro de Funcionario';
+    const pageDescription = 'Registrar un nuevo funcionario';
     useEffect(() => {
         const cargarLineasTrabajo = async () => {
             try {
@@ -76,12 +82,7 @@ export default function RegistroFuncionarios() {
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        console.group('Cambio de Campo');
-        console.log('Nombre del campo:', name);
-        console.log('Valor seleccionado:', value);
-        console.log('Líneas de trabajo actuales:', lineasTrabajo);
-        console.log('Estado actual de funcionario:', funcionario);
-
+    
         // Validar que el valor sea válido para línea de trabajo
         if (name === 'linea_trabajo') {
             const lineaValida = lineasTrabajo.some(linea => linea.id === value);
@@ -96,10 +97,7 @@ export default function RegistroFuncionarios() {
                 ...prev,
                 [name]: value
             };
-            
-            console.log('Nuevo estado:', nuevoEstado);
-            console.groupEnd();
-            
+                       
             return nuevoEstado;
         });
         
@@ -175,13 +173,8 @@ export default function RegistroFuncionarios() {
                 ...funcionario,
                 linea_trabajo: funcionario.linea_trabajo
             };
-
-            console.log('Datos a enviar:', funcionarioData);
             
-            const response = await crearFuncionario(funcionarioData);
-            
-            console.log('Respuesta del servidor:', response);
-            
+            const response = await crearFuncionario(funcionarioData);            
             setSuccess('Funcionario registrado exitosamente');
             
             // Limpiar formulario
@@ -249,11 +242,19 @@ export default function RegistroFuncionarios() {
                     )}
 
 
-            
-            <Typography variant="h5" gutterBottom>
-                Registro de Funcionarios
-            </Typography>
-            <form onSubmit={handleSubmit}>
+            <PageLayout title={pageTitle} description={pageDescription}>
+                <Box sx={{ mb: 2 }}>
+                    <IconButton 
+                        onClick={() => navigate('/admin/funcionarios')} 
+                        color="primary"
+                        aria-label="Volver al listado"
+                    >
+                        <ArrowBackIcon />
+                        <Typography variant="body2" sx={{ ml: 1 }}>Volver al listado</Typography>
+                    </IconButton>
+                </Box>
+                
+                <form onSubmit={handleSubmit}>
                 <Grid container spacing={2}>
                     <Grid item xs={12}>
                         <TextField
@@ -410,6 +411,7 @@ export default function RegistroFuncionarios() {
                     </Grid>
                 </Grid>
             </form>
+            </PageLayout>
         </Container>
     );
 }

@@ -37,6 +37,7 @@ import beneficiarioService from '../../services/beneficiarioService';
 import usuarioService from '../../services/usuarioService';
 import { exportarListadoBeneficiariosAExcel } from './exportUtilsBeneficiarios';
 import { useSnackbar } from 'notistack';
+import PageLayout from '../../components/layout/PageLayout';
 
 const ListadoBeneficiarios = () => {
     const [beneficiarios, setBeneficiarios] = useState([]);
@@ -59,6 +60,8 @@ const ListadoBeneficiarios = () => {
     const [loadingExport, setLoadingExport] = useState(false);
     const [exportProgress, setExportProgress] = useState(0);
 
+    const pageTitle = 'Gestion de Habitantes';
+    const pageDescription = 'Listado de todos los habitantes';
     useEffect(() => {
         const cargarDatos = async () => {
             setLoadingOverlay(true);
@@ -203,20 +206,20 @@ const ListadoBeneficiarios = () => {
                 'CORREO ELECTRÓNICO': b.correo_electronico,
                 'NÚMERO CELULAR': b.numero_celular,
                 'LÍNEA DE TRABAJO': lineasTrabajo && (lineasTrabajo[b.linea_trabajo] || lineasTrabajo[b.lineaTrabajo]) ? (lineasTrabajo[b.linea_trabajo] || lineasTrabajo[b.lineaTrabajo]) : 'Sin línea',
-                'ESTUDIA ACTUALMENTE': b.estudia_actualmente ? 'Sí' : 'No',
+                '¿ESTUDIA?': b.estudia_actualmente ? 'Sí' : 'No',
                 'NIVEL EDUCATIVO': b.nivel_educativo,
-                'SABE LEER': b.sabe_leer ? 'Sí' : 'No',
-                'SABE ESCRIBIR': b.sabe_escribir ? 'Sí' : 'No',
+                '¿LABORA/ESTUDIA?': b.situacion_laboral,
+                '¿LEE?': b.sabe_leer ? 'Sí' : 'No',
+                '¿ESCRIBE?': b.sabe_escribir ? 'Sí' : 'No',
                 'TIPO DE VIVIENDA': b.tipo_vivienda,
-                'SITUACIÓN LABORAL': b.situacion_laboral,
-                'GRUPO ETNICO': b.etnia,
-                'AYUDA HUMANITARIA': b.ayuda_humanitaria ? 'Sí' : 'No',
-                'TIPO DE AYUDA HUMANITARIA': b.descripcion_ayuda_humanitaria,
+                'ÉTNIA': b.etnia,
+                '¿RECIBE AYUDA?': b.ayuda_humanitaria ? 'Sí' : 'No',
+                'TIPO DE AYUDA': b.descripcion_ayuda_humanitaria,
                 'DISCAPACIDAD': b.tiene_discapacidad ? 'Sí' : 'No',
                 'TIPO DE DISCAPACIDAD': b.tipo_discapacidad,
-                'NOMBRE DE LA CUIDADORA': b.nombre_cuidadora || '',
-                '¿LABORA LA CUIDADORA?': b.labora_cuidadora ? 'Sí' : 'No',
-                'VÍCTIMA DE CONFLICTO': b.victima_conflicto ? 'Sí' : 'No'
+                'NOMBRE DEL CUIDADOR/A': b.nombre_cuidadora || '',
+                '¿TRABAJA?': b.labora_cuidadora ? 'Sí' : 'No',
+                '¿VÍCTIMA?': b.victima_conflicto ? 'Sí' : 'No'
 
             }));
             setExportProgress(90);
@@ -295,6 +298,7 @@ const ListadoBeneficiarios = () => {
     };
 
     return (
+        <PageLayout title={pageTitle} description={pageDescription}>
         <Box sx={{ position: 'relative', minHeight: '100vh' }}>
             {loadingOverlay && (
                 <Box sx={{
@@ -422,14 +426,14 @@ const ListadoBeneficiarios = () => {
                 <Table>
                     <TableHead>
                         <TableRow>
-    <TableCell>Nombre</TableCell>
-    <TableCell>Identificación</TableCell>
-    <TableCell>Línea de Trabajo</TableCell>
-    <TableCell>Tipo de Discapacidad</TableCell>
-    <TableCell>Nombre de la Cuidadora</TableCell>
-    <TableCell>¿Labora la Cuidadora?</TableCell>
-    <TableCell>Acciones</TableCell>
-</TableRow>
+                            <TableCell sx={{ backgroundColor: '#1976d2', color: 'white', fontWeight: 'bold' }}>Nombre</TableCell>
+                            <TableCell sx={{ backgroundColor: '#1976d2', color: 'white', fontWeight: 'bold' }}>Identificación</TableCell>
+                            <TableCell sx={{ backgroundColor: '#1976d2', color: 'white', fontWeight: 'bold' }}>Línea de Trabajo</TableCell>
+                            <TableCell sx={{ backgroundColor: '#1976d2', color: 'white', fontWeight: 'bold' }}>Tipo de Discapacidad</TableCell>
+                            <TableCell sx={{ backgroundColor: '#1976d2', color: 'white', fontWeight: 'bold' }}>Nombre de la Cuidadora</TableCell>
+                            <TableCell sx={{ backgroundColor: '#1976d2', color: 'white', fontWeight: 'bold' }}>¿Labora la Cuidadora?</TableCell>
+                            <TableCell sx={{ backgroundColor: '#1976d2', color: 'white', fontWeight: 'bold' }}>Acciones</TableCell>
+                        </TableRow>
                     </TableHead>
                     <TableBody>
                         {beneficiarios.map((beneficiario) => (
@@ -475,7 +479,7 @@ const ListadoBeneficiarios = () => {
             >
                 <DialogTitle>Confirmar Eliminación</DialogTitle>
                 <DialogContent>
-                    ¿Está seguro que desea eliminar al beneficiario {beneficiarioSeleccionado?.nombre}?
+                    ¿Está seguro que desea eliminar al habitante {beneficiarioSeleccionado?.nombre}?
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setOpenConfirmDialog(false)} color="primary">
@@ -493,7 +497,7 @@ const ListadoBeneficiarios = () => {
                 maxWidth="md"
                 fullWidth
             >
-                <DialogTitle>Detalles del Beneficiario</DialogTitle>
+                <DialogTitle>Detalles del Habitante</DialogTitle>
                 <DialogContent>
                     {beneficiarioSeleccionado && renderDetallesBeneficiario()}
                 </DialogContent>
@@ -553,6 +557,7 @@ const ListadoBeneficiarios = () => {
                 </DialogActions>
             </Dialog>
         </Box>
+        </PageLayout>
     );
 };
 

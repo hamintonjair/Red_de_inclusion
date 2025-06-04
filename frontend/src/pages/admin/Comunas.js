@@ -21,6 +21,7 @@ import {
 } from '@mui/material';
 import { Edit, Delete } from '@mui/icons-material';
 import comunaService from '../../services/comunaService';
+import PageLayout from '../../components/layout/PageLayout';
 
 const Comunas = () => {
     const [comunas, setComunas] = useState([]);
@@ -29,6 +30,8 @@ const Comunas = () => {
     const [modoEdicion, setModoEdicion] = useState(false);
     const [loadingOverlay, setLoadingOverlay] = useState(false);
 
+    const pageTitle = 'Gestion de Comunas';
+    const pageDescription = 'Listado de todas las comunas';
     useEffect(() => {
         cargarComunas();
     }, []);
@@ -132,9 +135,11 @@ const Comunas = () => {
                     </Box>
                 </Box>
             )}
-            <Typography variant="h5" gutterBottom>
-                Gestión de Comunas
-            </Typography>
+           
+           <PageLayout
+                title={pageTitle}
+                description={pageDescription}
+            >
 
             <Button 
                 variant="contained" 
@@ -149,9 +154,9 @@ const Comunas = () => {
                 <Table>
                     <TableHead>
                         <TableRow>
-                            <TableCell>Nombre</TableCell>
-                            <TableCell>Zona</TableCell>
-                            <TableCell>Acciones</TableCell>
+                            <TableCell sx={{ backgroundColor: '#1976d2', color: 'white', fontWeight: 'bold' }}>Nombre</TableCell>
+                            <TableCell sx={{ backgroundColor: '#1976d2', color: 'white', fontWeight: 'bold' }}>Zona</TableCell>
+                            <TableCell sx={{ backgroundColor: '#1976d2', color: 'white', fontWeight: 'bold' }}>Acciones</TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
@@ -209,6 +214,7 @@ const Comunas = () => {
                     </Button>
                 </DialogActions>
             </Dialog>
+            </PageLayout>
         </Container>
     );
 };

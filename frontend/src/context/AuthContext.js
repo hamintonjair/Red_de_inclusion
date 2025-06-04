@@ -19,9 +19,7 @@ export const AuthProvider = ({ children }) => {
                     // Token válido, obtener información completa del usuario
                     usuarioService.obtenerUsuarioPorId(decodedToken.sub)
                         .then(userData => {
-                            console.log('Datos de usuario completos:', JSON.parse(JSON.stringify(userData)));
-                            console.log('Teléfono en datos de usuario:', userData.telefono);
-                            
+                                                      
                             setUser({
                                 ...userData,
                                 token: token,
@@ -29,7 +27,6 @@ export const AuthProvider = ({ children }) => {
                             });
                         })
                         .catch(error => {
-                            console.error('Error al obtener datos de usuario:', error);
                             localStorage.removeItem(process.env.REACT_APP_TOKEN_KEY);
                             setUser(null);
                         })
@@ -43,7 +40,6 @@ export const AuthProvider = ({ children }) => {
                     setLoading(false);
                 }
             } catch (error) {
-                console.error('Error al decodificar token:', error);
                 localStorage.removeItem(process.env.REACT_APP_TOKEN_KEY);
                 setUser(null);
                 setLoading(false);
@@ -68,11 +64,17 @@ export const AuthProvider = ({ children }) => {
             setUser(userWithRole);
             return userWithRole;
         } catch (error) {
+            // Limpiar credenciales en caso de error
+            localStorage.removeItem(process.env.REACT_APP_TOKEN_KEY);
+            localStorage.removeItem('user');
+            setUser(null);
+            
             // Extraer mensaje de error más detallado
-            const errorMessage = error.response?.data?.mensaje || 
-                                 error.message || 
-                                 'Error desconocido al iniciar sesión';
-            throw new Error(errorMessage);
+            throw new Error(
+                error.response?.data?.mensaje || 
+                error.message || 
+                'Error desconocido al iniciar sesión. Por favor, intente nuevamente.'
+            );
         }
     };
 
