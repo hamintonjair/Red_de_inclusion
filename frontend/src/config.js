@@ -1,19 +1,7 @@
 // Configuración de la aplicación
 const config = {
     // URL base de la API (sin /api al final)
-    // API_URL: 'http://localhost:5000',
-
     API_URL: process.env.REACT_APP_API_URL || 'http://localhost:5000',
-
-    // Clave para el token de autenticación
-    TOKEN_KEY: process.env.REACT_APP_TOKEN_KEY || 'red_inclusion_token',
-    
-    // Secreto para JWT (usado en el backend)
-    JWT_SECRET: process.env.REACT_APP_JWT_SECRET || 'red_inclusion_secret_2024',
-    
-    // URL para verificación de correo
-    VERIFICATION_URL: process.env.REACT_APP_VERIFICATION_URL || 'http://localhost:3000/verificar/',
-        
     
     // Configuración de temas
     theme: {

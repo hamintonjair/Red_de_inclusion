@@ -1,12 +1,10 @@
 import axios from 'axios';
 import { getToken } from '../utils/auth';
-import config from '../config';
-
 // import * as XLSX from 'xlsx';
 // import { saveAs } from 'file-saver';
 
-const API_URL = config.API_URL;
-const VERIFICACION_URL = config.VERIFICATION_URL;
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const VERIFICACION_URL = process.env.REACT_APP_VERIFICACION_URL || 'http://localhost:3000/verificar';
 
 const axiosInstance = axios.create({
     baseURL: API_URL,
@@ -18,7 +16,7 @@ const axiosInstance = axios.create({
 // Interceptor para añadir token de autorización
 axiosInstance.interceptors.request.use(
     config => {
-        const token = localStorage.getItem(config.TOKEN_KEY || 'authToken');
+        const token = localStorage.getItem(process.env.REACT_APP_TOKEN_KEY || 'authToken');
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
@@ -36,7 +34,7 @@ axiosInstance.interceptors.response.use(
         if (error.response?.status === 401) {
             // Token inválido o expirado
             console.error('Error 401 - No autorizado. Redirigiendo a login...');
-            localStorage.removeItem(config.TOKEN_KEY || 'authToken');
+            localStorage.removeItem(process.env.REACT_APP_TOKEN_KEY || 'authToken');
             window.location.href = '/login';
         }
         return Promise.reject(error);

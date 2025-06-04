@@ -1,7 +1,6 @@
 import axios from 'axios';
-import config from '../config';
 
-const API_URL = config.API_URL;
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 // Crear una instancia de axios con configuración base
 const axiosInstance = axios.create({
@@ -16,7 +15,7 @@ const axiosInstance = axios.create({
 axiosInstance.interceptors.request.use(
     (config) => {
     
-        const token = localStorage.getItem(config.TOKEN_KEY || 'authToken');
+        const token = localStorage.getItem(process.env.REACT_APP_TOKEN_KEY);
         if (token) {
             config.headers['Authorization'] = `Bearer ${token}`;
         }
@@ -210,13 +209,13 @@ const funcionarioService = {
         }
     },
 
-    /**
+     /**
      * Actualizar un funcionario
      * @param {string} id ID del funcionario
      * @param {Object} datos Datos a actualizar
      * @returns {Promise} Promesa con el funcionario actualizado
      */
-    actualizarFuncionario: async (id, datos) => {
+     actualizarFuncionario: async (id, datos) => {
         try {
                     
             // URL de actualización

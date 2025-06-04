@@ -4,7 +4,6 @@
  * Este servicio proporciona una interfaz simplificada para capturar
  * huellas dactilares de beneficiarios en el sistema Red de Inclusión.
  */
-import config from '../config';
 
 // Función para generar un ID único para cada huella
 function generateFingerprintId() {
@@ -21,7 +20,7 @@ function generateVerificationCode() {
 // Generar enlace QR de verificación
 function generateQRLink(codigo, documento) {
     // Valor por defecto si no está definido
-    const baseUrl = config.VERIFICATION_URL || 'http://localhost:3000/verificar/';
+    const baseUrl = process.env.REACT_APP_VERIFICACION_URL || 'http://localhost:3000/verificar/';
     
     const url = `${baseUrl}beneficiario/${documento}?codigo=${codigo}`;
     return url;

@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import axios from 'axios';
-import config from '../config';
 import {
     Container,
     Paper,
@@ -13,7 +12,7 @@ import {
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ErrorIcon from '@mui/icons-material/Error';
 
-const API_URL = config.API_URL;
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 const VerificacionRegistro = () => {
     const { codigo } = useParams();

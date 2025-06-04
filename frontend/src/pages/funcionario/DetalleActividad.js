@@ -156,9 +156,11 @@ const DetalleActividad = () => {
                 } else if (Array.isArray(response)) {
                     setBeneficiarios(response);
                 } else {
+                    console.error('Formato de respuesta inesperado:', response);
                     setBeneficiarios([]);
                 }
             } catch (error) {
+                console.error('Error al cargar beneficiarios:', error);
                 enqueueSnackbar('Error al cargar la lista de beneficiarios', { variant: 'error' });
                 setBeneficiarios([]);
             }

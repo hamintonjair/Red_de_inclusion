@@ -1,6 +1,6 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { FuncionarioLayout } from '../components/layout/FuncionarioLayout';
+import FuncionarioLayout from '../components/layout/FuncionarioLayout';
 import Dashboard from '../pages/funcionario/Dashboard';
 import Beneficiarios from '../pages/funcionario/Beneficiarios';
 import ListadoBeneficiarios from '../pages/funcionario/ListadoBeneficiarios';
