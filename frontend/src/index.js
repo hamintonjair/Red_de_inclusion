@@ -3,7 +3,9 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { CssBaseline, ThemeProvider, createTheme } from '@mui/material';
 import App from './App';
+// import dotenv from 'dotenv';
 
+// dotenv.config();
 const theme = createTheme({
     palette: {
         primary: {

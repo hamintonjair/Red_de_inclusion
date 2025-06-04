@@ -1,0 +1,32 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "vercel_bootstrap_new.py",
+      "use": "@vercel/python@2.11.4",
+      "config": {
+        "maxLambdaSize": "50mb",
+        "runtime": "python3.9",
+        "installCommand": "pip install -r requirements-vercel.txt"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/vercel_bootstrap_new.py"
+    },
+    {
+      "src": "/api-docs/(.*)",
+      "dest": "/vercel_bootstrap_new.py"
+    },
+    {
+      "src": "/swaggerui/(.*)",
+      "dest": "/vercel_bootstrap_new.py"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/vercel_bootstrap_new.py"
+    }
+  ]
+}

@@ -1,23 +1,120 @@
-# Red de Inclusión - Frontend
+# Red de Inclusión - Plataforma de Gestión Social
 
-## Descripción
-Este software tiene como finalidad facilitar la gestión integral de beneficiarios, funcionarios y líneas de trabajo para programas de inclusión social. Permite a los administradores y funcionarios registrar, consultar y gestionar información clave de manera segura, eficiente y centralizada. La plataforma está diseñada para optimizar procesos de seguimiento, reporte y análisis, contribuyendo a una mejor toma de decisiones en iniciativas sociales.
+## 📋 Descripción
+Plataforma integral para la gestión de programas de inclusión social, diseñada para facilitar el seguimiento de beneficiarios, funcionarios y líneas de trabajo. La aplicación ofrece un sistema centralizado para el registro, consulta y análisis de información, mejorando la eficiencia en la toma de decisiones para iniciativas sociales.
 
-La aplicación se conecta a un backend construido en Flask que utiliza **MongoDB** como base de datos principal para almacenar y gestionar toda la información.
+## 🚀 Características Principales
+- Gestión integral de beneficiarios y sus datos personales
+- Administración de funcionarios y líneas de trabajo
+- Mapeo geográfico de registros
+- Sistema de autenticación y autorización
+- Verificación biométrica (huellas dactilares)
+- Reportes y estadísticas en tiempo real
+- Interfaz responsiva y accesible
 
-## Desarrollador
-- **Nombre:** Haminton Mena
-- **Correo:** ing.haminton@outlook.com
+## 🏗️ Estructura del Proyecto
+```
+Red_de_inclusion/
+├── backend/           # API en Python (Flask + MongoDB)
+├── frontend/          # Aplicación React (Create React App)
+├── .gitignore
+└── README.md
+```
 
-## Requisitos
+## 🛠️ Requisitos Técnicos
+
+### Backend (Python)
+- Python 3.8+
+- MongoDB 4.4+
+- pip 20.0+
+- Flask 2.0+
+
+### Frontend (React)
 - Node.js 16+
-- npm 8+
+- npm 8+ o yarn 1.22+
+- React 18+
+- Material-UI 5+
 
-## Instalación y ejecución
+## 🚀 Instalación Local
 
-1. Instala las dependencias:
-   ```bash
-   npm install
+### 1. Clonar el repositorio
+```bash
+git clone https://github.com/hamintonjair/Red_de_inclusion.git
+cd Red_de_inclusion
+```
+
+### 2. Configurar el Backend
+```bash
+cd backend
+python -m venv venv
+source venv/bin/activate  # Linux/Mac
+# o
+.\venv\Scripts\activate  # Windows
+
+pip install -r requirements.txt
+```
+
+### 3. Configurar el Frontend
+```bash
+cd ../frontend
+npm install
+```
+
+## ⚙️ Configuración
+
+### Variables de Entorno (Backend)
+Crea un archivo `.env` en la carpeta `backend/` con:
+```
+FLASK_APP=app.py
+FLASK_ENV=development
+MONGO_URI=mongodb://localhost:27017/red_inclusion
+JWT_SECRET_KEY=tu_clave_secreta_aqui
+```
+
+### Variables de Entorno (Frontend)
+Crea un archivo `.env` en la carpeta `frontend/` con:
+```
+REACT_APP_API_URL=http://localhost:5000/api
+```
+
+## 🚦 Iniciar la Aplicación
+
+### Iniciar Backend
+```bash
+cd backend
+flask run
+```
+
+### Iniciar Frontend
+```bash
+cd frontend
+npm start
+```
+
+La aplicación estará disponible en:
+- Frontend: http://localhost:3000
+- API: http://localhost:5000
+
+## 📦 Despliegue
+
+### Frontend (Vercel/Netlify)
+1. Conecta tu repositorio a Vercel/Netlify
+2. Establece el directorio raíz como `frontend`
+3. Configura las variables de entorno necesarias
+4. Despliega
+
+### Backend (Render/Railway/Heroku)
+1. Configura una instancia de MongoDB (MongoDB Atlas recomendado)
+2. Despliega el código del backend
+3. Configura las variables de entorno del servidor
+
+## 📝 Licencia
+Este proyecto está bajo la Licencia MIT.
+
+## ✉️ Contacto
+- **Desarrollador:** Haminton Mena Mena
+- **Correo:** ing.haminton@outlook.com
+- **GitHub:** [@hamintonjair](https://github.com/hamintonjair)
    ```
 2. Inicia el servidor de desarrollo:
    ```bash

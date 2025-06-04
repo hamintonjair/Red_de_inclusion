@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import axios from 'axios';
 
 // Configuración base de axios
@@ -32,3 +33,5 @@ axiosInstance.interceptors.request.use(
 );
 
 export default axiosInstance;
+=======
+>>>>>>> 39174c721a95520448856fe3b53709753d954332

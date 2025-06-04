@@ -46,6 +46,9 @@ const Login = () => {
         case 'admin':
           return navigate('/admin/dashboard');
         case 'funcionario':
+          console.log('API_URL:', process.env.REACT_APP_API_URL);
+         
+
           return navigate('/funcionario/dashboard');
         default:
           setError('Rol no autorizado');

@@ -209,13 +209,13 @@ const funcionarioService = {
         }
     },
 
-    /**
+     /**
      * Actualizar un funcionario
      * @param {string} id ID del funcionario
      * @param {Object} datos Datos a actualizar
      * @returns {Promise} Promesa con el funcionario actualizado
      */
-    actualizarFuncionario: async (id, datos) => {
+     actualizarFuncionario: async (id, datos) => {
         try {
                     
             // URL de actualización

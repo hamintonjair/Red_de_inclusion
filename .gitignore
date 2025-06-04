@@ -1,22 +1,46 @@
-# Python
-venv/
+echo "# Python
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Entorno virtual
+venv/
+env/
+ENV/
+
+# SQLite
 *.sqlite3
-.env
-.env.*
 
 # Node.js
 node_modules/
+build/
+coverage/
+.npm
 npm-debug.log*
 yarn-debug.log*
-yarn-error.log*
 
 # Logs
 logs/
 *.log
+npm-debug.log*
+yarn-debug.log*
 
 # Sistema operativo
 .DS_Store
@@ -25,7 +49,32 @@ Thumbs.db
 # Otros
 *.bak
 *.swp
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.pkl
+*.dat
+*.cache
+*.tmp
 
 # IDEs
 .vscode/
 .idea/
+*.swp
+*.swo
+*.swn
+*.sublime-project
+*.sublime-workspace
+
+# React
+public/build/
+.env
+.env.*
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Archivos de configuración local
+config/local.json" >> .gitignore
