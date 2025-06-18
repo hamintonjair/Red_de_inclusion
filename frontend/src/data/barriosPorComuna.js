@@ -151,5 +151,10 @@ export const barriosPorComuna = [
       { nombre: "Jardín Sector las Dalias", lat: 5.6836, lng: -76.6577 },
       { nombre: "Victoria Sector N°2", lat: 5.6842, lng: -76.6575 }
     ]
+  },
+  {
+    comuna: "Zonas Rurales",
+    centroide: null, // No hay ubicación específica
+    barrios: [] // Se llenará dinámicamente
   }
 ];

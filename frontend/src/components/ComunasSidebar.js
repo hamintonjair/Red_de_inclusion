@@ -9,6 +9,7 @@ const COMUNA_COLORS = {
   'Comuna 4': '#27ae60', // Verde
   'Comuna 5': '#2980b9', // Azul
   'Comuna 6': '#8e44ad', // Morado
+  'Zonas Rurales': '#7f8c8d', // Gris
 };
 
 const ComunasSidebar = ({ agrupadoPorComuna }) => (
@@ -18,7 +19,12 @@ const ComunasSidebar = ({ agrupadoPorComuna }) => (
     </Typography>
     <List>
       {Object.entries(agrupadoPorComuna)
-  .sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true }))
+  .sort(([a], [b]) => {
+    // Ordenar Zonas Rurales al final
+    if (a === 'Zonas Rurales') return 1;
+    if (b === 'Zonas Rurales') return -1;
+    return a.localeCompare(b, undefined, { numeric: true });
+  })
   .map(([comuna, barrios]) => (
         <Box key={comuna} sx={{ mb: 2 }}>
           <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: COMUNA_COLORS[comuna] }}>{comuna}</Typography>

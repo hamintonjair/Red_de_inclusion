@@ -9,6 +9,7 @@ export const COMUNA_COLORS = {
   'Comuna 4': '#27ae60', // Verde
   'Comuna 5': '#2980b9', // Azul
   'Comuna 6': '#8e44ad', // Morado
+  'Zonas Rurales': '#7f8c8d', // Gris
 };
 
 // Agrupa los registros por comuna y barrio
@@ -26,13 +27,15 @@ const MapaRegistros = ({ registros }) => {
   // Agrupar registros por barrio y coordenadas
   // Mostrar cada registro individual como un punto, sin agrupar
   const barriosMarcados = useMemo(() => {
-    // Cada registro es un punto, sin agrupar
-    return registros.map(r => ({
-      comuna: r.comuna,
-      barrio: r.barrio,
-      lat: r.barrio_lat,
-      lng: r.barrio_lng,
-    }));
+    // Filtrar solo registros con coordenadas válidas
+    return registros
+      .filter(r => r.barrio_lat && r.barrio_lng) // Solo incluir registros con coordenadas
+      .map(r => ({
+        comuna: r.comuna,
+        barrio: r.barrio,
+        lat: r.barrio_lat,
+        lng: r.barrio_lng,
+      }));
   }, [registros]);
 
   // Conversión de lat/lng a coordenadas X/Y sobre la imagen SVG

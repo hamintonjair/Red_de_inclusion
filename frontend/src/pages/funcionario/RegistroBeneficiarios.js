@@ -53,7 +53,17 @@ const RANGOS_EDAD = [
   "56-65",
   "66 o más",
 ];
-const ETNIAS = ["Mestizo", "Indígena", "Afrodescendiente"];
+const ETNIAS = ["Afrodescendiente", "Indígena", "Raizal", "Palenquero", "Gitano", "Mestizo"];
+
+// Función para manejar la lógica de la etnia
+const getEtniaValue = (etnia, etniaPersonalizada = '') => {
+  if (etnia === 'Otro') {
+    return etniaPersonalizada || 'Otra';
+  } else if (etnia === 'Ninguna') {
+    return '';
+  }
+  return etnia || '';
+};
 const TIPOS_DISCAPACIDAD = [
   "Física",
   "Visual",
@@ -213,6 +223,7 @@ export default function RegistroBeneficiarios() {
   useEffect(() => {
     if (location.state?.beneficiario) {
       const beneficiario = location.state.beneficiario;
+      console.log('Cargando beneficiario para edición:', beneficiario);
       setModoEdicion(true);
       setBeneficiarioId(beneficiario.id);
 
@@ -220,6 +231,17 @@ export default function RegistroBeneficiarios() {
       if (beneficiario.huella_dactilar) {
         setHuellaRegistrada(true);
       }
+
+      // Normalizar y encontrar la etnia en la lista de ETNIAS (búsqueda insensible a mayúsculas/minúsculas)
+      const etniaEncontrada = ETNIAS.find(etnia => 
+        etnia.toLowerCase() === (beneficiario.etnia || '').toLowerCase().trim()
+      ) || (ETNIAS.length > 0 ? ETNIAS[0] : '');
+      
+      console.log('Cargando etnia:', {
+        original: beneficiario.etnia,
+        seleccionada: etniaEncontrada,
+        etniasDisponibles: ETNIAS
+      }, 'Tipo de etnia:', typeof beneficiario.etnia);
 
       // Si el beneficiario tiene una comuna, cargar sus barrios
       if (beneficiario.comuna) {
@@ -234,45 +256,100 @@ export default function RegistroBeneficiarios() {
           comunaSeleccionadaData ? comunaSeleccionadaData.centroide : null
         );
 
-        // Actualizar formData con los datos del beneficiario
-        setFormData({
+        // Verificar si el barrio del beneficiario está en la lista de barrios de la comuna
+        const barrioEncontrado = barriosDeComuna.find(b => 
+          b.nombre.toLowerCase() === (beneficiario.barrio || '').toLowerCase().trim()
+        );
+        
+        // Determinar si es un barrio personalizado (no está en la lista de la comuna)
+        const esBarrioPersonalizado = barriosDeComuna.length > 0 && 
+          !barrioEncontrado && 
+          beneficiario.barrio && 
+          beneficiario.barrio.trim() !== "" && 
+          beneficiario.barrio !== "No especificado" &&
+          beneficiario.barrio !== "Zona Rural";
+        
+        // Preparar los valores para el formulario
+        let barrioSeleccionado, barrioPersonalizado;
+        
+        if (esBarrioPersonalizado) {
+          // Si es un barrio personalizado, seleccionar "otro" y guardar el valor en otroBarrio
+          barrioSeleccionado = "otro";
+          barrioPersonalizado = beneficiario.barrio;
+        } else if (barrioEncontrado) {
+          // Si el barrio está en la lista, usarlo directamente
+          barrioSeleccionado = barrioEncontrado.nombre;
+          barrioPersonalizado = "";
+        } else {
+          // Si no hay barrio o no está en la lista, dejar vacío
+          barrioSeleccionado = "";
+          barrioPersonalizado = "";
+        }
+
+        console.log('Barrio - Original:', beneficiario.barrio, 
+                   'Seleccionado:', barrioSeleccionado, 
+                   'Personalizado:', barrioPersonalizado,
+                   'Es personalizado:', esBarrioPersonalizado,
+                   'Barrios disponibles:', barriosDeComuna.map(b => b.nombre));
+
+        // Crear un nuevo objeto con los valores actualizados
+        const datosActualizados = {
+          // Primero, establecer los valores iniciales
           ...VALORES_INICIALES,
+          // Luego, sobrescribir con los valores del beneficiario
           ...beneficiario,
-          // Si el barrio no está en la lista de barrios disponibles, marcarlo como "otro"
-          barrio: barriosDeComuna.some(b => b.nombre === beneficiario.barrio) ? beneficiario.barrio : "otro",
-          otroBarrio: barriosDeComuna.some(b => b.nombre === beneficiario.barrio) ? "" : beneficiario.barrio,
-          // Asegurarse de que la huella se mantenga si existe
-          huella_dactilar: beneficiario.huella_dactilar || null,
+          // Establecer la etnia seleccionada (o la primera opción por defecto)
+          etnia: etniaEncontrada,
+          // Manejo de barrio personalizado
+          barrio: barrioSeleccionado,
+          otroBarrio: barrioPersonalizado,
           // Asegurar que los valores booleanos se manejen correctamente
-          sabe_leer: !!beneficiario.sabe_leer,
-          sabe_escribir: !!beneficiario.sabe_escribir,
+          sabe_leer: beneficiario.sabe_leer !== undefined ? !!beneficiario.sabe_leer : true,
+          sabe_escribir: beneficiario.sabe_escribir !== undefined ? !!beneficiario.sabe_escribir : true,
           tiene_discapacidad: !!beneficiario.tiene_discapacidad,
           labora_cuidadora: !!beneficiario.labora_cuidadora,
           victima_conflicto: !!beneficiario.victima_conflicto,
           estudia_actualmente: !!beneficiario.estudia_actualmente,
           ayuda_humanitaria: !!beneficiario.ayuda_humanitaria
-        });
+        };
+
+        console.log('Datos actualizados para el formulario:', datosActualizados);
+        setFormData(datosActualizados);
       } else {
-        // Si no hay comuna, simplemente actualizar formData con los datos del beneficiario
-        setFormData({
+        // Si no hay comuna, actualizar formData con los datos del beneficiario
+        // Actualizar datos del beneficiario
+        const datosActualizados = {
           ...VALORES_INICIALES,
           ...beneficiario,
           // Asegurarse de que la huella se mantenga si existe
           huella_dactilar: beneficiario.huella_dactilar || null,
           // Asegurar que los valores booleanos se manejen correctamente
-          sabe_leer: !!beneficiario.sabe_leer,
-          sabe_escribir: !!beneficiario.sabe_escribir,
+          sabe_leer: beneficiario.sabe_leer !== undefined ? !!beneficiario.sabe_leer : true,
+          sabe_escribir: beneficiario.sabe_escribir !== undefined ? !!beneficiario.sabe_escribir : true,
           tiene_discapacidad: !!beneficiario.tiene_discapacidad,
           labora_cuidadora: !!beneficiario.labora_cuidadora,
           victima_conflicto: !!beneficiario.victima_conflicto,
           estudia_actualmente: !!beneficiario.estudia_actualmente,
           ayuda_humanitaria: !!beneficiario.ayuda_humanitaria
-        });
+        };
+        
+        console.log('Datos actualizados (sin comuna):', datosActualizados);
+        setFormData(datosActualizados);
       }
     }
   }, [location.state, VALORES_INICIALES, obtenerBarriosPorComuna]);
 
-  // Estados de validación
+  // Función para obtener el valor de etnia para envío
+  const getEtniaValue = (etnia, etniaPersonalizada = '') => {
+    if (etnia === 'Otro') {
+      return etniaPersonalizada || 'Otra';
+    } else if (etnia === 'Ninguna') {
+      return '';
+    }
+    return etnia || '';
+  };
+
+  // Estados del componentevalidación
   const [errores, setErrores] = useState({});
   const [validando, setValidando] = useState({
     documento: false,
@@ -1179,12 +1256,30 @@ export default function RegistroBeneficiarios() {
       }
     };
 
-    const verificarModoEdicion = () => {
+    const verificarModoEdicion = async () => {
       const state = location.state || {};
       if (state.modoEdicion && state.beneficiario) {
         setModoEdicion(true);
         const beneficiario = state.beneficiario;
         setBeneficiarioId(beneficiario._id);
+
+        // Determinar si el barrio es personalizado
+        let barrio = beneficiario.barrio || "";
+        let otroBarrio = "";
+        
+        // Si hay una comuna, verificar si el barrio está en la lista de barrios de la comuna
+        if (beneficiario.comuna && beneficiario.comuna !== "Zonas Rurales") {
+          const barriosComuna = obtenerBarriosPorComuna(beneficiario.comuna);
+          const barrioEncontrado = barriosComuna.find(
+            b => b.nombre.toLowerCase() === (barrio || '').toLowerCase().trim()
+          );
+          
+          // Si el barrio no está en la lista de la comuna y no está vacío, es un barrio personalizado
+          if (!barrioEncontrado && barrio && barrio !== "No especificado" && barrio !== "Zona Rural") {
+            otroBarrio = barrio;
+            barrio = "otro";
+          }
+        }
 
         // Mapear datos del beneficiario al formulario
         setFormData({
@@ -1192,53 +1287,52 @@ export default function RegistroBeneficiarios() {
           funcionario_id: user?.id || "",
           funcionario_nombre: user?.nombre || "",
           linea_trabajo: user?.linea_trabajo || "",
-          fecha_registro: new Date().toISOString().split("T")[0], // Fecha actual en formato YYYY-MM-DD
+          fecha_registro: new Date().toISOString().split("T")[0],
 
           // Datos personales
           nombre_completo: beneficiario.nombre_completo || "",
-          tipo_documento: beneficiario.tipo_documento || "Cédula", // Valor por defecto
+          tipo_documento: beneficiario.tipo_documento || "Cédula",
           numero_documento: beneficiario.numero_documento || "",
-          genero: beneficiario.genero || "Prefiero no decir", // Valor por defecto
-          rango_edad: beneficiario.rango_edad || "26-35", // Valor por defecto
+          genero: beneficiario.genero || "Prefiero no decir",
+          rango_edad: beneficiario.rango_edad || "26-35",
 
           // Habilidades básicas
-          sabe_leer: beneficiario.sabe_leer !== undefined ? beneficiario.sabe_leer : false, // Valor por defecto
-          sabe_escribir: beneficiario.sabe_escribir !== undefined ? beneficiario.sabe_escribir : false, // Valor por defecto
+          sabe_leer: beneficiario.sabe_leer !== undefined ? beneficiario.sabe_leer : false,
+          sabe_escribir: beneficiario.sabe_escribir !== undefined ? beneficiario.sabe_escribir : false,
 
           // Contacto
           numero_celular: beneficiario.numero_celular || "",
           correo_electronico: beneficiario.correo_electronico || "",
 
           // Datos socioculturales
-          etnia: beneficiario.etnia || "Ninguna", // Valor por defecto
+          etnia: beneficiario.etnia || "Ninguna",
           comuna: beneficiario.comuna || "",
-          barrio: beneficiario.barrio || "No especificado", // Valor por defecto
+          barrio: barrio,
+          otroBarrio: otroBarrio,
+          barrio_lat: beneficiario.barrio_lat || null,
+          barrio_lng: beneficiario.barrio_lng || null,
 
           // Discapacidad
-          tiene_discapacidad: beneficiario.tiene_discapacidad || false, // Valor por defecto
+          tiene_discapacidad: beneficiario.tiene_discapacidad || false,
           tipo_discapacidad: beneficiario.tipo_discapacidad || "",
           nombre_cuidadora: beneficiario.nombre_cuidadora || "",
-          labora_cuidadora:
-            beneficiario.labora_cuidadora !== undefined
-              ? beneficiario.labora_cuidadora
-              : false,
+          labora_cuidadora: beneficiario.labora_cuidadora !== undefined ? beneficiario.labora_cuidadora : false,
 
           // Conflicto armado
-          victima_conflicto: beneficiario.victima_conflicto || false, // Valor por defecto
+          victima_conflicto: beneficiario.victima_conflicto || false,
 
           // Familia
-          hijos_a_cargo: beneficiario.hijos_a_cargo || 0, // Valor por defecto
+          hijos_a_cargo: beneficiario.hijos_a_cargo || 0,
 
           // Datos educativos y laborales
-          estudia_actualmente: beneficiario.estudia_actualmente || false, // Valor por defecto
-          nivel_educativo: beneficiario.nivel_educativo || "Ninguno", // Valor por defecto
-          situacion_laboral: beneficiario.situacion_laboral || "Otro", // Valor por defecto
-          tipo_vivienda: beneficiario.tipo_vivienda || "Otra", // Valor por defecto
+          estudia_actualmente: beneficiario.estudia_actualmente || false,
+          nivel_educativo: beneficiario.nivel_educativo || "Ninguno",
+          situacion_laboral: beneficiario.situacion_laboral || "Otro",
+          tipo_vivienda: beneficiario.tipo_vivienda || "Otra",
 
           // Ayuda humanitaria
           ayuda_humanitaria: beneficiario.ayuda_humanitaria || false,
-          descripcion_ayuda_humanitaria:
-            beneficiario.descripcion_ayuda_humanitaria || "",
+          descripcion_ayuda_humanitaria: beneficiario.descripcion_ayuda_humanitaria || "",
         });
       }
     };
@@ -1274,7 +1368,7 @@ export default function RegistroBeneficiarios() {
                 }}
               />
             </Grid>
-            <Grid item xs={12} sm={4}>
+            <Grid item xs={12} sm={4} mb={2}>
               <TextField
                 fullWidth
                 label="Fecha de Registro"
@@ -1288,8 +1382,8 @@ export default function RegistroBeneficiarios() {
               />
             </Grid>
           </Grid>
-          <Typography variant="h5" gutterBottom>
-            Datos del Beneficiario
+          <Typography variant="h6" mb={2} gutterBottom>
+            Datos de la persona
           </Typography>
           <Grid container spacing={3}>
             {/* Datos Personales */}
@@ -1531,6 +1625,7 @@ export default function RegistroBeneficiarios() {
                     </MenuItem>
                   ))}
                   <MenuItem value="Otro">Otro (especificar)</MenuItem>
+                  <MenuItem value="Ninguna">Ninguna</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
@@ -1559,51 +1654,94 @@ export default function RegistroBeneficiarios() {
                   value={formData.comuna || ''}
                   labelId="comuna-label"
                   label="Comuna *"
-                  onChange={handleChange}
+                  onChange={(e) => {
+                    // Si se selecciona Zonas Rurales, limpiar el barrio
+                    if (e.target.value === 'Zonas Rurales') {
+                      setFormData(prev => ({
+                        ...prev,
+                        comuna: e.target.value,
+                        barrio: 'Zona Rural',
+                        barrio_lat: null,
+                        barrio_lng: null,
+                        otroBarrio: ''
+                      }));
+                    } else {
+                      handleChange(e);
+                      // Si había un barrio de Zona Rural, limpiarlo
+                      if (formData.comuna === 'Zonas Rurales') {
+                        setFormData(prev => ({
+                          ...prev,
+                          barrio: '',
+                          barrio_lat: null,
+                          barrio_lng: null,
+                          otroBarrio: ''
+                        }));
+                      }
+                    }
+                  }}
                   error={!!errores.comuna}
                 >
-                  <MenuItem value="">Seleccione una comuna</MenuItem>
+                  <MenuItem value="">Seleccione una comuna o zona</MenuItem>
                   {comunas.map((comuna) => (
                     <MenuItem key={comuna.id} value={comuna.nombre}>
                       {comuna.nombre} - {comuna.zona}
                     </MenuItem>
                   ))}
+                  <MenuItem value="Zonas Rurales">Zonas Rurales</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
 
             {/* Barrio */}
-            <Grid item xs={12} sm={6}>
-              <FormControl fullWidth required error={!!errores.barrio} disabled={!formData.comuna}>
-                <InputLabel id="barrio-label">Barrio *</InputLabel>
-                <Select
-                  name="barrio"
-                  value={formData.barrio || ''}
-                  labelId="barrio-label"
-                  label="Barrio *"
-                  onChange={handleChange}
-                  error={!!errores.barrio}
-                >
-                  {barriosDisponibles.map((barrio, idx) => (
-                    <MenuItem key={idx} value={barrio.nombre}>
-                      {barrio.nombre}
-                    </MenuItem>
-                  ))}
-                  <MenuItem value="otro">Otro (especificar)</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-
-            {/* Campo para ingresar el nombre del barrio manualmente si se eligió "otro" */}
-            {formData.barrio === "otro" && (
+            {formData.comuna === 'Zonas Rurales' ? (
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
-                  label="Especifique el Barrio"
+                  label="Nombre de la Vereda/Corregimiento *"
+                  name="barrio"
+                  value={formData.barrio || ''}
+                  onChange={handleChange}
+                  required
+                  error={!!errores.barrio}
+                  helperText={errores.barrio}
+                />
+              </Grid>
+            ) : (
+              <Grid item xs={12} sm={6}>
+                <FormControl fullWidth required error={!!errores.barrio} disabled={!formData.comuna}>
+                  <InputLabel id="barrio-label">Barrio *</InputLabel>
+                  <Select
+                    name="barrio"
+                    value={formData.barrio || ''}
+                    labelId="barrio-label"
+                    label="Barrio *"
+                    onChange={handleChange}
+                    error={!!errores.barrio}
+                  >
+                    <MenuItem value="">Seleccione un barrio</MenuItem>
+                    {barriosDisponibles.map((barrio, idx) => (
+                      <MenuItem key={idx} value={barrio.nombre}>
+                        {barrio.nombre}
+                      </MenuItem>
+                    ))}
+                    <MenuItem value="otro">Otro (especificar)</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+            )}
+
+            {/* Campo para ingresar el nombre del barrio manualmente si se eligió "otro" o es un barrio personalizado */}
+            {(formData.barrio === "otro" || (formData.otroBarrio && formData.otroBarrio !== "")) && (
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label={formData.comuna === 'Zonas Rurales' ? 'Nombre de la Vereda/Corregimiento *' : 'Especifique el Barrio *'}
                   name="otroBarrio"
                   value={formData.otroBarrio || ""}
                   onChange={handleChange}
                   required
+                  error={!!errores.otroBarrio}
+                  helperText={errores.otroBarrio || (formData.barrio === "otro" ? "Por favor ingrese el nombre del barrio" : "")}
                 />
               </Grid>
             )}
