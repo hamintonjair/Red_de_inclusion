@@ -49,7 +49,7 @@ const estadisticasService = {
         try {
  
             // Usar URL completa con el prefijo correcto de beneficiarios
-            const urlCompleta = `${axiosInstance.defaults.baseURL}/beneficiarios/estadisticas/${lineaTrabajoId}`;
+            const urlCompleta = `${axiosInstance.defaults.baseURL}/api/beneficiario/estadisticas/${lineaTrabajoId}`;
          
             
             const response = await axiosInstance.get(urlCompleta);
@@ -70,7 +70,7 @@ const estadisticasService = {
     },
     obtenerEstadisticasGlobalesAdmin: async () => {
         try {
-            const response = await axiosInstance.get('/beneficiarios/estadisticas');
+            const response = await axiosInstance.get('/api/beneficiario/estadisticas');
             if (!response.data || !response.data.estadisticas) {
                 throw new Error('Respuesta inválida del servidor');
             }

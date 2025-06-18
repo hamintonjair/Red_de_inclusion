@@ -6,7 +6,7 @@ const Beneficiarios = () => {
     return (
         <Box>
             <Typography variant="h5" gutterBottom>
-                Gestión de Beneficiarios
+                Gestión de Habitantes
             </Typography>
             <Outlet />
         </Box>

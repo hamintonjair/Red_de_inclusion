@@ -1,22 +1,22 @@
 import axios from 'axios';
 
+// Mostrar la URL del API para depuración
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 // Crear una instancia de axios con configuración base
 const axiosInstance = axios.create({
     baseURL: API_URL,
-    timeout: 10000,
+    timeout: 15000, // Aumentar el timeout para Render
     headers: {
         'Content-Type': 'application/json',
-    }
+    },
+    withCredentials: true // Necesario para CORS con credenciales
 });
 
 // Interceptor de solicitudes
 axiosInstance.interceptors.request.use(
     (config) => {
-
-
-
+       
         const token = localStorage.getItem(process.env.REACT_APP_TOKEN_KEY);
         if (token) {
             config.headers['Authorization'] = `Bearer ${token}`;
@@ -33,12 +33,7 @@ axiosInstance.interceptors.request.use(
 axiosInstance.interceptors.response.use(
     (response) => response,
     (error) => {
-        console.error('Error de comunicación completo:', {
-            mensaje: error.message,
-            codigo: error.code,
-            config: error.config,
-            respuesta: error.response
-        });
+    
         
         // Manejar específicamente errores de red
         if (error.message === 'Network Error') {
@@ -97,32 +92,31 @@ export const obtenerLineasTrabajo = async () => {
 const usuarioService = {
     iniciarSesion: async (email, password) => {
         try {
-
-
-            
             const response = await axiosInstance.post('/auth/login', { 
                 email, 
                 password 
             });
 
-            
             // Validar estructura de respuesta
             if (!response.data || !response.data.funcionario || !response.data.access_token) {
                 throw new Error('Respuesta de inicio de sesión inválida');
             }
+            
+            // Guardar el token en localStorage
+            localStorage.setItem(process.env.REACT_APP_TOKEN_KEY || 'authToken', response.data.access_token);
+            
+            // Configurar el token en el encabezado para futuras peticiones
+            axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${response.data.access_token}`;
             
             // Devolver datos del funcionario con token
             const userData = {
                 ...response.data.funcionario,
                 token: response.data.access_token,
                 rol: response.data.funcionario.rol || 'funcionario',
-                
-                // Usar linea_trabajo_id del backend
                 linea_trabajo: response.data.funcionario.linea_trabajo_id,
                 linea_trabajo_nombre: response.data.funcionario.linea_trabajo_nombre || response.data.funcionario.linea_trabajo
             };
             
-
             return userData;
         } catch (error) {
             console.error('Error COMPLETO al iniciar sesión:', {
@@ -247,7 +241,6 @@ const usuarioService = {
             
             const response = await axiosInstance.put(`/funcionarios/funcionarios/${id}`, camposActualizacion);
             
-            console.log('Respuesta completa de actualización:', response.data);
             return response.data;
         } catch (error) {
             console.error('Error COMPLETO al actualizar funcionario:', {
@@ -344,13 +337,10 @@ const usuarioService = {
             if (!id || id === 'undefined') {
                 throw new Error('ID de línea de trabajo no válido');
             }
-            
-
+        
             
             const response = await axiosInstance.put(`/lineas-trabajo/${id}`, lineaTrabajo);
-            
-            console.log('Respuesta completa de actualización:', response.data);
-            
+                        
             // Asegurar que la línea tenga un ID
             const lineaConId = {
                 ...response.data,
@@ -464,7 +454,6 @@ const usuarioService = {
         try {
 
             const response = await axiosInstance.put(`/usuarios/perfil/${id}`, perfil);
-            console.log('Respuesta completa de actualización:', response.data);
             return response.data;
         } catch (error) {
             console.error('Error al actualizar perfil:', {

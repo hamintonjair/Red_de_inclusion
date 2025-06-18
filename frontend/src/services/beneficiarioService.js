@@ -16,17 +16,27 @@ const axiosInstance = axios.create({
 // Interceptor para añadir token de autorización
 axiosInstance.interceptors.request.use(
     config => {
-        const token = getToken();
+        const token = localStorage.getItem(process.env.REACT_APP_TOKEN_KEY || 'authToken');
         if (token) {
-            config.headers['Authorization'] = `Bearer ${token}`;
+            config.headers.Authorization = `Bearer ${token}`;
         }
-        
-        // Log de depuración para verificar token y configuración
-       
-        
         return config;
     },
     error => {
+        return Promise.reject(error);
+    }
+);
+
+// Interceptor de respuestas para manejar errores 401
+axiosInstance.interceptors.response.use(
+    response => response,
+    error => {
+        if (error.response?.status === 401) {
+            // Token inválido o expirado
+            console.error('Error 401 - No autorizado. Redirigiendo a login...');
+            localStorage.removeItem(process.env.REACT_APP_TOKEN_KEY || 'authToken');
+            window.location.href = '/login';
+        }
         return Promise.reject(error);
     }
 );
@@ -79,7 +89,6 @@ export const crearBeneficiario = async (datos) => {
             }
             return acc;
         }, {});
-        console.log('beneficiarioService.js, Datos validados A ENVIAR AL BACKEND:', datosValidados); // DEBUG LINE
 
         // Validaciones adicionales
         const camposRequeridos = [
@@ -91,8 +100,6 @@ export const crearBeneficiario = async (datos) => {
             'numero_documento', 
             'genero', 
             'rango_edad',
-            'sabe_leer',
-            'sabe_escribir',
             'numero_celular',
             'linea_trabajo',
             'comuna',
@@ -118,21 +125,62 @@ export const crearBeneficiario = async (datos) => {
     }
 };
 
+/**
+ * Obtiene una lista de beneficiarios con filtros opcionales
+ * @param {Object} filtros - Objeto con los filtros a aplicar
+ * @param {string} [filtros.linea_trabajo] - ID de la línea de trabajo para filtrar
+ * @param {string} [filtros.fecha] - Fecha para filtrar beneficiarios (formato YYYY-MM-DD)
+ * @param {number} [filtros.por_pagina=1000] - Cantidad de registros por página
+ * @returns {Promise<Object>} Respuesta del servidor con los beneficiarios
+ */
 export const obtenerBeneficiarios = async (filtros = {}) => {
-    try {
-        
-        const params = new URLSearchParams();
+    try {        
+        // Crear un objeto con los parámetros de consulta
+        const queryParams = {};
         
         // Agregar filtros a los parámetros
         Object.keys(filtros).forEach(key => {
-            if (filtros[key] !== undefined && filtros[key] !== null) {
-                params.append(key, filtros[key]);
+            if (filtros[key] !== undefined && filtros[key] !== null && filtros[key] !== '') {
+                queryParams[key] = filtros[key];
             }
         });
         
-        const response = await axiosInstance.get('/beneficiarios/listar', { params });
+        // Si hay una fecha, formatearla correctamente para el filtro
+        if (queryParams.fecha) {
+            const fecha = new Date(queryParams.fecha);
+            if (!isNaN(fecha.getTime())) {
+                // Crear fecha de inicio (inicio del día)
+                const inicioDia = new Date(fecha);
+                inicioDia.setUTCHours(0, 0, 0, 0);
+                
+                // Crear fecha de fin (fin del día)
+                const finDia = new Date(fecha);
+                finDia.setUTCHours(23, 59, 59, 999);
+                
+                // Formatear fechas como strings ISO
+                queryParams.fecha_inicio = inicioDia.toISOString();
+                queryParams.fecha_fin = finDia.toISOString();
+                delete queryParams.fecha;
+            }
+        }
         
-             
+        // Asegurarse de que siempre se envíe la línea de trabajo si está disponible
+        if (filtros.linea_trabajo && !queryParams.linea_trabajo) {
+            queryParams.linea_trabajo = filtros.linea_trabajo;
+        }
+        
+      
+        const response = await axiosInstance.get('/beneficiarios/listar', { 
+            params: queryParams,
+            paramsSerializer: params => new URLSearchParams(params).toString()
+        });
+        
+        
+        if (!response.data) {
+            console.warn('La respuesta de la API no contiene datos');
+            return { beneficiarios: [] };
+        }
+        
         return response.data;
     } catch (error) {
                
@@ -185,7 +233,7 @@ export const eliminarBeneficiario = async (beneficiarioId) => {
         if (error.response) {
             // El servidor respondió con un código de estado fuera del rango 2xx
             const { msg } = error.response.data;
-            throw new Error(msg || 'Error al eliminar beneficiario');
+            throw new Error(msg || 'Error al eliminar habitante');
         } else if (error.request) {
             // La solicitud fue hecha pero no se recibió respuesta
             throw new Error('No se recibió respuesta del servidor');
@@ -325,21 +373,69 @@ export const obtenerTodosBeneficiariosAdmin = async (filtro = '') => {
     }
 };
 
-export const verificarDocumentoUnico = async (numero_documento) => {
+/**
+ * Verifica si un número de documento ya está registrado
+ * @param {string} numero_documento - Número de documento a verificar
+ * @param {string} [excluirId=null] - ID del beneficiario a excluir de la verificación (útil en edición)
+ * @returns {Promise<{existe: boolean, msg: string}>} Objeto con el resultado de la verificación
+ */
+export const verificarDocumentoUnico = async (numero_documento, excluirId = null) => {
+    
+    if (!numero_documento) {
+        return { existe: false, msg: '' };
+    }
+    
     try {
-        const response = await axiosInstance.get(`/beneficiarios/verificar-documento/${numero_documento}`);
-        return response.data;
+        let url = `/beneficiarios/verificar-documento/${encodeURIComponent(numero_documento)}`;
+        if (excluirId) {
+            url += `?excluirId=${encodeURIComponent(excluirId)}`;
+        }
+        
+        const response = await axiosInstance.get(url);
+        
+        const resultado = {
+            existe: response.data.existe || false,
+            msg: response.data.msg || 'Este documento ya está registrado en el sistema para otro habitante.'
+        };
+        
+        return resultado;
     } catch (error) {
-        throw error;
+        const errorMsg = error.response?.data?.msg || 'Error al verificar el documento. Por favor, intente nuevamente.';
+        return { existe: true, msg: errorMsg };
     }
 };
 
-export const verificarCorreoUnico = async (correo_electronico) => {
+/**
+ * Verifica si un correo electrónico ya está registrado
+ * @param {string} correo_electronico - Correo electrónico a verificar
+ * @param {string} [excluirId=null] - ID del beneficiario a excluir de la verificación (útil en edición)
+ * @returns {Promise<{existe: boolean, msg: string}>} Objeto con el resultado de la verificación
+ */
+export const verificarCorreoUnico = async (correo_electronico, excluirId = null) => {
+    if (!correo_electronico) {
+        return { existe: false, msg: '' };
+    }
+    
+    // Validación básica de formato de correo
+    const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!EMAIL_REGEX.test(correo_electronico)) {
+        return { existe: true, msg: 'El formato del correo electrónico no es válido.' };
+    }
+    
     try {
-        const response = await axiosInstance.get(`/beneficiarios/verificar-correo/${correo_electronico}`);
-        return response.data;
+        let url = `/beneficiarios/verificar-correo/${encodeURIComponent(correo_electronico)}`;
+        if (excluirId) {
+            url += `?excluirId=${encodeURIComponent(excluirId)}`;
+        }
+        const response = await axiosInstance.get(url);
+        return {
+            existe: response.data.existe || false,
+            msg: response.data.msg || 'Este correo electrónico ya está registrado en el sistema para otro habitante.'
+        };
     } catch (error) {
-        throw error;
+        console.error('Error al verificar correo electrónico:', error);
+        const errorMsg = error.response?.data?.msg || 'Error al verificar el correo electrónico. Por favor, intente nuevamente.';
+        return { existe: true, msg: errorMsg };
     }
 };
 

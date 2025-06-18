@@ -255,7 +255,7 @@ const ListadoPoblacionMigrante = () => {
                         <Box display="flex" justifyContent="flex-end" mb={2}>
                             <Button 
                                 variant="contained" 
-                                color="primary" 
+                                color="success" 
                                 onClick={handleNuevoRegistro}
                             >
                                 Nuevo Registro
@@ -274,11 +274,11 @@ const ListadoPoblacionMigrante = () => {
                     <Table>
                         <TableHead>
                             <TableRow>
-                                <TableCell>Funcionario</TableCell>
-                                <TableCell>Línea de Trabajo</TableCell>
-                                <TableCell>Nombre</TableCell>
-                                <TableCell>Fecha de Registro</TableCell>
-                                <TableCell>Acciones</TableCell>
+                                <TableCell sx={{ backgroundColor: '#1976d2', color: 'white', fontWeight: 'bold' }}>Funcionario</TableCell>
+                                <TableCell sx={{ backgroundColor: '#1976d2', color: 'white', fontWeight: 'bold' }}>Línea de Trabajo</TableCell>
+                                <TableCell sx={{ backgroundColor: '#1976d2', color: 'white', fontWeight: 'bold' }}>Nombre</TableCell>
+                                <TableCell sx={{ backgroundColor: '#1976d2', color: 'white', fontWeight: 'bold' }}>Fecha de Registro</TableCell>
+                                <TableCell sx={{ backgroundColor: '#1976d2', color: 'white', fontWeight: 'bold' }}>Acciones</TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>

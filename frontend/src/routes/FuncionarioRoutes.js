@@ -9,6 +9,9 @@ import Perfil from '../pages/funcionario/Perfil';
 import RegistroPoblacionMigrante from '../pages/funcionario/RegistroPoblacionMigrante';
 import RegistroBeneficiarios from '../pages/funcionario/RegistroBeneficiarios';
 import ListadoPoblacionMigrante from '../pages/funcionario/ListadoPoblacionMigrante';
+import Actividades from '../pages/funcionario/Actividades';
+import NuevaActividad from '../pages/funcionario/NuevaActividad';
+import DetalleActividad from '../pages/funcionario/DetalleActividad';
 
 const FuncionarioRoutes = () => {
     return (
@@ -36,6 +39,12 @@ const FuncionarioRoutes = () => {
                 
                 {/* Perfil */}
                 <Route path="perfil" element={<Perfil />} />
+                
+                {/* Actividades */}
+                <Route path="actividades" element={<Actividades />} />
+                <Route path="actividades/nueva" element={<NuevaActividad />} />
+                <Route path="actividades/editar/:id" element={<NuevaActividad />} />
+                <Route path="actividades/:id" element={<DetalleActividad />} />
                 
                 {/* Ruta por defecto */}
                 <Route path="*" element={<Navigate to="dashboard" replace />} />

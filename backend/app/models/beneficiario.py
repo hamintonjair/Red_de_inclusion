@@ -31,6 +31,8 @@ class HuellaDactilarSchema(Schema):
     nombre = fields.Str(required=False)
     fecha_registro = fields.Str(required=False)
     datos_biometricos = fields.Dict(required=False)
+    codigo_verificacion = fields.Str(required=False)
+    enlace_qr = fields.Str(required=False)
 
 class VerificacionBiometricaSchema(Schema):
     credential_id = fields.Str(required=True)

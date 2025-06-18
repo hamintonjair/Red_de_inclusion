@@ -21,6 +21,7 @@ import {
     People as PeopleIcon,
     Person as PersonIcon,
     Logout as LogoutIcon,
+    Event as EventIcon
     // Add as AddIcon
 } from '@mui/icons-material';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
@@ -35,15 +36,16 @@ const menuItems = [
         path: '/funcionario/dashboard' 
     },
     { 
-        text: 'Población', 
+        text: 'Habitantes', 
         icon: <PeopleIcon />, 
-        path: '/funcionario/beneficiarios',
-        hideForLineaTrabajoNombre: 'Población Migrante'
+        path: '/funcionario/beneficiarios'
+        // hideForLineaTrabajoNombre: 'Población Migrante'
     },
     { 
         text: 'Migrantes', 
         icon: <PeopleIcon />, 
         path: '/funcionario/poblacion-migrante',
+        disabled: true,
         hideForLineaTrabajoNombre: [
             'Adulto mayor',
             'Población Religiosa',
@@ -58,6 +60,11 @@ const menuItems = [
             'Discapacidad',
             'Coordinación de Víctimas',
             'Coordinacion de Victimas'       ] 
+    },
+    { 
+        text: 'Actividades', 
+        icon: <EventIcon />, 
+        path: '/funcionario/actividades' 
     },
     { 
         text: 'Perfil', 

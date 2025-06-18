@@ -19,9 +19,7 @@ export const AuthProvider = ({ children }) => {
                     // Token válido, obtener información completa del usuario
                     usuarioService.obtenerUsuarioPorId(decodedToken.sub)
                         .then(userData => {
-                            console.log('Datos de usuario completos:', JSON.parse(JSON.stringify(userData)));
-                            console.log('Teléfono en datos de usuario:', userData.telefono);
-                            
+                                 
                             setUser({
                                 ...userData,
                                 token: token,
@@ -29,7 +27,6 @@ export const AuthProvider = ({ children }) => {
                             });
                         })
                         .catch(error => {
-                            console.error('Error al obtener datos de usuario:', error);
                             localStorage.removeItem(process.env.REACT_APP_TOKEN_KEY);
                             setUser(null);
                         })
@@ -43,7 +40,6 @@ export const AuthProvider = ({ children }) => {
                     setLoading(false);
                 }
             } catch (error) {
-                console.error('Error al decodificar token:', error);
                 localStorage.removeItem(process.env.REACT_APP_TOKEN_KEY);
                 setUser(null);
                 setLoading(false);

@@ -19,6 +19,7 @@ from .routes.funcionarios import funcionarios_bp  # Importación de blueprint de
 from .routes.comunas import comunas_bp  # Nuevo blueprint de comunas
 from .routes.beneficiario import beneficiario_bp  # Importar blueprint singular
 from .routes.poblacion_migrante import poblacion_migrante_bp  # Importar blueprint de población migrante
+from .routes.actividad import actividad_bp  # Importar blueprint de actividades
 
 # Importación opcional de dashboard
 try:
@@ -78,12 +79,11 @@ def create_app():
         if origin:
             # Establecer (no añadir) los encabezados CORS
             response.headers['Access-Control-Allow-Origin'] = origin
-            response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+            response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, x-user-id'
             response.headers['Access-Control-Allow-Methods'] = 'GET, PUT, POST, DELETE, OPTIONS'
             response.headers['Access-Control-Allow-Credentials'] = 'true'
         
-        # Registrar encabezados para depuración
-        app.logger.debug('Encabezados de respuesta: %s', response.headers)
+       
         
         return response
     
@@ -124,10 +124,9 @@ def create_app():
     init_admin_user(app.config['MONGO_DB'])
     
     # Configuración de JWT
-    app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'desarrollo_red_inclusion_2024')
-    app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=2)
-    
-    # Inicializar JWT
+    app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'clave-secreta-predeterminada')
+    app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=24)  # 24 horas de expiración
+    app.config['JWT_REFRESH_TOKEN_EXPIRES'] = timedelta(days=30)  # 30 días para refresh token
     jwt = JWTManager(app)
     
     # Configuración personalizada de JWT
@@ -158,12 +157,19 @@ def create_app():
     from .routes.beneficiarios import beneficiarios_bp
     from .routes.lineas_trabajo import lineas_trabajo_bp
     from .routes.beneficiario import beneficiario_bp  # Importar blueprint singular
+    from .routes.actividad import actividad_bp  # Importar blueprint de actividades
 
+    # Importar blueprint temporal
+    from .routes.verificacion_temp import verificacion_temp_bp
+    
     # Registrar blueprints con prefijos
     app.register_blueprint(auth_bp, url_prefix='/auth')
     app.register_blueprint(funcionarios_bp, url_prefix='/funcionarios')
+    
+    # Registrar ambos blueprints con prefijos únicos
     app.register_blueprint(beneficiarios_bp, url_prefix='/beneficiarios')
-    app.register_blueprint(beneficiario_bp, url_prefix='/beneficiarios')  # Registrar blueprint singular
+    app.register_blueprint(beneficiario_bp, url_prefix='/api/beneficiario')  # Prefijo más específico
+    
     app.register_blueprint(lineas_trabajo_bp, url_prefix='/lineas-trabajo')
     
     # Registrar blueprints con prefijos correctos
@@ -172,6 +178,10 @@ def create_app():
     app.register_blueprint(reportes_bp, url_prefix='/reportes')
     app.register_blueprint(comunas_bp, url_prefix='/comunas')
     app.register_blueprint(poblacion_migrante_bp, url_prefix='/poblacion-migrante')
+    app.register_blueprint(actividad_bp, url_prefix='/actividades')
+    
+    # Registrar blueprint temporal
+    app.register_blueprint(verificacion_temp_bp)
 
     # Registrar dashboard blueprint si está disponible
     if dashboard_bp:

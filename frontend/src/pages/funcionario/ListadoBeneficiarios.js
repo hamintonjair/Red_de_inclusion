@@ -18,6 +18,7 @@ import {
 
 // React Router
 import { useNavigate } from 'react-router-dom';
+import PageLayout from '../../components/layout/PageLayout';
 
 // Contextos
 import { useAuth } from '../../context/AuthContext';
@@ -34,7 +35,7 @@ export default function ListadoBeneficiarios() {
     const navigate = useNavigate();
     const { user } = useAuth();
     const { enqueueSnackbar } = useSnackbar();
-
+   
 
     // Estados para manejo de beneficiarios
     const [beneficiarios, setBeneficiarios] = useState([]);
@@ -52,7 +53,10 @@ export default function ListadoBeneficiarios() {
     const [formulariosBeneficiario, setFormulariosBeneficiario] = useState([]);
     const [detallesBeneficiario, setDetallesBeneficiario] = useState(null);
     const [dialogOpen, setDialogOpen] = useState(false);
-
+    const pageTitle = 'Listado de personas registradas en el programa';
+    const pageDescription =  <Typography variant="h5" gutterBottom>
+        {lineaTrabajo || user?.linea_trabajo}
+   </Typography>;
     // Estado para overlay de carga
     const [loadingOverlay, setLoadingOverlay] = useState(false);
 
@@ -139,6 +143,7 @@ export default function ListadoBeneficiarios() {
   
 
     return (
+        <PageLayout title={pageTitle} description={pageDescription}>
         <Box sx={{ position: 'relative', minHeight: '100vh' }}>
             {loadingOverlay && (
                 <Box sx={{
@@ -175,9 +180,9 @@ export default function ListadoBeneficiarios() {
                 </Box>
             )}
             <Container maxWidth="lg" sx={{ mt: 4 }}>
-                <Typography variant="h5" gutterBottom>
+                {/* <Typography variant="h5" gutterBottom>
                      {lineaTrabajo || user?.linea_trabajo}
-                </Typography>
+                </Typography> */}
 
                 <Box sx={{ 
                     display: 'flex', 
@@ -193,7 +198,7 @@ export default function ListadoBeneficiarios() {
                     <Grid item xs={12} md={4}>
                         <TextField
                             fullWidth
-                            label="Buscar beneficiario"
+                            label="Buscar habitante"
                             variant="outlined"
                             value={filtro}
                             onChange={(event) => {
@@ -208,7 +213,7 @@ export default function ListadoBeneficiarios() {
                 <Box display="flex" justifyContent="flex-end" mb={2}>
                     <Button 
                         variant="contained" 
-                        color="primary" 
+                        color="success" 
                         onClick={handleNuevoRegistro}
                     >
                         Nuevo Registro
@@ -218,11 +223,11 @@ export default function ListadoBeneficiarios() {
                     <Table>
                         <TableHead>
                             <TableRow>
-                                <TableCell>Nombre Funcionario</TableCell>
-                                <TableCell>Línea de Trabajo</TableCell>
-                                <TableCell>Nombre Beneficiario</TableCell>
-                                <TableCell>Fecha de Registro</TableCell>
-                                <TableCell>Acciones</TableCell>
+                                <TableCell sx={{ backgroundColor: '#1976d2', color: 'white', fontWeight: 'bold' }}>Nombre Funcionario</TableCell>
+                                <TableCell sx={{ backgroundColor: '#1976d2', color: 'white', fontWeight: 'bold' }}>Línea de Trabajo</TableCell>
+                                <TableCell sx={{ backgroundColor: '#1976d2', color: 'white', fontWeight: 'bold' }}>Nombre Beneficiario</TableCell>
+                                <TableCell sx={{ backgroundColor: '#1976d2', color: 'white', fontWeight: 'bold' }}>Fecha de Registro</TableCell>
+                                <TableCell sx={{ backgroundColor: '#1976d2', color: 'white', fontWeight: 'bold' }}>Acciones</TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
@@ -313,5 +318,6 @@ export default function ListadoBeneficiarios() {
                 </Dialog>
             </Container>
         </Box>
+        </PageLayout>
     );
 }

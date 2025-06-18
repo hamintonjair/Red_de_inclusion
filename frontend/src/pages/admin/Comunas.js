@@ -149,9 +149,9 @@ const Comunas = () => {
                 <Table>
                     <TableHead>
                         <TableRow>
-                            <TableCell>Nombre</TableCell>
-                            <TableCell>Zona</TableCell>
-                            <TableCell>Acciones</TableCell>
+                            <TableCell sx={{ backgroundColor: '#1976d2', color: 'white', fontWeight: 'bold' }}>Nombre</TableCell>
+                            <TableCell sx={{ backgroundColor: '#1976d2', color: 'white', fontWeight: 'bold' }}>Zona</TableCell>
+                            <TableCell sx={{ backgroundColor: '#1976d2', color: 'white', fontWeight: 'bold' }}>Acciones</TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>

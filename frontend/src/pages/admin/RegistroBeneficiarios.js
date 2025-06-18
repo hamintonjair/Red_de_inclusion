@@ -56,7 +56,7 @@ const RegistroBeneficiarios = () => {
 
         try {
             await beneficiarioService.crearBeneficiario(beneficiario);
-            setSuccess('Beneficiario registrado exitosamente');
+            setSuccess('Habitante registrado exitosamente');
             // Limpiar formulario
             setBeneficiario({
                 nombre: '',
@@ -68,14 +68,14 @@ const RegistroBeneficiarios = () => {
                 telefono: ''
             });
         } catch (error) {
-            setError(error.response?.data?.mensaje || 'Error al registrar beneficiario');
+            setError(error.response?.data?.mensaje || 'Error al registrar habitante');
         }
     };
 
     return (
         <Box>
             <Typography variant="h5" gutterBottom>
-                Registro de Beneficiarios
+                Registro de Habitantes
             </Typography>
             {error && (
                 <Alert severity="error" sx={{ mb: 2 }}>

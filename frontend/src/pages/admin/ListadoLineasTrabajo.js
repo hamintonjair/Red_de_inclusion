@@ -263,12 +263,12 @@ const ListadoLineasTrabajo = () => {
             <TableContainer component={Paper}>
                 <Table>
                     <TableHead>
-    <TableRow>
-        <TableCell>Nombre</TableCell>
-        <TableCell>Descripción</TableCell>
-        <TableCell>Acciones</TableCell>
-    </TableRow>
-</TableHead>
+                        <TableRow>
+                            <TableCell sx={{ backgroundColor: '#1976d2', color: 'white', fontWeight: 'bold' }}>Nombre</TableCell>
+                            <TableCell sx={{ backgroundColor: '#1976d2', color: 'white', fontWeight: 'bold' }}>Descripción</TableCell>
+                            <TableCell sx={{ backgroundColor: '#1976d2', color: 'white', fontWeight: 'bold' }}>Acciones</TableCell>
+                        </TableRow>
+                    </TableHead>
 <TableBody>
     {lineasTrabajo.map((linea, idx) => {
         const lineaId = extraerIdLineaTrabajo(linea);

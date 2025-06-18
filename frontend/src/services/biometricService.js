@@ -12,6 +12,23 @@ function generateFingerprintId() {
     return `fp_${timestamp}_${random}`;
 }
 
+// Generar código de verificación único
+function generateVerificationCode() {
+    return Math.random().toString(36).substring(2, 8).toUpperCase();
+}
+
+// Generar enlace QR de verificación
+function generateQRLink(codigo, documento) {
+    // Valor por defecto si no está definido
+    const baseUrl = process.env.REACT_APP_VERIFICACION_URL || 'http://localhost:3000/verificar/';
+    
+    const url = `${baseUrl}beneficiario/${documento}?codigo=${codigo}`;
+    return url;
+}
+
+// Prueba de generación de enlace QR
+const testQRLink = generateQRLink('XV4TEY', '80772379');
+
 // Función para generar una representación simulada de datos biométricos
 function generateBiometricData() {
     // En una implementación real, esto vendría del hardware
@@ -53,9 +70,6 @@ export const biometricService = {
                 // Continuamos de todos modos para la simulación
             }
             
-            // Simulamos un proceso de captura de huella
-            // En una implementación real, aquí se activaría el lector de huellas
-            console.log('Iniciando captura de huella dactilar...');
             
             // Generamos un ID único para esta huella
             const fingerprintId = generateFingerprintId();
@@ -65,18 +79,22 @@ export const biometricService = {
             
             // Simulamos un pequeño retraso como si estuviéramos capturando la huella
             await new Promise(resolve => setTimeout(resolve, 1500));
-            
-            console.log('Huella dactilar capturada exitosamente');
-            
+                        
             // Devolvemos un objeto con la información de la huella capturada
+            const codigoVerificacion = generateVerificationCode();
+
+const enlaceQR = generateQRLink(codigoVerificacion, userId);
+
             return {
                 id: fingerprintId,
                 type: 'fingerprint',
-                quality: 85 + Math.floor(Math.random() * 15), // Calidad entre 85-99%
+                quality: 85 + Math.floor(Math.random() * 15),
                 documento: userId,
                 nombre: userName,
                 fecha_registro: new Date().toISOString(),
-                datos_biometricos: biometricData
+                datos_biometricos: biometricData,
+                codigo_verificacion: codigoVerificacion,
+                enlace_qr: enlaceQR
             };
         } catch (error) {
             console.error('Error al registrar huella:', error);
@@ -92,7 +110,6 @@ export const biometricService = {
             }
 
             // Simulamos un proceso de verificación de huella
-            console.log('Iniciando verificación de huella dactilar...');
             
             // Simulamos un pequeño retraso como si estuviéramos verificando la huella
             await new Promise(resolve => setTimeout(resolve, 1500));
@@ -103,9 +120,7 @@ export const biometricService = {
             if (!verificacionExitosa) {
                 throw new Error("La huella dactilar no coincide.");
             }
-            
-            console.log('Verificación de huella dactilar exitosa');
-            
+                        
             // Devolvemos un objeto con el resultado de la verificación
             return {
                 verificado: true,

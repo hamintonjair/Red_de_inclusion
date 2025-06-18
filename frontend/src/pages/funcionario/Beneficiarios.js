@@ -9,7 +9,7 @@ const Beneficiarios = () => {
         const path = location.pathname;
         if (path.includes('/registro')) return 'Nuevo registro de personas';
         if (path.includes('/editar')) return 'Editar Persona';
-        return 'Listado de Beneficiarios';
+        return ;
     };
 
     return (
