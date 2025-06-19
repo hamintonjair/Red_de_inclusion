@@ -147,9 +147,13 @@ const EditarFuncionario = () => {
             }
 
             // Llamar al servicio de actualización
+            await funcionarioService.actualizarFuncionario(id, datosActualizacion);
             
             // Establecer mensaje de éxito
             setSuccess('Funcionario actualizado exitosamente');
+            
+            // Recargar la lista de funcionarios
+            await funcionarioService.obtenerFuncionarios();
             
             // Redirigir después de un breve retraso
             setTimeout(() => {

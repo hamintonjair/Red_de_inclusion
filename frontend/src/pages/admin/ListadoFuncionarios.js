@@ -24,22 +24,24 @@ import funcionarioService from '../../services/funcionarioService';
 
 const ListadoFuncionarios = () => {
     const [funcionarios, setFuncionarios] = useState([]);
-    const [loadingOverlay, setLoadingOverlay] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
     const navigate = useNavigate();
 
     const cargarFuncionarios = async () => {
-        setLoadingOverlay(true);
+        setLoading(true);
+        setError(null);
         try {
             const data = await funcionarioService.obtenerFuncionarios();
-        
             setFuncionarios(Array.isArray(data) ? data : []);
-        } catch (error) {
+        } catch (err) {
             console.error('Error al cargar funcionarios:', {
-                mensaje: error.mensaje || 'Error desconocido',
-                detalles: error.detalles || {}
+                mensaje: err.mensaje || 'Error desconocido',
+                detalles: err.detalles || {}
             });
+            setError('Error al cargar los funcionarios');
         } finally {
-            setLoadingOverlay(false);
+            setLoading(false);
         }
     };
 
@@ -67,38 +69,21 @@ const ListadoFuncionarios = () => {
 
     return (
         <div>
-            {loadingOverlay && (
-                <Box sx={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    width: '100vw',
-                    height: '100vh',
-                    bgcolor: 'rgba(0,0,0,0.35)',
-                    zIndex: 2000,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                }}>
-                    <Box sx={{ position: 'relative', display: 'inline-flex' }}>
-                        <CircularProgress size={100} thickness={5} value={100} variant="determinate" color="secondary" />
-                        <Box
-                            sx={{
-                                top: 0,
-                                left: 0,
-                                bottom: 0,
-                                right: 0,
-                                position: 'absolute',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                width: '100%',
-                                height: '100%',
-                            }}
-                        >
-                            <Typography variant="h5" component="div" color="white">Cargando...</Typography>
-                        </Box>
-                    </Box>
+            {loading && (
+                <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+                    <CircularProgress />
+                </Box>
+            )}
+            
+            {error && (
+                <Box sx={{ p: 2, color: 'error.main' }}>
+                    {error}
+                </Box>
+            )}
+            
+            {!loading && !error && funcionarios.length === 0 && (
+                <Box sx={{ p: 2, textAlign: 'center' }}>
+                    No hay funcionarios registrados
                 </Box>
             )}
             <Box 
@@ -135,8 +120,10 @@ const ListadoFuncionarios = () => {
                         </TableRow>
                     </TableHead>
                     <TableBody>
-                        {funcionarios.map((funcionario) => (
-                            <TableRow key={funcionario._id || funcionario.id}>
+                        {funcionarios.map((funcionario) => {
+                            const uniqueKey = funcionario._id || funcionario.id || Math.random().toString(36).substr(2, 9);
+                            return (
+                            <TableRow key={uniqueKey}>
                                 <TableCell>{funcionario.secretaría}</TableCell>
                                 <TableCell>{funcionario.nombre}</TableCell>
                                 <TableCell>{funcionario.email}</TableCell>
@@ -155,7 +142,7 @@ const ListadoFuncionarios = () => {
                                 <TableCell>
                                     <Chip 
                                         label={funcionario.estado} 
-                                        color={funcionario.estado === 'Activo' ? 'success' : 'default'}
+                                        color={funcionario.estado === 'Activo' ? 'success' : 'error'}
                                         size="small" 
                                     />
                                 </TableCell>
@@ -176,7 +163,8 @@ const ListadoFuncionarios = () => {
                                     )}
                                 </TableCell>
                             </TableRow>
-                        ))}
+                            );
+                        })}
                     </TableBody>
                 </Table>
             </TableContainer>
