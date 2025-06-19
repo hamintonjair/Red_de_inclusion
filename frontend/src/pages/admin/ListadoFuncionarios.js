@@ -155,7 +155,7 @@ const ListadoFuncionarios = () => {
                                 <TableCell>
                                     <Chip 
                                         label={funcionario.estado} 
-                                        color={funcionario.estado === 'Activo' ? 'success' : 'default'}
+                                        color={funcionario.estado === 'Activo' ? 'success' : 'error'}
                                         size="small" 
                                     />
                                 </TableCell>
