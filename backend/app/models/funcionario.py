@@ -175,6 +175,20 @@ class FuncionarioModel:
         :return: Número de documentos modificados
         """
         try:
+            # Si se está actualizando la contraseña, hashearla
+            if 'password' in datos and datos['password']:
+                password_hash = bcrypt.hashpw(datos['password'].encode('utf-8'), bcrypt.gensalt())
+                datos['password_hash'] = password_hash
+                del datos['password']  # Eliminar la contraseña en texto plano
+            
+            # Si se está actualizando la línea de trabajo, convertir a ObjectId
+            if 'linea_trabajo' in datos and datos['linea_trabajo'] and not isinstance(datos['linea_trabajo'], ObjectId):
+                try:
+                    datos['linea_trabajo'] = ObjectId(datos['linea_trabajo'])
+                except Exception as e:
+                    logging.error(f"Error al convertir linea_trabajo a ObjectId: {str(e)}")
+                    raise ValueError("ID de línea de trabajo inválido")
+            
             resultado = self.collection.update_one(
                 {'_id': ObjectId(funcionario_id)}, 
                 {'$set': datos}
