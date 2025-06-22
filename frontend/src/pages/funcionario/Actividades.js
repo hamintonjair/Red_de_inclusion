@@ -28,7 +28,8 @@ import {
     Edit as EditIcon, 
     Delete as DeleteIcon,
     Event as EventIcon,
-    People as PeopleIcon
+    People as PeopleIcon,
+    GroupAdd as GroupAddIcon
 } from '@mui/icons-material';
 import { getActividades, deleteActividad } from '../../services/actividadService';
 import { format } from 'date-fns';
@@ -36,10 +37,11 @@ import { es } from 'date-fns/locale';
 import PageLayout from '../../components/layout/PageLayout';
 
 const Actividades = () => {
+    const navigate = useNavigate();
     const [actividades, setActividades] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const navigate = useNavigate();
+    
 
     const pageTitle = 'Listado de actividades';
     const pageDescription =   <Typography variant="h5" component="h1">
@@ -137,15 +139,26 @@ const Actividades = () => {
         <PageLayout title={pageTitle} description={pageDescription}>
         <Box sx={{ p: 3 }}>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-               
-                <Button
-                    variant="contained"
-                    color="success"
-                    startIcon={<AddIcon />}
-                    onClick={() => navigate('/funcionario/actividades/nueva')}
-                >
-                    Nueva Actividad
-                </Button>
+                <Box sx={{ display: 'flex', gap: 2 }}>
+                    <Button
+                        variant="outlined"
+                        color="success"
+                        startIcon={<AddIcon />}
+                        component={Link}
+                        to="/funcionario/actividades/nueva"
+                    >
+                        Nueva Actividad
+                    </Button>
+                    <Button
+                        variant="outlined"
+                        color="primary"
+                        startIcon={<GroupAddIcon />}
+                        component={Link}
+                        to="/funcionario/actividades/reunion"
+                    >
+                        Nueva Reunión
+                    </Button>
+                </Box>
             </Box>
 
             {error && (
@@ -225,13 +238,27 @@ const Actividades = () => {
                                     <TableCell align="right">
                                         <IconButton 
                                             color="primary" 
-                                            onClick={() => navigate(`/funcionario/actividades/${actividad._id}`)}
+                                            onClick={() => {
+                                                // Redirigir a la vista de detalles correspondiente según el tipo
+                                                if (actividad.tipo === 'reunion') {
+                                                    navigate(`/funcionario/actividades/reunion/${actividad._id}`);
+                                                } else {
+                                                    navigate(`/funcionario/actividades/${actividad._id}`);
+                                                }
+                                            }}
                                         >
                                             <EventIcon />
                                         </IconButton>
                                         <IconButton 
                                             color="primary" 
-                                            onClick={() => navigate(`/funcionario/actividades/editar/${actividad._id}`)}
+                                            onClick={() => {
+                                                // Redirigir a la ruta de edición correspondiente según el tipo
+                                                if (actividad.tipo === 'reunion') {
+                                                    navigate(`/funcionario/actividades/editar-reunion/${actividad._id}`);
+                                                } else {
+                                                    navigate(`/funcionario/actividades/editar/${actividad._id}`);
+                                                }
+                                            }}
                                         >
                                             <EditIcon />
                                         </IconButton>

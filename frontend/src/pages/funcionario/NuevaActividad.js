@@ -90,10 +90,8 @@ const NuevaActividad = () => {
                 
                 // Si es edición, cargar datos de la actividad
                 if (id) {
-                    console.log('Cargando datos de actividad existente...');
                     const actividad = await getActividadById(id);
                     if (actividad) {
-                        console.log('Actividad cargada:', actividad);
                         const actividadData = {
                             ...actividad,
                             fecha: actividad.fecha ? new Date(actividad.fecha) : new Date(),
@@ -349,6 +347,7 @@ const NuevaActividad = () => {
                 linea_trabajo_id: user.linea_trabajo_id,
                 funcionario_id: user.id, // Asegurarse de que user.id esté disponible
                 creado_por: user.id, // Mismo ID del funcionario
+                tipo: 'actividad',  // Siempre establecer como 'actividad' para este componente
                 observaciones: formData.observaciones?.trim() || '',
                 asistentes: asistentes.map(id => ({
                     beneficiario_id: id,
@@ -356,8 +355,6 @@ const NuevaActividad = () => {
                     observaciones: ''
                 }))
             };
-
-            console.log('Enviando datos de actividad:', actividadData);
 
             // Llamar al servicio correspondiente según sea creación o actualización
             let response;

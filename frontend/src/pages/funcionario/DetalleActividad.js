@@ -75,7 +75,7 @@ const TabPanel = (props) => {
     );
 };
 
-const DetalleActividad = () => {
+const DetalleActividad = ({ esReunion = false }) => {
     const { enqueueSnackbar } = useSnackbar();
     const { id } = useParams();
     const navigate = useNavigate();
@@ -95,8 +95,8 @@ const DetalleActividad = () => {
     const [paginaActual, setPaginaActual] = useState(1);
     const [registrosPorPagina] = useState(10); // 10 registros por página
 
-    // Columnas disponibles para exportación
-    const columnasExportacion = [
+    // Columnas disponibles para exportación de actividades
+    const columnasActividad = [
         { campo: 'numero', etiqueta: 'N°', visiblePorDefecto: true },
         { campo: 'fecha_registro', etiqueta: 'FECHA DE REGISTRO', visiblePorDefecto: true },
         { campo: 'nombre', etiqueta: 'NOMBRE', visiblePorDefecto: true },
@@ -122,8 +122,24 @@ const DetalleActividad = () => {
         { campo: 'nombre_cuidadora', etiqueta: 'NOMBRE DE LA CUIDADORA', visiblePorDefecto: false },
         { campo: 'labora_actualmente', etiqueta: 'LABORA ACTUALMENTE', visiblePorDefecto: false },
         { campo: 'victima_conflicto', etiqueta: 'VÍCTIMA DE CONFLICTO', visiblePorDefecto: false },
-        { campo: 'qr_registro', etiqueta: 'CÓDIGO QR', visiblePorDefecto: false }
+        { campo: 'firma', etiqueta: 'FIRMA', visiblePorDefecto: false }
     ];
+
+    // Columnas disponibles para exportación de reuniones
+    const columnasReunion = [
+        { campo: 'numero', etiqueta: 'N°', visiblePorDefecto: true },
+        { campo: 'nombre', etiqueta: 'NOMBRE COMPLETO', visiblePorDefecto: true },
+        { campo: 'cedula', etiqueta: 'CÉDULA', visiblePorDefecto: true },
+        { campo: 'dependencia', etiqueta: 'DEPENDENCIA', visiblePorDefecto: true },
+        { campo: 'cargo', etiqueta: 'CARGO', visiblePorDefecto: true },
+        { campo: 'tipo_participacion', etiqueta: 'TIPO PARTICIPACIÓN', visiblePorDefecto: true },
+        { campo: 'telefono', etiqueta: 'TELÉFONO', visiblePorDefecto: true },
+        { campo: 'email', etiqueta: 'CORREO ELECTRÓNICO', visiblePorDefecto: true },
+        { campo: 'firma', etiqueta: 'FIRMA', visiblePorDefecto: true }
+    ];
+
+    // Usar las columnas correspondientes según el tipo de vista
+    const columnasExportacion = esReunion ? columnasReunion : columnasActividad;
 
     // Obtener columnas seleccionadas por defecto
     useEffect(() => {
@@ -131,7 +147,7 @@ const DetalleActividad = () => {
             .filter(col => col.visiblePorDefecto)
             .map(col => col.campo);
         setColumnasSeleccionadas(defaultSelected);
-    }, []);
+    }, [esReunion]); // Dependencia de esReunion para recalcular cuando cambie
 
     // Cargar la lista de beneficiarios
     useEffect(() => {
@@ -151,7 +167,6 @@ const DetalleActividad = () => {
                     setBeneficiarios([]);
                 }
             } catch (error) {
-                console.error('Error al cargar beneficiarios:', error);
                 enqueueSnackbar('Error al cargar la lista de beneficiarios', { variant: 'error' });
                 setBeneficiarios([]);
             }
@@ -380,10 +395,10 @@ const DetalleActividad = () => {
         ? format(new Date(actividad.fecha), 'PPPP', { locale: es })
         : 'Fecha no especificada';
 
-    const pageTitle = actividad.tema || 'Detalle de Actividad';
+    const pageTitle = actividad.tema || (esReunion ? 'Detalle de Reunión' : 'Detalle de Actividad');
     const pageDescription = (
         <Typography variant="h5" component="h1">
-            Detalles de la actividad y gestión de asistentes
+            {esReunion ? 'Detalles de la reunión y gestión de asistentes' : 'Detalles de la actividad y gestión de asistentes'}
         </Typography>
     );
 
@@ -445,24 +460,7 @@ const DetalleActividad = () => {
                     {'👈  '+ 'Volver atras'}
                 </Typography>
                 <Box sx={{ flexGrow: 1 }} />
-                {/* <Button
-                    variant="outlined"
-                    color="primary"
-                    startIcon={<EditIcon />}
-                    onClick={() => navigate(`/funcionario/actividades/editar/${id}`)}
-                    sx={{ mr: 1 }}
-                >
-                    Editarr
-                </Button>
-                <Button
-                    variant="outlined"
-                    color="error"
-                    startIcon={<DeleteIcon />}
-                    onClick={() => setConfirmOpen(true)}
-                    disabled={deleting}
-                >
-                    {deleting ? 'Eliminando...' : 'Eliminar'}
-                </Button> */}
+           
             </Box>
 
             {error && (
@@ -508,7 +506,7 @@ const DetalleActividad = () => {
                                         textAlign: 'center'
                                     }}
                                 >
-                                    Detalles de la Actividad
+                                    {esReunion ? 'Detalles de la Reunión' : 'Detalles de la Actividad'}
                                 </Typography>
                                 <Divider sx={{ mb: 3 }} />
 
@@ -719,7 +717,12 @@ const DetalleActividad = () => {
                                         const columnasArray = Array.isArray(columnas) ? columnas : [columnas];
                                         
                                         // Usar axios para la descarga con credenciales y parámetros de columnas
-                                        const response = await axiosInstance.get(`/actividades/${id}/exportar-excel`, {
+                                        // Para reuniones, la ruta es /actividades/<id>/exportar-excel pero con un parámetro adicional
+                                        const url = esReunion 
+                                            ? `/actividades/reuniones/${id}/exportar-excel`
+                                            : `/actividades/${id}/exportar-excel`;
+                                            
+                                        const response = await axiosInstance.get(url, {
                                             responseType: 'blob',
                                             params: {
                                                 columnas: columnasArray.join(',')
@@ -747,7 +750,9 @@ const DetalleActividad = () => {
 
                                         // Obtener el nombre del archivo del header Content-Disposition o usar uno por defecto
                                         const contentDisposition = response.headers['content-disposition'];
-                                        let fileName = `asistencia-actividad-${id}.xlsx`;
+                                        let fileName = esReunion 
+                                            ? `asistencia-reunion-${id}.xlsx` 
+                                            : `asistencia-actividad-${id}.xlsx`;
                                         
                                         if (contentDisposition) {
                                             const fileNameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
@@ -757,9 +762,9 @@ const DetalleActividad = () => {
                                         }
 
                                         // Crear un enlace temporal para la descarga
-                                        const url = window.URL.createObjectURL(new Blob([response.data]));
+                                        const fileUrl = window.URL.createObjectURL(new Blob([response.data]));
                                         const link = document.createElement('a');
-                                        link.href = url;
+                                        link.href = fileUrl;
                                         link.setAttribute('download', fileName);
                                         document.body.appendChild(link);
                                         link.click();

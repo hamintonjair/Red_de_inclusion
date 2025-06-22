@@ -92,17 +92,18 @@ const funcionarioService = {
      */
     obtenerFuncionarios: async () => {
         try {
-           
+            console.log('Solicitando lista de funcionarios...');
             const response = await axiosInstance.get('/funcionarios/funcionarios');
-           
+            console.log('Respuesta de la API:', response);
+            
             // Validar estructura de respuesta
             if (!response.data || !response.data.funcionarios) {
-                throw new Error('Respuesta inválida al obtener funcionarios');
+                console.warn('La respuesta no contiene la propiedad funcionarios:', response.data);
+                return [];
             }
             
             // Mapear funcionarios para garantizar campos
             const funcionariosConId = response.data.funcionarios.map(funcionario => {
-                
                 const lineaTrabajo = {
                     id: funcionario.linea_trabajo,
                     nombre: funcionario.nombreLineaTrabajo || 'Sin línea asignada'
@@ -112,22 +113,29 @@ const funcionarioService = {
                     ...funcionario,
                     id: funcionario._id || funcionario.id,
                     _id: funcionario._id || funcionario.id,
+                    nombres: funcionario.nombres || '',
+                    apellidos: funcionario.apellidos || '',
+                    tipo_documento: funcionario.tipo_documento || '',
+                    numero_documento: funcionario.numero_documento || '',
+                    correo: funcionario.correo || '',
+                    telefono: funcionario.telefono || '',
+                    cargo: funcionario.cargo || 'Sin cargo asignado',
+                    nombre_completo: `${funcionario.nombres || ''} ${funcionario.apellidos || ''}`.trim(),
                     lineaTrabajo,
                     nombreLineaTrabajo: lineaTrabajo.nombre
                 };
             });
             
-           
-            return funcionariosConId;
+            console.log('Funcionarios procesados:', funcionariosConId);
+            return funcionariosConId || [];
         } catch (error) {
-
-            console.error('Error COMPLETO al obtener funcionarios:', {
+            console.error('Error al obtener funcionarios:', {
                 fullError: error,
                 responseData: error.response?.data,
                 responseStatus: error.response?.status,
                 errorMessage: error.message
             });
-         
+            return [];
         }
     },
 

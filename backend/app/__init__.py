@@ -108,7 +108,8 @@ def create_app():
         app.config['MONGO_DB_COLLECTIONS'] = {
             'usuarios': db['usuarios'],
             'funcionarios': db['funcionarios'],
-            'lineas_trabajo': db['lineas_trabajo']
+            'lineas_trabajo': db['lineas_trabajo'],
+            'asistentes': db['asistentes']
         }
         
         # Log de depuración para la configuración de base de datos
@@ -151,13 +152,14 @@ def create_app():
             'status': 'error'
         }), 401
     
-    # Importar y registrar blueprints
+    # Importar blueprints
     from .routes.auth import auth_bp
     from .routes.funcionarios import funcionarios_bp
     from .routes.beneficiarios import beneficiarios_bp
     from .routes.lineas_trabajo import lineas_trabajo_bp
     from .routes.beneficiario import beneficiario_bp  # Importar blueprint singular
     from .routes.actividad import actividad_bp  # Importar blueprint de actividades
+    from .routes.asistente import init_asistente_routes  # Importar función de inicialización
 
     # Importar blueprint temporal
     from .routes.verificacion_temp import verificacion_temp_bp
@@ -179,6 +181,9 @@ def create_app():
     app.register_blueprint(comunas_bp, url_prefix='/comunas')
     app.register_blueprint(poblacion_migrante_bp, url_prefix='/poblacion-migrante')
     app.register_blueprint(actividad_bp, url_prefix='/actividades')
+    
+    # Inicializar rutas de asistentes con la base de datos
+    init_asistente_routes(app, db)
     
     # Registrar blueprint temporal
     app.register_blueprint(verificacion_temp_bp)

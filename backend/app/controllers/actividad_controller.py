@@ -7,12 +7,13 @@ import os
 import logging
 import traceback
 import tempfile  # Para manejo de archivos temporales
-import qrcode  # Para generar códigos QR
 import requests  # Para descargar imágenes de códigos QR existentes
 import time     # Para manejo de timestamps
 from io import BytesIO  # Para manejar datos binarios en memoria
 from bson.errors import InvalidId
 from app.models.actividad import ActividadModel, actividad_schema, ActividadSchema
+from PIL import Image
+import base64
 
 # Configurar el logger
 logger = logging.getLogger(__name__)
@@ -35,6 +36,9 @@ def crear_actividad():
                 'message': 'No se recibieron datos en la solicitud'
             }), 400
             
+        logger.info(f"Datos recibidos en el backend: {datos}")
+        logger.info(f"Headers: {dict(request.headers)}")
+            
         logger.info(f"Datos recibidos para crear actividad: {datos}")
         
         # Validar que los datos sean un diccionario
@@ -49,8 +53,14 @@ def crear_actividad():
         # Validar que todos los campos requeridos estén presentes
         required_fields = [
             'tema', 'objetivo', 'lugar', 'dependencia', 'fecha',
-            'hora_inicio', 'hora_fin', 'linea_trabajo_id'
+            'hora_inicio', 'hora_fin', 'linea_trabajo_id', 'tipo'
         ]
+        
+        # Confiar en el valor de 'tipo' que viene del frontend
+        logger.info(f"Tipo recibido del frontend: {datos.get('tipo')}")
+        logger.info(f"Datos completos recibidos: {datos}")
+        
+        logger.info(f"Datos a guardar - Tipo: {datos.get('tipo')}")
         
         # Si no hay creado_por, usar un valor por defecto
         if 'creado_por' not in datos:
@@ -255,7 +265,7 @@ def obtener_actividad(actividad_id):
         # Obtener información detallada de los beneficiarios si hay asistentes
         if 'asistentes' in actividad and actividad['asistentes']:
             logger.info(f"Obteniendo información de {len(actividad['asistentes'])} asistentes")
-            beneficiario_model = BeneficiarioModel()
+            aistente_model = BeneficiarioModel()
             
             for asistente in actividad['asistentes']:
                 try:
@@ -264,7 +274,7 @@ def obtener_actividad(actividad_id):
                         logger.warning("Asistente sin beneficiario_id")
                         continue
                         
-                    beneficiario = beneficiario_model.obtener_beneficiario_por_id(beneficiario_id)
+                    beneficiario = aistente_model.obtener_beneficiario_por_id(beneficiario_id)
                     if beneficiario:
                         # Agregar información del beneficiario al asistente
                         asistente['beneficiario'] = {
@@ -319,6 +329,11 @@ def actualizar_actividad(actividad_id):
                     'message': 'Los datos deben ser un objeto JSON',
                     'error': 'INVALID_JSON_FORMAT'
                 }), 400
+                
+            # Validar que el tipo sea válido si está presente
+            if 'tipo' in datos and datos['tipo'] not in ['actividad', 'reunion']:
+                logger.warning(f"[ACTUALIZAR_ACTIVIDAD] Tipo de actividad no válido: {datos['tipo']}. No se actualizará el campo 'tipo'.")
+                datos.pop('tipo', None)
                 
         except Exception as e:
             error_msg = f"[ACTUALIZAR_ACTIVIDAD] Error al procesar los datos JSON: {str(e)}"
@@ -531,152 +546,7 @@ def registrar_asistencias(actividad_id):
             'message': 'Error al registrar asistencias',
             'error': str(e)
         }), 500
-        # if not actividad:
-        #     logger.error(f"Actividad no encontrada: {actividad_id}")
-        #     return jsonify({
-        #         'success': False,
-        #         'message': 'Actividad no encontrada'
-        #     }), 404
-            
-        # logger.info(f"Actividad encontrada: {actividad.get('nombre', 'Sin nombre')}")
         
-        # # Crear un libro de Excel
-        # wb = Workbook()
-        # ws = wb.active
-        # ws.title = "Asistencia"
-        
-        # # Estilos
-        # header_font = Font(bold=True, color="FFFFFF")
-        # header_fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
-        # thin_border = Border(left=Side(style='thin'), 
-        #                     right=Side(style='thin'), 
-        #                     top=Side(style='thin'), 
-        #                     bottom=Side(style='thin'))
-        
-        # # Encabezados
-        # headers = [
-        #     'N°', 'FECHA DE REGISTRO', 'NOMBRE', 'TIPO DOCUMENTO', 'IDENTIFICACIÓN', 
-        #     'GÉNERO', 'EDAD', 'COMUNA', 'BARRIO', 'TELÉFONO', 'CORREO ELECTRÓNICO', 
-        #     'ESTUDIA ACTUALMENTE', 'SABE LEER', 'SABE ESCRIBIR', 'TIPO DE VIVIENDA', 
-        #     'SITUACIÓN LABORAL', 'GRUPO ÉTNICO', 'AYUDA HUMANITARIA', 'DISCAPACIDAD', 
-        #     'TIPO DE DISCAPACIDAD', 'NOMBRE DE LA CUIDADORA', 'LABORA ACTUALMENTE', 
-        #     'VÍCTIMA DE CONFLICTO'
-        # ]
-        
-        # # Agregar encabezados
-        # for col_num, header in enumerate(headers, 1):
-        #     cell = ws.cell(row=1, column=col_num, value=header)
-        #     cell.font = header_font
-        #     cell.fill = header_fill
-        #     cell.border = thin_border
-        #     cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
-        
-        # # Llenar datos
-        # row_num = 2
-        # for i, asistente in enumerate(actividad.get('asistentes', []), 1):
-        #     try:
-        #         beneficiario = asistente.get('beneficiario', {})
-                
-        #         # Obtener fecha de registro
-        #         fecha_registro = asistente.get('fecha_asistencia', '')
-        #         if fecha_registro and isinstance(fecha_registro, str):
-        #             try:
-        #                 fecha_obj = datetime.strptime(fecha_registro, '%Y-%m-%dT%H:%M:%S.%fZ')
-        #                 fecha_registro = fecha_obj.strftime('%d/%m/%Y %H:%M')
-        #             except (ValueError, TypeError):
-        #                 fecha_registro = fecha_registro.split('T')[0]
-                
-        #         # Obtener edad exacta
-        #         edad = str(beneficiario.get('edad', '')) if str(beneficiario.get('edad', '')).isdigit() else ''
-                
-        #         # Preparar fila
-        #         row = [
-        #             i,  # N°
-        #             fecha_registro,  # FECHA DE REGISTRO
-        #             beneficiario.get('nombre_completo', ''),  # NOMBRE
-        #             beneficiario.get('tipo_documento', ''),  # TIPO DOCUMENTO
-        #             str(beneficiario.get('numero_documento', '')),  # IDENTIFICACIÓN
-        #             beneficiario.get('genero', ''),  # GÉNERO
-        #             edad,  # EDAD (número exacto)
-        #             beneficiario.get('comuna', ''),  # COMUNA
-        #             beneficiario.get('barrio', ''),  # BARRIO
-        #             beneficiario.get('numero_celular', ''),  # TELÉFONO
-        #             beneficiario.get('correo_electronico', ''),  # CORREO ELECTRÓNICO
-        #             'Sí' if beneficiario.get('estudia_actualmente', False) else 'No',  # ESTUDIA ACTUALMENTE
-        #             beneficiario.get('nivel_educativo', ''),  # NIVEL EDUCATIVO
-        #             'Sí' if beneficiario.get('sabe_leer', False) else 'No',  # SABE LEER
-        #             'Sí' if beneficiario.get('sabe_escribir', False) else 'No',  # SABE ESCRIBIR
-        #             beneficiario.get('tipo_vivienda', ''),  # TIPO DE VIVIENDA
-        #             beneficiario.get('situacion_laboral', ''),  # SITUACIÓN LABORAL
-        #             beneficiario.get('etnia', ''),  # GRUPO ÉTNICO
-        #             'Sí' if beneficiario.get('ayuda_humanitaria', False) else 'No',  # AYUDA HUMANITARIA
-        #             'Sí' if beneficiario.get('tiene_discapacidad', False) else 'No',  # DISCAPACIDAD
-        #             beneficiario.get('tipo_discapacidad', ''),  # TIPO DE DISCAPACIDAD
-        #             beneficiario.get('nombre_cuidador', ''),  # NOMBRE DE LA CUIDADORA
-        #             'Sí' if beneficiario.get('labora_actualmente', False) else 'No',  # LABORA ACTUALMENTE
-        #             'Sí' if beneficiario.get('victima_conflicto', False) else 'No'  # VÍCTIMA DE CONFLICTO
-        #         ]
-                
-        #         # Agregar fila a la hoja
-        #         for col_num, value in enumerate(row, 1):
-        #             cell = ws.cell(row=row_num, column=col_num, value=value)
-        #             cell.border = thin_border
-        #             cell.alignment = Alignment(vertical='center', wrap_text=True)
-                
-        #         row_num += 1
-                
-        #     except Exception as e:
-        #         logger.error(f"Error al procesar asistente {i}: {str(e)}")
-        #         continue
-        
-        # # Ajustar ancho de columnas
-        # for col in ws.columns:
-        #     max_length = 0
-        #     column = col[0].column_letter
-        #     for cell in col:
-        #         try:
-        #             if len(str(cell.value)) > max_length:
-        #                 max_length = len(str(cell.value))
-        #         except:
-        #             pass
-        #     adjusted_width = (max_length + 2) * 1.2
-        #     ws.column_dimensions[column].width = min(adjusted_width, 50)  # Máximo 50 caracteres
-        
-        # # Crear un archivo temporal
-        # with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as tmp_file:
-        #     excel_path = tmp_file.name
-        
-        # # Guardar el libro de Excel
-        # wb.save(excel_path)
-        # logger.info(f"Archivo Excel generado: {excel_path}")
-        
-        # # Enviar el archivo
-        # return send_file(
-        #     excel_path,
-        #     as_attachment=True,
-        #     download_name=f"asistencia-{actividad.get('nombre', 'actividad')}.xlsx",
-        #     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        # )
-        
-    except Exception as e:
-        logger.error(f"Error al exportar actividad {actividad_id}", exc_info=True)
-        logger.error(f"Tipo de error: {type(e).__name__}")
-        logger.error(f"Mensaje de error: {str(e)}")
-        
-        # Si hay un error, asegurarse de eliminar el archivo temporal
-        if 'excel_path' in locals() and os.path.exists(excel_path):
-            try:
-                os.unlink(excel_path)
-                logger.info(f"Archivo temporal eliminado: {excel_path}")
-            except Exception as e2:
-                logger.error(f"Error al eliminar archivo temporal {excel_path}: {str(e2)}")
-        
-        return jsonify({
-            'success': False,
-            'message': f'Error al exportar la actividad: {str(e)}',
-            'error_type': type(e).__name__,
-            'error_details': str(e)
-        }), 500
 
 def exportar_actividad(actividad_id, columnas=None):
     try:
@@ -684,6 +554,7 @@ def exportar_actividad(actividad_id, columnas=None):
         from app.models.beneficiario import BeneficiarioModel
         from openpyxl import Workbook
         from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
+        from openpyxl.drawing.image import Image as OpenpyxlImage
         from openpyxl.drawing.image import Image as XLImage
         from openpyxl.utils import get_column_letter
         import tempfile
@@ -760,7 +631,6 @@ def exportar_actividad(actividad_id, columnas=None):
             # Ruta al logo (usando ruta absoluta)
             base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
             logo_path = os.path.join(base_dir, 'frontend', 'src', 'fondo', 'logo.png')
-            logger.info(f"Ruta base del proyecto: {base_dir}")
             logger.info(f"Ruta completa del logo: {logo_path}")
             logger.info(f"El archivo existe: {os.path.exists(logo_path)}")
             
@@ -770,13 +640,13 @@ def exportar_actividad(actividad_id, columnas=None):
             
             # Configurar dimensiones de celdas
             ws.column_dimensions['A'].width = 15  # Columna A para el logo
-            ws.column_dimensions['B'].width = 15  # Columna B para etiquetas
+            ws.column_dimensions['B'].width = 13  # Columna B para etiquetas
             ws.column_dimensions['C'].width = 20  # Columna C para valores
             ws.column_dimensions['D'].width = 15  # Columna D
-            ws.column_dimensions['E'].width = 15  # Columna E
-            ws.column_dimensions['F'].width = 20  # Columna F
+            ws.column_dimensions['E'].width = 13  # Columna E
+            ws.column_dimensions['F'].width = 15  # Columna F
             ws.column_dimensions['G'].width = 15  # Columna G
-            ws.column_dimensions['H'].width = 15  # Columna H
+            ws.column_dimensions['H'].width = 13  # Columna H
             ws.column_dimensions['I'].width = 15  # Columna I
             ws.column_dimensions['J'].width = 15  # Columna J
             ws.column_dimensions['K'].width = 20  # Columna K
@@ -884,10 +754,16 @@ def exportar_actividad(actividad_id, columnas=None):
             ws['A6'].border = thin_border
             ws.merge_cells('A6:B6')
 
-            ws['C6'].value = actividad.get('fecha', '')
-            ws['C6'].font = Font(name='Arial', size=10)
-            ws['C6'].fill = info_fill
-            ws['C6'].border = thin_border
+          
+
+            if 'fecha' in actividad:
+                fecha_obj = datetime.strptime(actividad['fecha'], '%Y-%m-%dT%H:%M:%S')  # Si viene como string
+                # O si ya es un objeto datetime: fecha_obj = reunion['fecha']
+                fecha_formateada = fecha_obj.strftime('%d/%m/%Y')  # Formato DD/MM/YYYY
+                ws['C6'].value = f"FECHA: {fecha_formateada}"
+                ws['C6'].font = Font(name='Arial', size=10)
+                ws['C6'].fill = info_fill
+                ws['C6'].border = thin_border
             ws.merge_cells('C6') 
 
             # Fila 6: Lugar
@@ -1007,7 +883,7 @@ def exportar_actividad(actividad_id, columnas=None):
             {'campo': 'nombre_cuidadora', 'etiqueta': 'NOMBRE DEL CUIDADOR/A', 'visible_por_defecto': True},
             {'campo': 'labora_actualmente', 'etiqueta': '¿TRABAJA?', 'visible_por_defecto': True},
             {'campo': 'victima_conflicto', 'etiqueta': '¿VÍCTIMA?', 'visible_por_defecto': True},
-            {'campo': 'qr_registro', 'etiqueta': 'HUELLA DIGITAL', 'visible_por_defecto': False}
+            {'campo': 'firma', 'etiqueta': 'FIRMA', 'visible_por_defecto': False}
         ]
         
         # Filtrar columnas según lo solicitado
@@ -1037,86 +913,6 @@ def exportar_actividad(actividad_id, columnas=None):
             cell.border = thin_border
             cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
             ws.row_dimensions[start_row].height = 60  # Ajusta este valor según necesites
-
-        # Función para generar un código QR a partir de una URL con ícono de huella
-        def generar_codigo_qr(url):
-            try:
-                if not url:
-                    return None
-            
-                # Crear el código QR con corrección de errores alta
-                qr = qrcode.QRCode(
-                    version=1,
-                    error_correction=qrcode.constants.ERROR_CORRECT_H,  # Mayor corrección de errores
-                    box_size=6,
-                    border=1,
-                )
-          
-                qr.add_data(url)
-                qr.make(fit=True)
-                
-                # Crear la imagen del código QR
-                img = qr.make_image(fill_color="black", back_color="white").convert('RGBA')
-                
-                # Crear un ícono de huella con forma de yema de dedo
-                from PIL import Image, ImageDraw, ImageFilter
-                
-                # Tamaño del ícono (30% del tamaño del QR para mejor detalle)
-                qr_size = img.size[0]
-                icon_size = int(qr_size * 0.3)
-                
-                # Crear máscara circular para la yema del dedo
-                mask = Image.new('L', (icon_size, icon_size), 0)
-                draw = ImageDraw.Draw(mask)
-                
-                # Dibujar un óvalo vertical para la yema del dedo
-                padding = int(icon_size * 0.1)  # 10% de padding
-                draw.ellipse(
-                    (padding, padding, icon_size - padding, icon_size - padding),
-                    fill=255
-                )
-                
-                # Suavizar bordes
-                mask = mask.filter(ImageFilter.GaussianBlur(1))
-                
-                # Crear imagen para las líneas de la huella
-                lines = Image.new('RGBA', (icon_size, icon_size), (255, 255, 255, 0))
-                draw = ImageDraw.Draw(lines)
-                
-                # Dibujar líneas curvas que simulan la huella
-                line_spacing = icon_size // 8
-                for i in range(1, 6):
-                    y = i * line_spacing
-                    # Crear una línea curva que se adapte a la forma del dedo
-                    draw.arc(
-                        (padding, y - line_spacing//2, 
-                         icon_size - padding, y + line_spacing//2),
-                        start=0,
-                        end=180,
-                        fill='black',
-                        width=1
-                    )
-                
-                # Aplicar la máscara a las líneas
-                icon = Image.new('RGBA', (icon_size, icon_size), (255, 255, 255, 0))
-                icon.paste(lines, (0, 0), mask=mask)
-                
-                # Calcular posición para centrar el ícono
-                position = ((img.size[0] - icon_size) // 2, (img.size[1] - icon_size) // 2)
-                
-                # Combinar el QR con el ícono
-                img.paste(icon, position, icon)
-                
-                # Convertir a bytes
-                img_byte_arr = BytesIO()
-                img.save(img_byte_arr, format='PNG')
-                img_byte_arr.seek(0)
-                
-                return img_byte_arr.getvalue()
-                
-            except Exception as e:
-                logger.error(f"Error crítico al generar código QR: {str(e)}", exc_info=True)
-                return None
 
         # Mapeo de campos a sus valores correspondientes
         def obtener_valor_campo(asistente, campo, indice, row_num=None):
@@ -1170,93 +966,76 @@ def exportar_actividad(actividad_id, columnas=None):
                     # Intentar eliminar solo la parte de la zona horaria si existe
                     fecha_registro = str(fecha_registro).split('+')[0].split('.')[0].strip()
             
-            # Obtener enlace QR si existe
-            enlace_qr = ''
-            logger.info(f"Buscando enlace QR para beneficiario: {beneficiario.get('nombre_completo', 'Sin nombre')}")
+            # Inicializar variable de firma
+            firma_data = ''
+            logger.info(f"Buscando firma para beneficiario: {beneficiario.get('nombre_completo', 'Sin nombre')}")
             logger.info(f"Campos del beneficiario: {list(beneficiario.keys())}")
             
             try:
-                # Buscar en huella_dactilar
-                if 'huella_dactilar' in beneficiario:
-                    logger.info("Campo 'huella_dactilar' encontrado en beneficiario")
-                    if isinstance(beneficiario['huella_dactilar'], dict):
-                        logger.info("huella_dactilar es un diccionario")
-                        if beneficiario['huella_dactilar'].get('datos_biometricos', {}).get('enlace_qr'):
-                            enlace_qr = beneficiario['huella_dactilar']['datos_biometricos']['enlace_qr']
-                            logger.info(f"Enlace QR encontrado en huella_dactilar.datos_biometricos: {enlace_qr}")
-                        elif beneficiario['huella_dactilar'].get('enlace_qr'):
-                            enlace_qr = beneficiario['huella_dactilar']['enlace_qr']
-                            logger.info(f"Enlace QR encontrado en huella_dactilar: {enlace_qr}")
+                # Buscar firma digital
+                if 'firma' in beneficiario and beneficiario['firma']:
+                    logger.info("Firma digital encontrada en beneficiario")
+                    firma_data = beneficiario['firma']
+                    logger.info("Firma digital obtenida del beneficiario")
                 
                 # Buscar en el nivel superior del beneficiario
-                if not enlace_qr and 'qr_registro' in beneficiario:
-                    enlace_qr = beneficiario['qr_registro']
-                    logger.info(f"Enlace QR encontrado en qr_registro: {enlace_qr}")
+                if 'registro' in beneficiario and isinstance(beneficiario['registro'], dict):
+                    if 'firma' in beneficiario['registro'] and beneficiario['registro']['firma']:
+                        firma_data = beneficiario['registro']['firma']
+                        logger.info("Firma digital encontrada en registro del beneficiario")
                 
-                if not enlace_qr:
-                    logger.warning("No se encontró ningún enlace QR para este beneficiario")
+                logger.info(f"Firma digital obtenida para {beneficiario.get('nombre_completo', 'Sin nombre')}")
+                
+                # Procesar la firma digital si existe
+                if firma_data and campo == 'firma' and row_num is not None:
+                    try:
+                        # Procesar la firma en formato base64
+                        if 'base64,' in firma_data:
+                            firma_data = firma_data.split('base64,')[1]
+                        
+                        # Decodificar la imagen
+                        image_data = base64.b64decode(firma_data)
+                        img = Image.open(BytesIO(image_data))
+                        
+                        # Redimensionar la imagen
+                        max_size = (150, 50)
+                        img.thumbnail(max_size, Image.Resampling.LANCZOS)
+                        
+                        # Guardar en buffer
+                        img_byte_arr = BytesIO()
+                        img.save(img_byte_arr, format='PNG')
+                        img_byte_arr.seek(0)
+                        
+                        # Crear objeto de imagen para Excel
+                        img_obj = OpenpyxlImage(img_byte_arr)
+                        
+                        # Calcular posición de la celda
+                        col_idx = columnas_seleccionadas.index('firma') + 1
+                        col_letter = get_column_letter(col_idx)
+                        
+                        # Insertar imagen en la celda
+                        cell_reference = f"{col_letter}{row_num}"
+                        ws.add_image(img_obj, cell_reference)
+                        
+                        # Ajustar altura de la fila para la imagen
+                        ws.row_dimensions[row_num].height = 32
+                        
+                        # Ajustar ancho de la columna
+                        ws.column_dimensions[col_letter].width = 20
+                        
+                        logger.info(f"Firma insertada en celda {cell_reference}")
+                        
+                    except Exception as e:
+                        logger.error(f"Error al procesar la firma: {str(e)}", exc_info=True)
+                        return "Error en firma"
                     
-                # Si es el campo QR y tenemos una fila, generar el código QR
-                # Si es el campo QR, manejarlo de manera especial
-                if campo == 'qr_registro':
-                    logger.info(f"Procesando campo QR para fila {row_num}")
-                    logger.info(f"Enlace QR a procesar: {enlace_qr}")
-                    if enlace_qr and row_num is not None:
-                        logger.info(f"Generando código QR para: {enlace_qr}")
-                        qr_img_data = generar_codigo_qr(enlace_qr)
-                        if qr_img_data:
-                            try:
-                                # Crear un objeto de imagen desde los datos binarios
-                                from PIL import Image
-                                from io import BytesIO
-                                
-                                # Verificar que los datos de la imagen sean válidos
-                                try:
-                                    img = Image.open(BytesIO(qr_img_data))
-                                    logger.info("Imagen QR generada correctamente")
-                                    
-                                    # Redimensionar la imagen si es necesario
-                                    img.thumbnail((20, 20), Image.Resampling.LANCZOS)
-                                    
-                                    # Guardar la imagen en un buffer en memoria
-                                    buffer = BytesIO()
-                                    img.save(buffer, format='PNG')
-                                    buffer.seek(0)
-                                    
-                                    # Cargar la imagen en openpyxl desde el buffer en memoria
-                                    from openpyxl.drawing.image import Image as OpenpyxlImage
-                                    img_excel = OpenpyxlImage(buffer)
-                                    
-                                    # Calcular posición de la celda
-                                    col_idx = columnas_seleccionadas.index('qr_registro') + 1
-                                    col_letter = get_column_letter(col_idx)
-                                    
-                                    # Insertar imagen en la celda
-                                    cell_reference = f"{col_letter}{row_num}"
-                                    ws.add_image(img_excel, cell_reference)
-                                    
-                                    # Ajustar altura de la fila para la imagen
-                                    ws.row_dimensions[row_num].height = 20
-                                    
-                                    # Ajustar ancho de la columna del QR
-                                    ws.column_dimensions[col_letter].width = 20
-                                    
-                                    logger.info(f"Imagen insertada en celda {cell_reference}")
-                                    
-                                    # No guardar copia de depuración - Trabajando completamente en memoria
-                                    
-                                except Exception as img_error:
-                                    logger.error(f"Error al procesar la imagen QR: {str(img_error)}", exc_info=True)
-                                    return "Error al procesar el código QR"
-                                    
-                            except Exception as e:
-                                logger.error(f"Error inesperado al procesar QR: {str(e)}", exc_info=True)
-                                return "Error al procesar el código QR"
-                            
-                    # Para el campo qr_registro, siempre devolvemos cadena vacía
-                    # ya que la imagen se inserta directamente en la celda
+                    # Devolver cadena vacía ya que la imagen se insertó directamente
                     return ""
-                            
+                
+                # Si es el campo firma pero no hay datos
+                if campo == 'firma':
+                    return "Sin firma"
+
             except Exception as e:
                 logger.warning(f"Error al obtener/enviar imagen QR: {str(e)}")
             
@@ -1265,15 +1044,24 @@ def exportar_actividad(actividad_id, columnas=None):
             if not rango_edad and 'edad' in beneficiario:
                 try:
                     edad = int(float(beneficiario['edad']))  # Manejar tanto strings como números
-                    if edad < 6: rango_edad = "0-5"
-                    elif edad < 12: rango_edad = "6-11"
-                    elif edad < 18: rango_edad = "12-17"
-                    elif edad < 26: rango_edad = "18-25"
-                    elif edad < 36: rango_edad = "26-35"
-                    elif edad < 46: rango_edad = "36-45"
-                    elif edad < 56: rango_edad = "46-55"
-                    elif edad < 66: rango_edad = "56-65"
-                    else: rango_edad = "66+"
+                    if edad < 6:
+                        rango_edad = "0-5"
+                    elif edad < 12:
+                        rango_edad = "6-11"
+                    elif edad < 18:
+                        rango_edad = "12-17"
+                    elif edad < 26:
+                        rango_edad = "18-25"
+                    elif edad < 36:
+                        rango_edad = "26-35"
+                    elif edad < 46:
+                        rango_edad = "36-45"
+                    elif edad < 56:
+                        rango_edad = "46-55"
+                    elif edad < 66:
+                        rango_edad = "56-65"
+                    else:
+                        rango_edad = "66+"
                 except (ValueError, TypeError):
                     pass
             
@@ -1304,7 +1092,8 @@ def exportar_actividad(actividad_id, columnas=None):
                 'tipo_discapacidad': beneficiario.get('tipo_discapacidad', ''),
                 'nombre_cuidadora': beneficiario.get('nombre_cuidadora', ''),
                 'labora_actualmente': 'Sí' if beneficiario.get('labora_actualmente') else 'No',
-                'victima_conflicto': 'Sí' if beneficiario.get('victima_conflicto') else 'No'
+                'victima_conflicto': 'Sí' if beneficiario.get('victima_conflicto') else 'No',
+                'firma': beneficiario.get('firma', '')  # Agregar la firma al mapeo de campos
             }
             
             return field_mapping.get(campo, '')
@@ -1413,7 +1202,7 @@ def subir_logo():
         if '.' not in filename or filename.rsplit('.', 1)[1].lower() not in allowed_extensions:
             return jsonify({
                 'success': False,
-                'message': 'Extensión de archivo no permitida'
+                'message': 'Extensión de archivo no permitida. Use PNG, JPG, JPEG o SVG.'
             }), 400
             
         # Validar tamaño (máx 2MB)
@@ -1424,17 +1213,18 @@ def subir_logo():
             }), 400
             
         # Crear directorio de uploads si no existe
-        upload_folder = configurar_subida_logo()
+        upload_folder = os.path.join(current_app.root_path, '..', '..', 'uploads')
+        os.makedirs(upload_folder, exist_ok=True)
         
         # Generar nombre único para el archivo
-        unique_filename = f"{ObjectId()}_{filename}"
+        unique_filename = f"logo_{int(time.time())}_{filename}"
         filepath = os.path.join(upload_folder, unique_filename)
         
         # Guardar el archivo
         file.save(filepath)
         
         # Devolver la ruta relativa con formato URL
-        rel_path = os.path.join('uploads', 'logos', unique_filename).replace('\\', '/')
+        rel_path = os.path.join('uploads', unique_filename).replace('\\', '/')
         
         return jsonify({
             'success': True,
@@ -1446,6 +1236,653 @@ def subir_logo():
         logger.error(f"Error al subir logo: {str(e)}")
         return jsonify({
             'success': False,
-            'message': 'Error al subir el logo',
+            'message': 'Error al exportar la reunión',
+            'error': str(e)
+        }), 500
+
+def exportar_reunion(reunion_id, columnas=None):
+    """
+    Exporta la lista de asistentes de una reunión a un archivo Excel.
+    
+    Args:
+        reunion_id (str): ID de la reunión a exportar
+        columnas (list, optional): Lista de columnas a incluir en el reporte. 
+                                 Si es None, se incluirán las columnas por defecto.
+    
+    Returns:
+        Response: Archivo Excel para descargar o mensaje de error
+    """
+    try:
+        from app.models.actividad import ActividadModel
+        from app.models.asistente import AsistenteModel
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
+        from openpyxl.drawing.image import Image as XLImage
+        from openpyxl.utils import get_column_letter
+        from flask import jsonify, send_file, current_app
+        import tempfile
+        import os
+        import logging
+        from bson import ObjectId
+        from datetime import datetime
+        import traceback
+        import json
+        import base64
+        from io import BytesIO
+        from PIL import Image
+        from openpyxl.drawing.image import Image as OpenpyxlImage
+                # Configurar logger
+        logger = logging.getLogger(__name__)
+        logger.info(f"Iniciando exportación de reunión a Excel: {reunion_id}")
+        
+        # Obtener la reunión de la base de datos
+        actividad_model = ActividadModel()
+        reunion = actividad_model.obtener_actividad_por_id(reunion_id)
+        
+        if not reunion or reunion.get('tipo') != 'reunion':  # Cambiado 'reunión' a 'reunion' (sin tilde)
+            logger.error(f"Reunión no encontrada o no es una reunión: {reunion_id}")
+            return jsonify({
+                'success': False,
+                'message': 'Reunión no encontrada o no es una reunión',
+                'error': f'No se encontró la reunión con ID {reunion_id} o no es una reunión válida. Tipo encontrado: {reunion.get("tipo") if reunion else "Ninguno"}'
+            }), 404
+            
+        # Obtener los asistentes de la reunión
+        asistentes_reunion = reunion.get('asistentes', [])
+        
+        if not asistentes_reunion:
+            logger.error("No hay asistentes en la reunión")
+            return jsonify({
+                'success': False,
+                'message': 'No hay asistentes para exportar',
+                'error': 'No hay datos para exportar'
+            }), 404
+            
+        # Obtener datos completos de los asistentes
+        asistente_model = AsistenteModel(current_app.config['db'])
+        asistentes_completos = []
+        
+        for i, asistente_ref in enumerate(asistentes_reunion, 1):
+            try:
+                logger.info(f"Procesando asistente_ref: {json.dumps(asistente_ref, default=str)}")
+                # Obtener los datos del asistente
+                asistente = {
+                    'numero': i,
+                    'nombre': asistente_ref.get('nombre', ''),
+                    'cedula': asistente_ref.get('cedula', ''),
+                    'dependencia': asistente_ref.get('dependencia', ''),
+                    'cargo': asistente_ref.get('cargo', ''),
+                    'tipo_participacion': asistente_ref.get('tipo_participacion', ''),
+                    'telefono': asistente_ref.get('telefono', ''),
+                    'email': asistente_ref.get('email', ''),
+                    'firma': asistente_ref.get('firma', '')  # Guardamos la firma real
+                }
+                logger.info(f"Antes de beneficiario - asistente: {json.dumps(asistente, default=str)}")
+
+                # Si hay un beneficiario_id, obtener sus datos adicionales
+                
+                # Busca esta sección en tu código (alrededor de la línea 1400)
+                if 'beneficiario_id' in asistente_ref and asistente_ref['beneficiario_id']:
+                    try:
+                        beneficiario = asistente_model.obtener_por_id(asistente_ref['beneficiario_id'])
+                        logger.info(f"Beneficiario encontrado: {json.dumps(beneficiario, default=str) if beneficiario else 'No encontrado'}")
+                        
+                        if beneficiario:
+                            # Actualizar con datos del beneficiario
+                            asistente.update({
+                                'nombre': beneficiario.get('nombre', beneficiario.get('nombre_completo', asistente['nombre'])),
+                                'cedula': beneficiario.get('cedula', asistente['cedula']),
+                                'dependencia': beneficiario.get('dependencia', asistente['dependencia']),
+                                'cargo': beneficiario.get('cargo', asistente['cargo']),
+                                'tipo_participacion': beneficiario.get('tipo_participacion', asistente['tipo_participacion']),
+                                'telefono': beneficiario.get('telefono', asistente['telefono']),
+                                'email': beneficiario.get('email', asistente['email']),
+                                'firma': beneficiario.get('firma', asistente['firma'])
+                            })
+                            logger.info(f"Después de actualizar con beneficiario: {json.dumps(asistente, default=str)}")
+                    except Exception as e:
+                        logger.error(f"Error al obtener datos del beneficiario {asistente_ref['beneficiario_id']}: {str(e)}", exc_info=True)
+                logger.info(f"Asistente final a agregar: {json.dumps(asistente, default=str)}")
+                asistentes_completos.append(asistente)
+            except Exception as e:
+                logger.error(f"Error al procesar asistente: {str(e)}")
+                continue
+        
+        # Crear el libro de Excel
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Asistencia Reunión"
+        
+        # Estilos
+        header_font = Font(bold=True, color="FFFFFF")
+        header_fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
+        title_font = Font(bold=True, size=14)
+        subtitle_font = Font(bold=True)
+        thin_border = Border(left=Side(style='thin'), 
+                            right=Side(style='thin'), 
+                            top=Side(style='thin'), 
+                            bottom=Side(style='thin'))
+        
+        # Color de fondo para celdas de información (blanco)
+        info_fill = PatternFill(start_color="FFFFFF", end_color="FFFFFF", fill_type="solid")
+        
+        # Color de fondo para celdas de etiquetas (gris claro)
+        label_fill = PatternFill(start_color="FFFFFF", end_color="FFFFFF", fill_type="solid")
+        
+        # Agregar encabezado con logo e información de la actividad
+        try:
+            # Ruta al logo (usando ruta absoluta)
+            base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+            logo_path = os.path.join(base_dir, 'frontend', 'src', 'fondo', 'logo.png')
+                       
+            # Configuración de estilos
+            font_size = 10
+            font_name = 'Arial'
+            
+            # Configurar dimensiones de celdas
+            ws.column_dimensions['A'].width = 15  # Columna A para el logo
+            ws.column_dimensions['B'].width = 15  # Columna B para etiquetas
+            ws.column_dimensions['C'].width = 20  # Columna C para valores
+            ws.column_dimensions['D'].width = 15  # Columna D
+            ws.column_dimensions['E'].width = 15  # Columna E
+            ws.column_dimensions['F'].width = 20  # Columna F
+            ws.column_dimensions['G'].width = 15  # Columna G
+            ws.column_dimensions['H'].width = 15  # Columna H
+            ws.column_dimensions['I'].width = 15  # Columna I
+            ws.column_dimensions['J'].width = 15  # Columna J
+            ws.column_dimensions['K'].width = 20  # Columna K
+            
+            # Altura de filas (se deja la altura por defecto)
+            # No establecemos altura fija para que use la altura por defecto
+            
+            # Agregar logo (ocupa A1:C4)
+            logo_size = 300  # Tamaño del logo más grande
+            
+            if os.path.exists(logo_path):
+                try:
+                    img = XLImage(logo_path)
+                    # Ajustar tamaño manteniendo la relación de aspecto
+                    img_ratio = img.height / img.width
+                    # Redimensionar manteniendo la relación de aspecto
+                    img.width = logo_size
+                    img.height = int(logo_size * img_ratio)
+                    
+                    # No ajustamos la altura de las filas, se mantiene la altura por defecto
+                    
+                    # Agregar el logo
+                    ws.add_image(img, 'A1')
+                    logger.info("Logo agregado exitosamente")
+                    
+                    # Fusionar celdas para el logo (4 filas de alto x 3 columnas de ancho)
+                    ws.merge_cells('A1:C4')
+                    
+                except Exception as e:
+                    logger.error(f"Error al cargar la imagen: {str(e)}")
+            else:
+                logger.warning(f"No se encontró el archivo de logo en: {logo_path}")
+            
+            # Título principal (D1:K1)
+            ws.merge_cells('D1:I1')
+            title_cell = ws['D1']
+            title_cell.value = 'FORMATO REGISTRO DE ASISTENCIA'
+            title_cell.font = Font(bold=True, size=14, name='Arial')
+            title_cell.fill = info_fill
+            # title_cell.border = thin_border
+            for row in ws['D1:I1']:
+                for cell in row:
+                    cell.border = Border(
+                        left=Side(style='thin', color='000000'),
+                        right=Side(style='thin', color='000000'),
+                        top=Side(style='thin', color='000000'),
+                        bottom=Side(style='thin', color='000000')
+                    )
+            title_cell.alignment = Alignment(horizontal='left', vertical='center')
+            
+            # Subtítulo (D2:K2)
+            ws.merge_cells('D2:I2')
+            subtitle_cell = ws['D2']
+            subtitle_cell.value = 'ALCALDÍA MUNICIPAL DE QUIBDÓ'
+            subtitle_cell.font = Font(bold=True, size=12, name='Arial')
+            subtitle_cell.fill = info_fill
+            for row in ws['D2:I2']:
+                for cell in row:
+                    cell.border = Border(
+                        left=Side(style='thin', color='000000'),
+                        right=Side(style='thin', color='000000'),
+                        top=Side(style='thin', color='000000'),
+                        bottom=Side(style='thin', color='000000')
+                    )
+            subtitle_cell.alignment = Alignment(horizontal='left', vertical='center')
+                        
+
+            # Fila 4: Dependencia
+            ws['D3'].value = 'DEPENDENCIA:'
+            ws['D3'].font = Font(bold=True, name='Arial', size=10)
+            ws['D3'].fill = label_fill
+            ws['D3'].border = thin_border
+            ws.merge_cells('D3:E3')  # Fusionar D4:E4
+
+            ws['F3'].value = reunion.get('dependencia', '').upper()
+            ws['F3'].font = Font(name='Arial', size=10)
+            ws['F3'].fill = info_fill
+            ws['F3'].border = thin_border
+            ws.merge_cells('F3:I3')  # Fusionar F4:I4
+
+               # Fila 4: Dependencia
+      
+            # Combinar celdas sin texto
+            ws.merge_cells('D4:I4')  # Fusionar D4:K4
+            ws['D4'].fill = label_fill
+            ws['D4'].border = thin_border
+
+            # Fila 5: Tema
+            ws['A5'].value = 'TEMA:'
+            ws['A5'].font = Font(bold=True, name='Arial', size=10)
+            ws['A5'].fill = label_fill
+            ws['A5'].border = thin_border
+            ws.merge_cells('A5:B5') 
+
+            ws['C5'].value = reunion.get('tema', '').upper()
+            ws['C5'].font = Font(name='Arial', size=10)
+            ws['C5'].fill = info_fill
+            ws['C5'].border = thin_border
+            ws.merge_cells('C5:f5')  # Fusionar C5:F5
+
+            # Fila 6: Fecha
+            ws['A6'].value = 'FECHA:'
+            ws['A6'].font = Font(bold=True, name='Arial', size=10)
+            ws['A6'].fill = label_fill
+            ws['A6'].border = thin_border
+            ws.merge_cells('A6:B6')
+
+            if 'fecha' in reunion:
+                fecha_obj = datetime.strptime(reunion['fecha'], '%Y-%m-%dT%H:%M:%S')  # Si viene como string
+                # O si ya es un objeto datetime: fecha_obj = reunion['fecha']
+                fecha_formateada = fecha_obj.strftime('%d/%m/%Y')  # Formato DD/MM/YYYY
+                ws['C6'].value = f"FECHA: {fecha_formateada}"
+                ws['C6'].font = Font(name='Arial', size=10)
+                ws['C6'].fill = info_fill
+                ws['C6'].border = thin_border
+            ws.merge_cells('C6') 
+
+            # Fila 6: Lugar
+            ws['D6'].value = 'LUGAR:'
+            ws['D6'].font = Font(bold=True, name='Arial', size=10)
+            ws['D6'].fill = label_fill
+            ws['D6'].border = thin_border
+            ws.merge_cells('D6') 
+
+            ws['E6'].value = reunion.get('lugar', '').upper()
+            ws['E6'].font = Font(name='Arial', size=10)
+            ws['E6'].fill = info_fill
+            ws['E6'].border = thin_border
+            ws.merge_cells('E6:F6')  # Fusionar E6:F6
+
+            # Fila 7: Hora de inicio
+            ws['A7'].value = 'HORA INICIO:'
+            ws['A7'].font = Font(bold=True, name='Arial', size=10)
+            ws['A7'].fill = label_fill
+            ws['A7'].border = thin_border
+            ws.merge_cells('A7:B7') 
+
+            ws['C7'].value = reunion.get('hora_inicio', '')
+            ws['C7'].font = Font(name='Arial', size=10)
+            ws['C7'].fill = info_fill
+            ws['C7'].border = thin_border
+            ws.merge_cells('C7')
+
+            # Fila 7: Hora de finalización
+            ws['D7'].value = 'HORA FINALIZACIÓN:'
+            ws['D7'].font = Font(bold=True, name='Arial', size=10)
+            ws['D7'].fill = label_fill
+            ws['D7'].border = thin_border
+            ws.merge_cells('D7')  
+
+
+            
+            ws['E7'].value = reunion.get('hora_fin', '')
+            ws['E7'].font = Font(name='Arial', size=10)
+            ws['E7'].fill = info_fill
+            ws['E7'].border = thin_border
+            ws.merge_cells('E7:F7')  # Fusionar E7:F7
+            
+             # Establecer etiqueta
+            ws.merge_cells('G5:G7')
+            ws['G5'].value = 'OBJETIVO:'
+            ws['G5'].font = Font(bold=True, size=10, name='Arial')
+            ws['G5'].fill = label_fill  # Color de fondo para la etiqueta
+            ws['G5'].border = thin_border
+          
+            for row in ws['G5:G7']:
+                for cell in row:
+                    cell.border = Border(
+                        left=Side(style='thin', color='000000'),
+                        right=Side(style='thin', color='000000'),
+                        top=Side(style='thin', color='000000'),
+                        bottom=Side(style='thin', color='000000')
+                    )
+            ws['G5'].alignment = Alignment(horizontal='center', vertical='center')
+                        
+            # Establecer valor del objetivo
+            ws['H5'].value = reunion.get('objetivo', '').upper()
+            ws['H5'].font = Font(name='Arial', size=10)
+            ws['H5'].fill = info_fill
+            # Aplicar borde completo a la celda de valor
+            for row in ws['H5:I7']:
+                for cell in row:
+                    cell.border = Border(
+                        left=Side(style='thin', color='000000'),
+                        right=Side(style='thin', color='000000'),
+                        top=Side(style='thin', color='000000'),
+                        bottom=Side(style='thin', color='000000')
+                    )
+            ws['H5'].alignment = Alignment(wrap_text=True, vertical='top')
+            
+            # Fusionar celdas después de establecer valores
+            ws.merge_cells('H5:I7')  # Objetivo ocupa 3 filas y 4 columnas (excluyendo la columna G con la etiqueta)
+            
+            # Ajustar altura de filas para el objetivo (usar auto_size para que se ajuste al contenido)
+            ws.row_dimensions[5].auto_size = True
+            ws.row_dimensions[6].auto_size = True
+            ws.row_dimensions[7].auto_size = True
+            
+            # Fila inicial para la tabla de asistentes
+           
+            
+            # Agregar encabezados de la tabla de asistentes
+            # En la función exportar_reunion, modificar la sección de encabezados:
+           # En la sección de encabezados, actualizar a:
+           # En la sección de encabezados
+            headers = ['NOMBRE COMPLETO', '', 'CÉDULA', 'DEPENDENCIA', 'CARGO', 'TIPO PARTICIPACIÓN', 'TELÉFONO', 'EMAIL', 'FIRMA']
+            start_row = 8
+
+            # Escribir encabezados
+            for col_num, header in enumerate(headers, 1):  # Comenzar desde columna 1
+                cell = ws.cell(row=start_row, column=col_num, value=header if header else '')
+                cell.font = header_font
+                cell.fill = header_fill
+                cell.border = thin_border
+                cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+
+            # Combinar celdas del encabezado para NOMBRE COMPLETO (A y B)
+            ws.merge_cells(start_row=start_row, start_column=1, end_row=start_row, end_column=2)
+
+            # Ajustar el ancho de las columnas
+            column_widths = {
+                1: 14,  # Primera parte de NOMBRE (A)
+                2: 14,  # Segunda parte de NOMBRE (B) - se combinará con A
+                3: 18,  # CÉDULA (C)
+                4: 25,  # DEPENDENCIA (D)
+                5: 25,  # CARGO (E)
+                6: 20,  # TIPO PARTICIPACIÓN (F)
+                7: 13,  # TELÉFONO (G)
+                8: 35,  # EMAIL (H)
+                9: 20   # FIRMA (I)
+            }
+
+            for col_num, width in column_widths.items():
+                ws.column_dimensions[get_column_letter(col_num)].width = width
+
+            # Escribir datos de asistentes
+            for row_num, asistente in enumerate(asistentes_completos, start_row + 1):
+                try:
+                    # NOMBRE COMPLETO (columnas A y B combinadas)
+                    nombre = asistente.get('nombre', '')
+                    ws.cell(row=row_num, column=1, value=nombre).border = thin_border
+                    ws.cell(row=row_num, column=2, value='').border = thin_border
+                    ws.merge_cells(start_row=row_num, start_column=1, end_row=row_num, end_column=2)
+                    
+                    # CÉDULA (columna C)
+                    ws.cell(row=row_num, column=3, value=asistente.get('cedula', '')).border = thin_border
+                    
+                    # DEPENDENCIA (columna D)
+                    dependencia = f"{asistente.get('dependencia', '')} {asistente.get('dependencia_adicional', '')}".strip()
+                    ws.cell(row=row_num, column=4, value=dependencia).border = thin_border
+                    
+                    # CARGO (columna E)
+                    ws.cell(row=row_num, column=5, value=asistente.get('cargo', '')).border = thin_border
+                    
+                    # TIPO PARTICIPACIÓN (columna F)
+                    ws.cell(row=row_num, column=6, value=asistente.get('tipo_participacion', '')).border = thin_border
+                    
+                    # TELÉFONO (columna G)
+                    ws.cell(row=row_num, column=7, value=asistente.get('telefono', '')).border = thin_border
+                    
+                    # EMAIL (columna H)
+                    ws.cell(row=row_num, column=8, value=asistente.get('email', '')).border = thin_border
+                    
+                    # FIRMA (columna I)
+                    if 'firma' in asistente and asistente['firma']:
+                        try:
+                            img_data = asistente['firma']
+                            if 'base64,' in img_data:
+                                img_data = img_data.split('base64,')[1]
+                            
+                            image_data = base64.b64decode(img_data)
+                            img = Image.open(BytesIO(image_data))
+                            
+                            max_size = (150, 50)
+                            img.thumbnail(max_size, Image.Resampling.LANCZOS)
+                            
+                            img_byte_arr = BytesIO()
+                            img.save(img_byte_arr, format='PNG')
+                            img_byte_arr.seek(0)
+                            
+                            img_obj = OpenpyxlImage(img_byte_arr)
+                            ws.add_image(img_obj, f'I{row_num}')  # Columna I para la firma
+                            ws.row_dimensions[row_num].height = 32
+                            
+                        except Exception as e:
+                            logger.error(f"Error al procesar firma: {str(e)}")
+                            ws.cell(row=row_num, column=9, value="Error en firma").border = thin_border
+                    else:
+                        ws.cell(row=row_num, column=9, value="Sin firma").border = thin_border
+                        
+                except Exception as e:
+                    logger.error(f"Error al procesar asistente: {str(e)}")
+                    continue
+            # Ajustar el ancho de las columnas al contenido
+            for col_num in range(1, ws.max_column + 1):
+                max_length = 0
+                column_letter = get_column_letter(col_num)
+                
+                # Saltar si la columna ya tiene un ancho definido
+                if column_letter in ws.column_dimensions and ws.column_dimensions[column_letter].width is not None:
+                    continue
+                    
+                for row in ws.iter_rows(min_col=col_num, max_col=col_num):
+                    cell = row[0]
+                    # Verificar si la celda es parte de un rango combinado
+                    is_merged = False
+                    for merge_range in ws.merged_cells.ranges:
+                        if cell.coordinate in merge_range:
+                            is_merged = True
+                            break
+                    
+                    if not is_merged and cell.value:
+                        try:
+                            cell_length = len(str(cell.value))
+                            if cell_length > max_length:
+                                max_length = cell_length
+                        except:
+                            pass
+                
+                if max_length > 0:
+                    adjusted_width = (max_length + 2) * 1.2
+                    ws.column_dimensions[column_letter].width = min(adjusted_width, 30)  # Máximo ancho de 30
+            
+            # Crear archivo temporal
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as tmp:
+                wb.save(tmp.name)
+                tmp_path = tmp.name
+            
+            # Enviar el archivo
+            return send_file(
+                tmp_path,
+                as_attachment=True,
+                download_name=f"asistencia_reunion_{reunion_id}.xlsx",
+                mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            )
+            
+        except Exception as e:
+            logger.error(f"Error al generar el archivo Excel: {str(e)}")
+            logger.error(traceback.format_exc())
+            return jsonify({
+                'success': False,
+                'message': 'Error al generar el archivo Excel',
+                'error': str(e)
+            }), 500
+            
+    except Exception as e:
+        logger.error(f"Error en exportar_reunion: {str(e)}")
+        # Definir todas las columnas posibles con sus etiquetas
+        columnas_disponibles = [
+    
+            {'campo': 'nombre', 'etiqueta': 'NOMBRE COMPLETO', 'visible_por_defecto': True},
+            {'campo': 'cedula', 'etiqueta': 'CÉDULA', 'visible_por_defecto': True},
+            {'campo': 'dependencia', 'etiqueta': 'DEPENDENCIA', 'visible_por_defecto': True},
+            {'campo': 'cargo', 'etiqueta': 'CARGO', 'visible_por_defecto': True},
+            {'campo': 'tipo_participacion', 'etiqueta': 'TIPO PARTICIPACIÓN', 'visible_por_defecto': True},
+            {'campo': 'telefono', 'etiqueta': 'TELÉFONO', 'visible_por_defecto': True},
+            {'campo': 'email', 'etiqueta': 'CORREO ELECTRÓNICO', 'visible_por_defecto': True},
+            {'campo': 'firma', 'etiqueta': 'FIRMA', 'visible_por_defecto': True}
+        ]
+
+        # Filtrar columnas según lo solicitado
+        if columnas:
+            columnas_seleccionadas = [col for col in columnas if any(c['campo'] == col for c in columnas_disponibles)]
+            if not columnas_seleccionadas:
+                columnas_seleccionadas = [c['campo'] for c in columnas_disponibles if c['visible_por_defecto']]
+        else:
+            columnas_seleccionadas = [c['campo'] for c in columnas_disponibles if c['visible_por_defecto']]
+
+        # Obtener los encabezados para las columnas seleccionadas
+        headers = [col['etiqueta'] for col in columnas_disponibles if col['campo'] in columnas_seleccionadas]
+
+        # Agregar encabezados de la tabla
+        for col_num, header in enumerate(headers, 1):
+            cell = ws.cell(row=start_row, column=col_num, value=header)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.border = thin_border
+            cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+
+        # Función auxiliar para obtener el valor de un campo de un asistente
+        def obtener_valor_campo(asistente, campo, indice, row_num=None):
+            try:
+                # Mapeo de campos a valores directamente del objeto asistente
+                field_mapping = {
+                  
+                    'nombre': asistente.get('nombre', '').strip(),
+                    'cedula': asistente.get('cedula', '').strip(),
+                    'dependencia': asistente.get('dependencia', '').strip(),
+                    'cargo': asistente.get('cargo', '').strip(),
+                    'tipo_participacion': asistente.get('tipo_participacion', '').strip(),
+                    'telefono': asistente.get('telefono', '').strip(),
+                    'email': asistente.get('email', '').strip(),
+                    'firma': asistente.get('firma', '')  # No aplicamos strip() a la firma
+                }
+                
+                valor = field_mapping.get(campo, '')
+               
+ 
+                # Manejo especial para el campo firma
+                if campo == 'firma':
+                    if valor and isinstance(valor, str) and valor.startswith('data:image/png;base64,'):
+                        return 'Firmado'
+                    else:
+                        return 'Pendiente'
+                        
+                return valor
+                
+            except Exception as e:
+                logger.error(f"Error al obtener valor del campo {campo}: {str(e)}")
+                return ''
+
+        # Llenar datos - Comenzar después del encabezado
+        start_row_table = start_row + 1  # Fila después del encabezado de la tabla
+        
+        # Log de depuración
+        logger.info(f"Asistentes completos a exportar: {json.dumps(asistentes_completos, default=str, indent=2)}")
+        logger.info(f"Columnas seleccionadas: {columnas_seleccionadas}")
+        
+        for i, asistente in enumerate(asistentes_completos):
+            try:
+                # Obtener valores para cada columna seleccionada
+                row_data = []
+                row_num = start_row_table + i
+                
+                logger.info(f"Procesando asistente {i+1}: {asistente.get('nombre', 'Sin nombre')}")
+                logger.info(f"Datos del asistente: {json.dumps(asistente, default=str)}")
+                
+                for col in columnas_disponibles:
+                    if col['campo'] in columnas_seleccionadas:
+                        valor = obtener_valor_campo(asistente, col['campo'], i, row_num)
+                        logger.info(f"  - Columna '{col['campo']}': {valor}")
+                        row_data.append(valor)
+                
+                # Agregar fila a la hoja
+                for col_num, value in enumerate(row_data, 1):
+                    cell = ws.cell(row=row_num, column=col_num, value=value)
+                    cell.border = thin_border
+                    cell.alignment = Alignment(horizontal='left', vertical='center', wrap_text=True)
+                
+                logger.info(f"Fila {row_num} procesada correctamente")
+                
+                
+            except Exception as e:
+                logger.error(f"Error al procesar asistente {i}: {str(e)}", exc_info=True)
+                continue
+        
+        # Ajustar ancho de columnas (solo para las columnas de datos, no las del encabezado)
+        for col_num in range(1, len(columnas_seleccionadas) + 1):
+            column_letter = get_column_letter(col_num)
+            
+            # Establecer ancho fijo para la columna del nombre completo
+            if columnas_seleccionadas[col_num-1] == 'nombre':
+                ws.column_dimensions[column_letter].width = 30  # Ancho fijo para la columna de nombre
+                continue
+                
+            # Solo ajustar columnas que no están en el encabezado combinado
+            if column_letter in ['C', 'D', 'E']:  # Columnas del título combinado
+                ws.column_dimensions[column_letter].width = 20  # Ancho fijo
+                continue
+                
+            # Para otras columnas, ajustar automáticamente el ancho
+            max_length = 0
+            for row in range(start_row_table, start_row_table + len(actividad.get('asistentes', []))):
+                try:
+                    cell_value = ws.cell(row=row, column=col_num).value
+                    if cell_value and len(str(cell_value)) > max_length:
+                        max_length = len(str(cell_value))
+                except:
+                    pass
+            
+            if max_length > 0:
+                adjusted_width = (max_length + 2) * 1.2
+                ws.column_dimensions[column_letter].width = min(adjusted_width, 50)  # Máximo 50 caracteres
+        
+        # Crear un archivo temporal
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx') as tmp_file:
+            excel_path = tmp_file.name
+        
+        # Guardar el libro de Excel
+        wb.save(excel_path)
+        logger.info(f"Archivo Excel generado: {excel_path}")
+        
+        # Enviar el archivo como respuesta
+        return send_file(
+            excel_path,  # Usar excel_path en lugar de temp_filename
+            as_attachment=True,
+            download_name=f"asistencia_{actividad.get('tema', 'actividad')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        
+    except Exception as e:
+        logger.error(f"Error en exportar_actividad: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'message': 'Error al exportar la actividad',
             'error': str(e)
         }), 500

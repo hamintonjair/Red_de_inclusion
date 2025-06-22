@@ -119,13 +119,7 @@ const usuarioService = {
             
             return userData;
         } catch (error) {
-            console.error('Error COMPLETO al iniciar sesión:', {
-                fullError: error,
-                responseData: error.response?.data,
-                responseStatus: error.response?.status,
-                errorMessage: error.message
-            });
-
+       
             throw error; // Re-lanzar el error para que el componente lo maneje
         }
     },
@@ -139,13 +133,7 @@ const usuarioService = {
 
             return response.data;
         } catch (error) {
-            console.error('Error COMPLETO al registrar funcionario:', {
-                fullError: error,
-                responseData: error.response?.data,
-                responseStatus: error.response?.status,
-                errorMessage: error.message
-            });
-
+        
             throw error; // Re-lanzar el error para que el componente lo maneje
         }
     },
@@ -156,19 +144,11 @@ const usuarioService = {
 
             
             const response = await axiosInstance.get('/usuarios/funcionarios');
-            
-
+        
             
             return response.data;
         } catch (error) {
-            console.error('Error COMPLETO al obtener funcionarios:', {
-                fullError: error,
-                mensaje: error.response?.data?.mensaje || 'Error desconocido',
-                responseData: error.response?.data,
-                responseStatus: error.response?.status,
-                errorMessage: error.message
-            });
-            
+                     
             // Lanzar un error personalizado
             const errorMsg = error.response?.data?.msg || 'Error al obtener funcionarios';
             const customError = new Error(errorMsg);
@@ -184,9 +164,7 @@ const usuarioService = {
 
             
             const response = await axiosInstance.get(`/funcionarios/funcionarios/${id}`);
-            
-
-            
+    
             // Asegurar que todos los campos necesarios estén presentes
             const funcionario = response.data.funcionario || response.data;
             
@@ -209,14 +187,7 @@ const usuarioService = {
                 id: funcionario._id || funcionario.id || id
             };
         } catch (error) {
-            console.error('Error COMPLETO al obtener funcionario:', {
-                fullError: error,
-                responseData: error.response?.data,
-                responseStatus: error.response?.status,
-                errorMessage: error.message,
-                requestUrl: error.config?.url
-            });
-
+      
             throw new Error(error.response?.data?.msg || 'Error al obtener funcionario');
         }
     },
@@ -243,14 +214,7 @@ const usuarioService = {
             
             return response.data;
         } catch (error) {
-            console.error('Error COMPLETO al actualizar funcionario:', {
-                fullError: error,
-                responseData: error.response?.data,
-                responseStatus: error.response?.status,
-                errorMessage: error.message,
-                requestUrl: error.config?.url
-            });
-
+       
             // Extraer mensaje de error más detallado si está disponible
             const errorMsg = error.response?.data?.msg || 
                              error.response?.data?.detalles?.join(', ') || 
@@ -289,11 +253,7 @@ const usuarioService = {
             
             return lineaConId;
         } catch (error) {
-            console.warn('Error al obtener línea de trabajo:', {
-                mensaje: error.response?.data?.mensaje || error.message,
-                id: lineaId
-            });
-            
+                       
             // Devolver un objeto por defecto en caso de error
             return {
                 id: lineaId,
@@ -318,14 +278,7 @@ const usuarioService = {
             
             return response.data;
         } catch (error) {
-            console.error('Error al eliminar línea de trabajo:', {
-                mensaje: error.response?.data?.mensaje || error.message,
-                detalles: error.response?.data || 'Sin detalles adicionales',
-                id: id,
-                url: error.config?.url,
-                method: error.config?.method,
-                fullError: error
-            });
+        
             throw error; // Re-lanzar el error para que el componente lo maneje
         }
     },
@@ -350,15 +303,7 @@ const usuarioService = {
             
             return lineaConId;
         } catch (error) {
-            console.error('Error al actualizar línea de trabajo:', {
-                mensaje: error.response?.data?.mensaje || error.message,
-                detalles: error.response?.data || 'Sin detalles adicionales',
-                id: id,
-                url: error.config?.url,
-                method: error.config?.method,
-                fullError: error
-            });
-
+          
             // Extraer y mostrar detalles específicos de validación
             const errorDetalles = error.response?.data?.errores || {};
             const mensajesError = Object.values(errorDetalles).flat().join(', ');
@@ -387,14 +332,7 @@ const usuarioService = {
             
             return lineaConId;
         } catch (error) {
-            console.error('Error al crear línea de trabajo:', {
-                mensaje: error.response?.data?.mensaje || error.message,
-                detalles: error.response?.data || 'Sin detalles adicionales',
-                url: error.config?.url,
-                method: error.config?.method,
-                fullError: error
-            });
-
+           
             // Extraer y mostrar detalles específicos de validación
             const errorDetalles = error.response?.data?.errores || {};
             const mensajesError = Object.values(errorDetalles).flat().join(', ');
@@ -438,14 +376,7 @@ const usuarioService = {
             
             return lineaConId;
         } catch (error) {
-            console.error('Error al obtener línea de trabajo por nombre:', {
-                mensaje: error.response?.data?.mensaje || error.message,
-                detalles: error.response?.data || 'Sin detalles adicionales',
-                nombre: nombre,
-                url: error.config?.url,
-                method: error.config?.method,
-                fullError: error
-            });
+           
             throw error; // Re-lanzar el error para que el componente lo maneje
         }
     },
@@ -456,13 +387,7 @@ const usuarioService = {
             const response = await axiosInstance.put(`/usuarios/perfil/${id}`, perfil);
             return response.data;
         } catch (error) {
-            console.error('Error al actualizar perfil:', {
-                mensaje: error.response?.data?.mensaje || error.message,
-                detalles: error.response?.data || 'Sin detalles adicionales',
-                url: error.config?.url,
-                method: error.config?.method,
-                fullError: error
-            });
+          
             throw error; // Re-lanzar el error para que el componente lo maneje
         }
     },

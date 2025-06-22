@@ -112,8 +112,11 @@ export const createActividad = async (actividadData) => {
             creado_por: userId,
             fecha_creacion: ahora,
             fecha_actualizacion: ahora,
-            asistentes: actividadData.asistentes || []
+            asistentes: actividadData.asistentes || [],
+            tipo: actividadData.tipo || 'actividad', // Incluir el tipo, con 'actividad' como valor por defecto
+            es_reunion: actividadData.es_reunion || false // Incluir es_reunion si está presente
         };
+        
      
         const response = await axiosInstance.post(ACTIVIDADES_API, datosEnviar, {
             validateStatus: function (status) {

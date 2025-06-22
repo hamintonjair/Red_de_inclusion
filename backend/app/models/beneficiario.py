@@ -23,8 +23,9 @@ TIPOS_VIVIENDA = ['Propia', 'Arriendo', 'Familiar', 'Invasión', 'Otra']
 TIPOS_VERIFICACION = ['huella_digital', 'firma_digital']
 ESTADOS_VERIFICACION = ['pendiente', 'verificado', 'rechazado']
 
+# Esquema obsoleto para compatibilidad con datos existentes
 class HuellaDactilarSchema(Schema):
-    id = fields.Str(required=True)
+    id = fields.Str(required=False)
     type = fields.Str(required=False)
     quality = fields.Int(required=False)
     documento = fields.Str(required=False)
@@ -50,7 +51,10 @@ class BeneficiarioSchema(Schema):
     fecha_registro = fields.Str(required=True)
     nombre_completo = fields.Str(required=True)
     tipo_documento = fields.Str(required=True)
-    huella_dactilar = fields.Nested(HuellaDactilarSchema, required=False, allow_none=True) # Para el ID de la huella enviado por el frontend
+    # Campo obsoleto, mantenido para compatibilidad
+    huella_dactilar = fields.Nested(HuellaDactilarSchema, required=False, allow_none=True)
+    # Campo para almacenar la firma digital en formato base64
+    firma = fields.Str(required=False, allow_none=True)
     verificacion_biometrica = fields.Nested(VerificacionBiometricaSchema, required=False)
     codigo_verificacion = fields.Str(required=False)  # Código único para el QR
     numero_documento = fields.Str(required=True)

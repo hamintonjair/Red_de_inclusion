@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { biometricService } from "../../services/biometricService";
-import FingerprintIcon from '@mui/icons-material/Fingerprint';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import SignatureCanvas from 'react-signature-canvas';
 import {
   Container,
   Typography,
@@ -18,7 +17,24 @@ import {
   Checkbox,
   Switch,
   Paper,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Box,
 } from "@mui/material";
+import {
+  Save as SaveIcon,
+  Cancel as CancelIcon,
+  ArrowBack as ArrowBackIcon,
+  Add as AddIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  PersonSearch as PersonSearchIcon,
+  Search as SearchIcon,
+  Close as CloseIcon,
+  Clear as ClearIcon,
+} from "@mui/icons-material";
 import { barriosPorComuna } from "../../data/barriosPorComuna";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
@@ -70,7 +86,6 @@ const TIPOS_DISCAPACIDAD = [
   "Auditiva",
   "Cognitiva",
   "Múltiple",
-  
 ];
 const NIVELES_EDUCATIVOS = [
   "Primaria",
@@ -100,9 +115,135 @@ export default function RegistroBeneficiarios() {
   const { enqueueSnackbar } = useSnackbar();
   const [beneficiarios, setBeneficiarios] = useState([]);
   const [barriosDisponibles, setBarriosDisponibles] = useState([]);
+  const [openFirmaDialog, setOpenFirmaDialog] = useState(false);
+  const [signature, setSignature] = useState(null);
+  const sigCanvas = useRef(null);
+  
+  // Effect to keep signature state in sync with formData
+  useEffect(() => {
+    console.log('Signature state updated:', { 
+      hasSignature: !!signature,
+      type: typeof signature,
+      length: signature ? signature.length : 0
+    });
+  }, [signature]);
 
   const [comunas, setComunas] = useState([]);
   const [currentComunaCentroide, setCurrentComunaCentroide] = useState(null); // NUEVO ESTADO para el centroide
+
+  // Manejadores para el diálogo de firma
+  const handleOpenFirmaDialog = () => {
+    setOpenFirmaDialog(true);
+  };
+
+  const handleCloseFirmaDialog = () => {
+    setOpenFirmaDialog(false);
+  };
+
+  const handleClearFirma = () => {
+    if (sigCanvas.current) {
+      sigCanvas.current.clear();
+      setSignature(null);
+      setFormData(prev => ({
+        ...prev,
+        firma: null
+      }));
+    }
+  };
+
+  const [isCanvasEmpty, setIsCanvasEmpty] = useState(true);
+
+  // Verificar si el canvas está vacío cuando se abre el diálogo
+  useEffect(() => {
+    if (openFirmaDialog) {
+      const timer = setTimeout(() => {
+        if (sigCanvas.current) {
+          setIsCanvasEmpty(sigCanvas.current.isEmpty());
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [openFirmaDialog]);
+
+  const handleCanvasEnd = () => {
+    if (sigCanvas.current) {
+      setIsCanvasEmpty(sigCanvas.current.isEmpty());
+    }
+  };
+
+  const handleSaveFirma = async () => {
+    if (!sigCanvas.current) {
+      console.error('Error: No se pudo acceder al canvas de firma');
+      return;
+    }
+
+    // Verificar si el canvas está vacío
+    if (isCanvasEmpty) {
+      enqueueSnackbar('Por favor, realice una firma antes de guardar', { 
+        variant: 'warning',
+        autoHideDuration: 3000
+      });
+      return;
+    }
+
+    try {
+      // Obtener la firma como base64
+      const firmaData = sigCanvas.current.toDataURL('image/png');
+      
+      // Verificar que la firma sea válida
+      if (!firmaData || typeof firmaData !== 'string' || !firmaData.startsWith('data:image/')) {
+        throw new Error('Formato de firma no válido');
+      }
+      
+      console.log('Guardando nueva firma:', { 
+        tipo: typeof firmaData,
+        longitud: firmaData.length,
+        inicio: firmaData.substring(0, 30) + '...'
+      });
+      
+      // Primero actualizamos el estado local
+      setSignature(firmaData);
+      
+      // Luego actualizamos formData con el valor más reciente
+      const nuevoFormData = {
+        ...formData,
+        firma: firmaData
+      };
+      
+      console.log('Actualizando formData con firma:', { 
+        tieneFirma: !!firmaData,
+        tipo: typeof firmaData,
+        longitud: firmaData.length
+      });
+      
+      // Actualizamos el estado del formulario
+      setFormData(nuevoFormData);
+      
+      // Pequeña pausa para asegurar la actualización
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Verificación después de la actualización
+      console.log('Verificación después de actualizar:', {
+        enEstado: !!signature,
+        enFormData: !!nuevoFormData.firma,
+        sonIguales: signature === nuevoFormData.firma
+      });
+      
+      // Cerrar el diálogo y mostrar confirmación
+      setOpenFirmaDialog(false);
+      enqueueSnackbar('Firma guardada correctamente', { 
+        variant: 'success',
+        autoHideDuration: 2000
+      });
+      
+    } catch (error) {
+      console.error('Error al guardar la firma:', error);
+      enqueueSnackbar('Error al guardar la firma. Por favor, intente nuevamente.', { 
+        variant: 'error',
+        autoHideDuration: 3000
+      });
+    }
+  };
 
   // Función para obtener barrios por comuna (envuelta en useCallback)
   const obtenerBarriosPorComuna = useCallback((comunaNombre) => {
@@ -152,13 +293,14 @@ export default function RegistroBeneficiarios() {
 
   // Valores iniciales con valores por defecto explícitos (envueltos en useMemo)
   const VALORES_INICIALES = useMemo(() => ({
-    // Datos biométricos
-    huella_dactilar: null,
     // Datos del funcionario
     funcionario_id: user?.id || "",
     funcionario_nombre: user?.nombre || "",
     linea_trabajo: user?.linea_trabajo || "",
     fecha_registro: new Date().toISOString().split("T")[0],
+    
+    // Firma digital
+    firma: null,
 
     // Datos personales
     nombre_completo: "",
@@ -212,7 +354,8 @@ export default function RegistroBeneficiarios() {
     linea_trabajo: user?.linea_trabajo || "",
     fecha_registro: new Date().toISOString().split("T")[0],
     etnia: "",
-    etniaPersonalizada: ""
+    etniaPersonalizada: "",
+    firma: null
   });
 
   const [nombreLineaTrabajo, setNombreLineaTrabajo] = useState("");
@@ -223,13 +366,38 @@ export default function RegistroBeneficiarios() {
   useEffect(() => {
     if (location.state?.beneficiario) {
       const beneficiario = location.state.beneficiario;
-      console.log('Cargando beneficiario para edición:', beneficiario);
+      console.log('Cargando beneficiario para edición:', {
+        ...beneficiario,
+        firma: beneficiario.firma ? 'firma presente' : 'sin firma'
+      });
       setModoEdicion(true);
       setBeneficiarioId(beneficiario.id);
 
-      // Actualizar el estado de la huella registrada si el beneficiario ya tiene una
-      if (beneficiario.huella_dactilar) {
-        setHuellaRegistrada(true);
+      // Cargar la firma si existe
+      if (beneficiario.firma) {
+        const firmaData = beneficiario.firma;
+        console.log('Cargando firma existente:', {
+          longitud: firmaData.length,
+          tipo: typeof firmaData,
+          esValida: firmaData.startsWith('data:image/')
+        });
+        
+        // Actualizar ambos estados de forma síncrona
+        setSignature(firmaData);
+        
+        // Usar la función de actualización para asegurar que tenemos el estado más reciente
+        setFormData(prev => {
+          const nuevoEstado = {
+            ...prev,
+            firma: firmaData
+          };
+          console.log('Firma cargada en formData:', { 
+            tieneFirma: !!nuevoEstado.firma,
+            tipo: typeof nuevoEstado.firma,
+            longitud: firmaData.length
+          });
+          return nuevoEstado;
+        });
       }
 
       // Normalizar y encontrar la etnia en la lista de ETNIAS (búsqueda insensible a mayúsculas/minúsculas)
@@ -240,7 +408,8 @@ export default function RegistroBeneficiarios() {
       console.log('Cargando etnia:', {
         original: beneficiario.etnia,
         seleccionada: etniaEncontrada,
-        etniasDisponibles: ETNIAS
+        etniasDisponibles: ETNIAS,
+        firmaCargada: !!beneficiario.firma
       }, 'Tipo de etnia:', typeof beneficiario.etnia);
 
       // Si el beneficiario tiene una comuna, cargar sus barrios
@@ -310,7 +479,9 @@ export default function RegistroBeneficiarios() {
           labora_cuidadora: !!beneficiario.labora_cuidadora,
           victima_conflicto: !!beneficiario.victima_conflicto,
           estudia_actualmente: !!beneficiario.estudia_actualmente,
-          ayuda_humanitaria: !!beneficiario.ayuda_humanitaria
+          ayuda_humanitaria: !!beneficiario.ayuda_humanitaria,
+          // Asegurar que la firma se mantenga si existe
+          firma: beneficiario.firma || null
         };
 
         console.log('Datos actualizados para el formulario:', datosActualizados);
@@ -321,8 +492,7 @@ export default function RegistroBeneficiarios() {
         const datosActualizados = {
           ...VALORES_INICIALES,
           ...beneficiario,
-          // Asegurarse de que la huella se mantenga si existe
-          huella_dactilar: beneficiario.huella_dactilar || null,
+
           // Asegurar que los valores booleanos se manejen correctamente
           sabe_leer: beneficiario.sabe_leer !== undefined ? !!beneficiario.sabe_leer : true,
           sabe_escribir: beneficiario.sabe_escribir !== undefined ? !!beneficiario.sabe_escribir : true,
@@ -330,7 +500,9 @@ export default function RegistroBeneficiarios() {
           labora_cuidadora: !!beneficiario.labora_cuidadora,
           victima_conflicto: !!beneficiario.victima_conflicto,
           estudia_actualmente: !!beneficiario.estudia_actualmente,
-          ayuda_humanitaria: !!beneficiario.ayuda_humanitaria
+          ayuda_humanitaria: !!beneficiario.ayuda_humanitaria,
+          // Asegurar que la firma se mantenga si existe
+          firma: beneficiario.firma || null
         };
         
         console.log('Datos actualizados (sin comuna):', datosActualizados);
@@ -359,114 +531,6 @@ export default function RegistroBeneficiarios() {
     documento: null, // null: no validado, true: válido, false: inválido
     correo: null
   });
-
-  // Estado para manejar la huella dactilar
-  const [huellaRegistrada, setHuellaRegistrada] = useState(false);
-  const [soportaBiometria, setSoportaBiometria] = useState(false);
-
-  // Verificar si el dispositivo soporta biometría
-  useEffect(() => {
-    const verificarSoporteBiometrico = async () => {
-      const soportado = await biometricService.isSupported();
-      setSoportaBiometria(soportado);
-    };
-    verificarSoporteBiometrico();
-  }, []);
-  // La función obtenerBarriosPorComuna se movió arriba
-
-  // Validar documento único
-  const validarDocumentoUnico = async (numero_documento, beneficiarioId = null) => {
-    if (!numero_documento) {
-      setErrores(prev => ({ ...prev, numero_documento: "El documento es requerido" }));
-      setEstadoValidacion(prev => ({ ...prev, documento: false }));
-      return false;
-    }
-
-    setValidando(prev => ({ ...prev, documento: true }));
-    
-    try {
-      const { existe, msg } = await verificarDocumentoUnico(numero_documento, beneficiarioId);
-      
-      if (existe) {
-        setErrores(prev => ({
-          ...prev,
-          numero_documento: msg || "Este documento ya está registrado en el sistema.",
-        }));
-        setEstadoValidacion(prev => ({ ...prev, documento: false }));
-        return false;
-      }
-      
-      setErrores(prev => ({
-        ...prev,
-        numero_documento: "",
-      }));
-      setEstadoValidacion(prev => ({ ...prev, documento: true }));
-      return true;
-      
-    } catch (error) {
-      console.error("Error al validar documento:", error);
-      setErrores(prev => ({
-        ...prev,
-        numero_documento: "Error al validar el documento. Por favor, intente nuevamente.",
-      }));
-      setEstadoValidacion(prev => ({ ...prev, documento: false }));
-      return false;
-      setValidando(prev => ({ ...prev, documento: false }));
-    }
-  };
-
-  // Validar correo único
-  const validarCorreoUnico = async (correo_electronico, excluirId = null) => {
-    // Si el campo está vacío, no mostrar error (es opcional)
-    if (!correo_electronico) {
-      setErrores(prev => ({ ...prev, correo_electronico: "" }));
-      setEstadoValidacion(prev => ({ ...prev, correo: null }));
-      return true;
-    }
-
-    // Validar formato de correo
-    if (!EMAIL_REGEX.test(correo_electronico)) {
-      setErrores(prev => ({
-        ...prev,
-        correo_electronico: "El formato del correo electrónico no es válido",
-      }));
-      setEstadoValidacion(prev => ({ ...prev, correo: false }));
-      return false;
-    }
-
-    setValidando(prev => ({ ...prev, correo: true }));
-    
-    try {
-      const { existe, msg } = await verificarCorreoUnico(correo_electronico, excluirId);
-      
-      if (existe) {
-        setErrores(prev => ({
-          ...prev,
-          correo_electronico: msg || "Este correo electrónico ya está registrado en el sistema.",
-        }));
-        setEstadoValidacion(prev => ({ ...prev, correo: false }));
-        return false;
-      }
-      
-      setErrores(prev => ({
-        ...prev,
-        correo_electronico: "",
-      }));
-      setEstadoValidacion(prev => ({ ...prev, correo: true }));
-      return true;
-      
-    } catch (error) {
-      console.error("Error al validar correo:", error);
-      setErrores(prev => ({
-        ...prev,
-        correo_electronico: "Error al validar el correo electrónico. Por favor, intente nuevamente.",
-      }));
-      setEstadoValidacion(prev => ({ ...prev, correo: false }));
-      return false;
-    } finally {
-      setValidando(prev => ({ ...prev, correo: false }));
-    }
-  };
 
   // Manejar cambio en campos del formulario con validación en tiempo real
   const handleChange = (e) => {
@@ -608,20 +672,39 @@ export default function RegistroBeneficiarios() {
 
   // Función para validar campos requeridos
   const validarCamposRequeridos = () => {
+    // Usar signature si está disponible, de lo contrario usar formData.firma
+    const firmaAValidar = signature || formData.firma;
+    const tieneFirma = !!firmaAValidar && 
+                     typeof firmaAValidar === 'string' && 
+                     firmaAValidar.startsWith('data:image/');
+    
+    console.log('Validando firma:', {
+      tieneFirma,
+      tipo: typeof firmaAValidar,
+      longitud: firmaAValidar ? firmaAValidar.length : 0,
+      fuente: signature ? 'signature' : formData.firma ? 'formData.firma' : 'ninguna'
+    });
+    
+    // Validar que se haya capturado la firma
+    if (!tieneFirma) {
+      console.error('Error de validación: No se encontró firma válida', {
+        signature: !!signature,
+        formDataFirma: !!formData.firma,
+        tipoSignature: typeof signature,
+        tipoFormDataFirma: typeof formData.firma
+      });
+      
+      enqueueSnackbar('Por favor, capture su firma antes de enviar el formulario', { 
+        variant: 'error',
+        autoHideDuration: 5000,
+        anchorOrigin: { vertical: 'top', horizontal: 'right' }
+      });
+      return true; // Hay errores
+    }
+    
     // Lista de campos requeridos con sus mensajes de error
     const camposRequeridos = [
-      // Validar huella dactilar si el dispositivo soporta biometría
-      // Solo requerir huella si no estamos en modo edición
-      ...(soportaBiometria && !modoEdicion ? [{
-        campo: 'huella_dactilar',
-        etiqueta: 'Huella Dactilar',
-        mensaje: 'El registro de la huella dactilar es obligatorio',
-        tipo: 'huella',
-        validar: (valor) => {
-          // Validar que la huella no sea nula, indefinida o vacía
-          return valor !== null && valor !== undefined && Object.keys(valor).length > 0;
-        }
-      }] : []),
+  
       { 
         campo: 'nombre_completo', 
         etiqueta: 'Nombre Completo',
@@ -746,10 +829,7 @@ export default function RegistroBeneficiarios() {
               esInvalido = false; // Nunca marcar como inválido
             }
             break;
-          case 'huella':
-            // Usar la función de validación personalizada si está definida, de lo contrario usar la validación por defecto
-            esInvalido = validarCampo ? !validarCampo(valor) : !valor;
-            break;
+
           default:
             esInvalido = !valor || (typeof valor === 'string' && valor.trim() === '');
         }
@@ -809,39 +889,125 @@ export default function RegistroBeneficiarios() {
     return hayErrores;
   };
 
+  // Función para validar la firma
+  const validarFirma = (firma = formData.firma) => {
+    // Usar el estado local de signature si está disponible
+    const firmaAValidar = firma || signature;
+    
+    const tieneFirma = !!firmaAValidar && 
+                     typeof firmaAValidar === 'string' && 
+                     firmaAValidar.startsWith('data:image/');
+    
+    if (!tieneFirma) {
+      console.error('Error de validación: Firma no válida o faltante', {
+        tieneFirma: !!firmaAValidar,
+        tipo: typeof firmaAValidar,
+        esString: typeof firmaAValidar === 'string',
+        esImagen: firmaAValidar?.startsWith?.('data:image/'),
+        enFormData: !!formData.firma,
+        enEstado: !!signature
+      });
+      
+      enqueueSnackbar('Por favor, capture su firma antes de continuar', {
+        variant: 'error',
+        autoHideDuration: 4000
+      });
+      
+      return false;
+    }
+    
+    return true;
+  };
+
+  // Función para sincronizar la firma
+  const sincronizarFirma = async () => {
+    if (signature && (!formData.firma || formData.firma !== signature)) {
+      console.log('Sincronizando firma a formData');
+      
+      // Crear un nuevo objeto formData con la firma actualizada
+      const nuevoFormData = {
+        ...formData,
+        firma: signature
+      };
+      
+      // Actualizar el estado de formData
+      setFormData(nuevoFormData);
+      
+      // Pequeña pausa para permitir la actualización
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      console.log('Firma sincronizada:', {
+        enFormData: !!nuevoFormData.firma,
+        enEstado: !!signature,
+        sonIguales: signature === nuevoFormData.firma
+      });
+      
+      enqueueSnackbar('Firma actualizada correctamente', { 
+        variant: 'info',
+        autoHideDuration: 2000
+      });
+      
+      return true; // Se realizó la sincronización
+    }
+    return false; // No se necesitó sincronización
+  };
+
   // Modificar handleSubmit para incluir validaciones
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Validar campos requeridos
-    const hayErrores = validarCamposRequeridos();
-    if (hayErrores) {
-      enqueueSnackbar("Por favor complete todos los campos requeridos", { variant: "error" });
+    // Usar signature si está disponible, de lo contrario usar formData.firma
+    const firmaAUsar = signature || formData.firma;
+    
+    // Depuración: Mostrar el estado actual
+    console.log('=== Validando formulario ===', {
+      formDataFirma: {
+        tiene: !!formData.firma,
+        tipo: typeof formData.firma,
+        longitud: formData.firma ? formData.firma.length : 0,
+        esImagen: formData.firma?.startsWith?.('data:image/')
+      },
+      signatureState: {
+        tiene: !!signature,
+        tipo: typeof signature,
+        longitud: signature ? signature.length : 0,
+        esImagen: signature?.startsWith?.('data:image/')
+      },
+      firmaAUsar: {
+        tiene: !!firmaAUsar,
+        tipo: typeof firmaAUsar,
+        longitud: firmaAUsar ? firmaAUsar.length : 0,
+        esImagen: firmaAUsar?.startsWith?.('data:image/')
+      }
+    });
+    
+    // Validar la firma primero
+    if (!validarFirma(firmaAUsar)) {
+      console.error('Error: La firma no es válida o falta');
       return;
     }
     
-    // Validar huella dactilar solo si es un nuevo registro y el dispositivo soporta biometría
-    if (soportaBiometria && !modoEdicion) {
-      // Verificar si hay una huella registrada
-      const tieneHuellaValida = formData.huella_dactilar && 
-                               Object.keys(formData.huella_dactilar).length > 0;
-      
-      if (!tieneHuellaValida) {
-        enqueueSnackbar("Por favor registre la huella dactilar antes de continuar", { variant: "error" });
-        setErrores(prev => ({
-          ...prev,
-          huella_dactilar: 'El registro de la huella dactilar es obligatorio para nuevos registros'
-        }));
+    // Sincronizar la firma si es necesario
+    const seSincronizo = await sincronizarFirma();
+    if (seSincronizo) {
+      // Volver a validar después de sincronizar
+      const hayErrores = validarCamposRequeridos();
+      if (hayErrores) {
+        console.error('Error de validación después de sincronizar la firma');
         return;
-      } else {
-        // Limpiar el error de huella si existe
-        setErrores(prev => {
-          const newErrores = { ...prev };
-          delete newErrores.huella_dactilar;
-          return newErrores;
-        });
       }
     }
+    
+    // Validar el resto de campos requeridos
+    const hayErrores = validarCamposRequeridos();
+    if (hayErrores) {
+      console.error('Error de validación al enviar el formulario');
+      return;
+    }
+    
+    console.log('Todos los campos son válidos, procediendo con el envío...');
+    
+
     
     // Validar documento único
     console.log('Validando documento:', {
@@ -856,7 +1022,6 @@ export default function RegistroBeneficiarios() {
       modoEdicion ? (beneficiarioId || location.state?.beneficiario?.id) : null
     );
     
-    console.log('Resultado validación documento:', esDocumentoValido);
     
     if (!esDocumentoValido) {
       enqueueSnackbar("Por favor corrija el número de documento antes de continuar", { variant: "error" });
@@ -923,27 +1088,15 @@ export default function RegistroBeneficiarios() {
 
           // Datos personales
           nombre_completo: formData.nombre_completo,
-          tipo_documento: formData.tipo_documento,
+          tipo_documento: formData.tipo_documento || "Cédula de ciudadanía",
           numero_documento: formData.numero_documento,
-          genero: formData.genero,
-          rango_edad: formData.rango_edad,
-          fecha_nacimiento: formData.fecha_nacimiento,
-          // Datos biométricos
-          // Si estamos en modo edición y no se ha modificado la huella, mantener la existente
-          huella_dactilar: modoEdicion && !formData.huella_dactilar 
-            ? location.state?.beneficiario?.huella_dactilar || null 
-            : formData.huella_dactilar || null,
+          genero: formData.genero || "Prefiere no decirlo",
+          rango_edad: formData.rango_edad || "29-59",
 
           // Habilidades básicas
-          // sabe_leer:
-          //   formData.sabe_leer !== undefined ? formData.sabe_leer : true,
-          // sabe_escribir:
-          //   formData.sabe_escribir !== undefined
-          //     ? formData.sabe_escribir
-          //     : true,
-// Habilidades básicas (asegurar que siempre sean booleanos)
-          sabe_leer: formData.sabe_leer !== undefined ? Boolean(formData.sabe_leer) : false,
-          sabe_escribir: formData.sabe_escribir !== undefined ? Boolean(formData.sabe_escribir) : false,
+          sabe_leer: formData.sabe_leer !== undefined ? formData.sabe_leer : true,
+          sabe_escribir: formData.sabe_escribir !== undefined ? formData.sabe_escribir : true,
+
           // Contacto
           numero_celular: formData.numero_celular || "",
           correo_electronico: formData.correo_electronico || "",
@@ -992,9 +1145,11 @@ export default function RegistroBeneficiarios() {
           ayuda_humanitaria:
             formData.ayuda_humanitaria !== undefined
               ? formData.ayuda_humanitaria
-              : false,
-          descripcion_ayuda_humanitaria:
+              : false,          descripcion_ayuda_humanitaria:
             formData.descripcion_ayuda_humanitaria || "",
+            
+          // Firma digital
+          firma: formData.firma || null,
         };
 
         // Filtrar datos que realmente han cambiado
@@ -1019,14 +1174,40 @@ export default function RegistroBeneficiarios() {
           return (valorActual || "") === (valorNuevo || "");
         };
 
-        // Comparar cada campo con el valor actual
+        // Manejar la firma de manera especial - asegurando que siempre se incluya si existe
+        // Primero, determinar qué firma usar (nueva o existente)
+        const firmaAIncluir = formData.firma || signature || (beneficiarioActual?.firma || null);
+        
+        console.log('Manejando firma en actualización:', {
+          tieneFirmaEnFormData: !!formData.firma,
+          tieneFirmaEnSignature: !!signature,
+          tieneFirmaExistente: !!beneficiarioActual?.firma,
+          firmaAIncluir: !!firmaAIncluir,
+          tipo: typeof firmaAIncluir,
+          longitud: firmaAIncluir ? firmaAIncluir.length : 0
+        });
+        
+        // Siempre incluir la firma si existe en formData, signature o en el beneficiario actual
+        if (firmaAIncluir) {
+          console.log('Incluyendo firma en la actualización');
+          datosActualizacion.firma = firmaAIncluir;
+        } else if (beneficiarioActual?.firma) {
+          console.log('Manteniendo firma existente');
+          datosActualizacion.firma = beneficiarioActual.firma;
+        } else {
+          console.log('No hay firma para incluir');
+          datosActualizacion.firma = null;
+        }
+
+        // Luego, manejar el resto de los campos
         Object.keys(datosParaEnviar).forEach((campo) => {
-          // Ignorar campos específicos
+          // Ignorar campos específicos que no deben incluirse en la actualización
           const camposIgnorar = [
             "funcionario_id",
             "funcionario_nombre",
             "linea_trabajo",
             "fecha_registro",
+            "firma" // Ya manejamos la firma por separado
           ];
 
           if (camposIgnorar.includes(campo)) return;
@@ -1037,13 +1218,8 @@ export default function RegistroBeneficiarios() {
             return;
           }
 
-          // Comparar valores
-          if (
-            !sonValoresIguales(
-              beneficiarioActual[campo],
-              datosParaEnviar[campo]
-            )
-          ) {
+          // Para otros campos, comparar valores solo si son diferentes
+          if (!sonValoresIguales(beneficiarioActual[campo], datosParaEnviar[campo])) {
             datosActualizacion[campo] = datosParaEnviar[campo];
           }
         });
@@ -1091,10 +1267,7 @@ export default function RegistroBeneficiarios() {
           funcionario_nombre: user.nombre,
 
           // Enviar el ID de línea de trabajo como linea_trabajo
-          linea_trabajo: user.linea_trabajo, // Asumiendo que user.linea_trabajo contiene el ID
-
-          // Depuración de línea de trabajo
-          _debug_user: JSON.parse(JSON.stringify(user)),
+          linea_trabajo: user.linea_trabajo,
 
           fecha_registro: new Date().toISOString(),
 
@@ -1104,15 +1277,10 @@ export default function RegistroBeneficiarios() {
           numero_documento: formData.numero_documento,
           genero: formData.genero || "Prefiere no decirlo",
           rango_edad: formData.rango_edad || "29-59",
-          huella_dactilar: formData.huella_dactilar || null, // AÑADIDO PARA INCLUIR HUELLA
 
           // Habilidades básicas
-          sabe_leer:
-            formData.sabe_leer !== undefined ? formData.sabe_leer : true,
-          sabe_escribir:
-            formData.sabe_escribir !== undefined
-              ? formData.sabe_escribir
-              : true,
+          sabe_leer: formData.sabe_leer !== undefined ? formData.sabe_leer : true,
+          sabe_escribir: formData.sabe_escribir !== undefined ? formData.sabe_escribir : true,
 
           // Contacto
           numero_celular: formData.numero_celular || "",
@@ -1162,9 +1330,11 @@ export default function RegistroBeneficiarios() {
           ayuda_humanitaria:
             formData.ayuda_humanitaria !== undefined
               ? formData.ayuda_humanitaria
-              : false,
-          descripcion_ayuda_humanitaria:
+              : false,          descripcion_ayuda_humanitaria:
             formData.descripcion_ayuda_humanitaria || "",
+            
+          // Firma digital
+          firma: formData.firma || null,
         };
 
         const respuesta = await crearBeneficiario(datosParaEnviar);
@@ -1184,13 +1354,14 @@ export default function RegistroBeneficiarios() {
         setBeneficiarios(nuevosBeneficiarios);
 
         // Limpiar formulario
-        setHuellaRegistrada(false); // Resetear estado de UI de huella usando la variable existente
         setFormData({
           ...VALORES_INICIALES, // Usar valores iniciales
           funcionario_id: user.id,
           funcionario_nombre: user.nombre,
           linea_trabajo: user.linea_trabajo,
           fecha_registro: new Date().toISOString().split("T")[0],
+          // No limpiar la firma si se está en modo edición
+          ...(modoEdicion ? { firma: formData.firma } : {})
         });
 
         // Limpiar errores
@@ -1342,6 +1513,101 @@ export default function RegistroBeneficiarios() {
     verificarModoEdicion();
   }, [user, enqueueSnackbar, location.state]);
 
+  // Validar documento único
+  const validarDocumentoUnico = async (numero_documento, beneficiarioId = null) => {
+    if (!numero_documento) {
+      setErrores(prev => ({ ...prev, numero_documento: "El documento es requerido" }));
+      setEstadoValidacion(prev => ({ ...prev, documento: false }));
+      return false;
+    }
+
+    setValidando(prev => ({ ...prev, documento: true }));
+    
+    try {
+      const { existe, msg } = await verificarDocumentoUnico(numero_documento, beneficiarioId);
+      
+      if (existe) {
+        setErrores(prev => ({
+          ...prev,
+          numero_documento: msg || "Este documento ya está registrado en el sistema.",
+        }));
+        setEstadoValidacion(prev => ({ ...prev, documento: false }));
+        return false;
+      }
+      
+      setErrores(prev => ({
+        ...prev,
+        numero_documento: "",
+      }));
+      setEstadoValidacion(prev => ({ ...prev, documento: true }));
+      return true;
+      
+    } catch (error) {
+      console.error("Error al validar documento:", error);
+      setErrores(prev => ({
+        ...prev,
+        numero_documento: "Error al validar el documento. Por favor, intente nuevamente.",
+      }));
+      setEstadoValidacion(prev => ({ ...prev, documento: false }));
+      return false;
+    } finally {
+      setValidando(prev => ({ ...prev, documento: false }));
+    }
+  };
+
+  // Validar correo único
+  const validarCorreoUnico = async (correo_electronico, excluirId = null) => {
+    // Si el campo está vacío, no mostrar error (es opcional)
+    if (!correo_electronico) {
+      setErrores(prev => ({ ...prev, correo_electronico: "" }));
+      setEstadoValidacion(prev => ({ ...prev, correo: null }));
+      return true;
+    }
+
+    // Validar formato de correo
+    if (!EMAIL_REGEX.test(correo_electronico)) {
+      setErrores(prev => ({
+        ...prev,
+        correo_electronico: "El formato del correo electrónico no es válido",
+      }));
+      setEstadoValidacion(prev => ({ ...prev, correo: false }));
+      return false;
+    }
+
+    setValidando(prev => ({ ...prev, correo: true }));
+    
+    try {
+      const { existe, msg } = await verificarCorreoUnico(correo_electronico, excluirId);
+      
+      if (existe) {
+        setErrores(prev => ({
+          ...prev,
+          correo_electronico: msg || "Este correo electrónico ya está registrado en el sistema.",
+        }));
+        setEstadoValidacion(prev => ({ ...prev, correo: false }));
+        return false;
+      }
+      
+      setErrores(prev => ({
+        ...prev,
+        correo_electronico: "",
+      }));
+      setEstadoValidacion(prev => ({ ...prev, correo: true }));
+      return true;
+      
+    } catch (error) {
+      console.error("Error al validar correo:", error);
+      setErrores(prev => ({
+        ...prev,
+        correo_electronico: "Error al validar el correo electrónico. Por favor, intente nuevamente.",
+      }));
+      setEstadoValidacion(prev => ({ ...prev, correo: false }));
+      return false;
+    } finally {
+      setValidando(prev => ({ ...prev, correo: false }));
+    }
+  };
+
   return (
     <Container maxWidth="md">
       <Paper elevation={3} sx={{ p: 4, mt: 4 }}>
@@ -1447,50 +1713,6 @@ export default function RegistroBeneficiarios() {
                 }}
               />
             </Grid>
-            {/* Campo de Huella Dactilar */}
-            {soportaBiometria && (
-              <Grid item xs={12} sm={6}>
-                <FormControl fullWidth error={!!errores.huella_dactilar}>
-                  <FormLabel component="legend" required>Huella Dactilar *</FormLabel>
-                  <Button
-                    variant="contained"
-                    color={huellaRegistrada ? "success" : "primary"}
-                    startIcon={<FingerprintIcon />}
-                    onClick={async (e) => {
-                    try {
-                      if (!formData.numero_documento) {
-                        enqueueSnackbar("Por favor, ingrese primero el número de documento", { variant: "warning" });
-                        return;
-                      }
-
-                      const datosHuella = await biometricService.registrarHuella(
-                        formData.numero_documento,
-                        formData.nombre_completo
-                      );
-
-                      console.log('RegistroBeneficiarios.js, DATOS RECIBIDOS de biometricService:', datosHuella); // DEBUG LINE
-                      setFormData(prev => ({
-                        ...prev,
-                        huella_dactilar: datosHuella
-                      }));
-
-                      setHuellaRegistrada(true);
-                      enqueueSnackbar("Huella dactilar registrada exitosamente", { variant: "success" });
-                    } catch (error) {
-                      enqueueSnackbar(error.message || "Error al registrar la huella dactilar", { variant: "error" });
-                    }
-                    }}
-                    fullWidth
-                    sx={{ height: '56px', mt: 1 }} // Mismo alto que los TextField
-                  >
-                    {huellaRegistrada ? "Huella Registrada" : "Registrar Huella Dactilar"}
-                  </Button>
-                  {errores.huella_dactilar && (
-                    <FormHelperText error>{errores.huella_dactilar}</FormHelperText>
-                  )}
-                </FormControl>
-              </Grid>
-            )}
             <Grid item xs={12} sm={6}>
               <FormControl fullWidth required error={!!errores.genero}>
                 <InputLabel id="genero-label">Género *</InputLabel>
@@ -1958,6 +2180,38 @@ export default function RegistroBeneficiarios() {
               )}
             </Grid>
 
+            {/* Sección de Firma */}
+            <Grid item xs={12} sx={{ mt: 4, mb: 2 }}>
+              <Typography variant="h6" gutterBottom>
+                Firma del Beneficiario
+              </Typography>
+              <Button
+                variant="outlined"
+                onClick={handleOpenFirmaDialog}
+                startIcon={<EditIcon />}
+                fullWidth
+                sx={{ mb: 2 }}
+              >
+                {signature ? 'Editar Firma' : 'Agregar Firma'}
+              </Button>
+              {signature && (
+                <Box
+                  component="img"
+                  src={signature}
+                  alt="Firma del beneficiario"
+                  sx={{
+                    mt: 2,
+                    maxHeight: 100,
+                    border: '1px solid #ddd',
+                    borderRadius: '4px',
+                    padding: '8px',
+                    display: 'block',
+                    margin: '0 auto'
+                  }}
+                />
+              )}
+            </Grid>
+
             {/* Botones de Acción */}
             <Grid item xs={12} container spacing={2}>
               <Grid item xs={6}>
@@ -1983,6 +2237,100 @@ export default function RegistroBeneficiarios() {
             </Grid>
           </Grid>
         </form>
+
+        {/* Diálogo de Firma */}
+        <Dialog 
+          open={openFirmaDialog} 
+          onClose={handleCloseFirmaDialog}
+          maxWidth="md"
+          fullWidth
+          PaperProps={{
+            style: {
+              minHeight: '80vh',
+              maxHeight: '90vh',
+              width: '100%',
+              maxWidth: '800px'
+            }
+          }}
+        >
+          <DialogTitle>Firma del Beneficiario</DialogTitle>
+          <DialogContent style={{ padding: '16px', display: 'flex', flexDirection: 'column', flex: 1 }}>
+            <Box
+              sx={{
+                border: '1px solid #e0e0e0',
+                borderRadius: '8px',
+                padding: '16px',
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                minHeight: '300px'
+              }}
+            >
+              <Typography variant="body2" color="textSecondary" gutterBottom>
+                Por favor, firme en el área de abajo
+              </Typography>
+              <Box 
+                sx={{
+                  flex: 1,
+                  border: '1px solid #e0e0e0',
+                  borderRadius: '4px',
+                  backgroundColor: '#fff',
+                  position: 'relative',
+                  overflow: 'hidden',
+                  minHeight: '300px',
+                  width: '100%'
+                }}
+              >
+                <SignatureCanvas
+                  ref={sigCanvas}
+                  penColor="#000"
+                  onEnd={handleCanvasEnd}
+                  canvasProps={{
+                    className: 'signature-canvas',
+                    style: {
+                      width: '100%',
+                      height: '100%',
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      touchAction: 'none'
+                    }
+                  }}
+                  backgroundColor="rgba(255, 255, 255, 0)"
+                  minWidth={1}
+                  maxWidth={1}
+                  minDistance={1}
+                  throttle={0}
+                />
+              </Box>
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button
+              startIcon={<ClearIcon />}
+              onClick={handleClearFirma}
+              color="error"
+            >
+              Limpiar
+            </Button>
+            <Button
+              startIcon={<SaveIcon />}
+              onClick={handleSaveFirma}
+              variant="contained"
+              color="primary"
+              disabled={isCanvasEmpty}
+              sx={{ opacity: isCanvasEmpty ? 0.7 : 1 }}
+            >
+              Guardar Firma
+            </Button>
+            <Button
+              startIcon={<CloseIcon />}
+              onClick={handleCloseFirmaDialog}
+            >
+              Cerrar
+            </Button>
+          </DialogActions>
+        </Dialog>
 
         {/* Lista de Beneficiarios Registrados */}
         {beneficiarios.length > 0 && (

@@ -412,58 +412,107 @@ def poblaciones_vulnerables():
 @jwt_required()
 def actualizar_beneficiario(beneficiario_id):
     try:
+        # Configurar logging detallado
+        logger = current_app.logger
+        logger.info("=== INICIO ACTUALIZACIÓN BENEFICIARIO ===")
+        
         # Obtener ID del funcionario desde el token
         funcionario_id = get_jwt_identity()
-        funcionarios = current_app.config['MONGO_DB']['funcionarios']
+        db = current_app.config['MONGO_DB']
+        funcionarios = db['funcionarios']
+        beneficiarios = db['beneficiarios']
+        
+        # Verificar que el funcionario existe
         funcionario = funcionarios.find_one({'_id': ObjectId(funcionario_id)})
-
         if not funcionario:
+            logger.error("Funcionario no encontrado")
             return jsonify({"msg": "Funcionario no encontrado"}), 404
 
         # Obtener datos de la solicitud
         datos = request.get_json()
-        beneficiarios = current_app.config['MONGO_DB']['beneficiarios']
+        logger.info(f"Datos recibidos: {list(datos.keys())}")
+        
+        # Verificar si se está enviando una firma
+        if 'firma' in datos:
+            firma = datos['firma']
+            logger.info(f"Firma recibida - Tipo: {type(firma).__name__}, Longitud: {len(firma) if isinstance(firma, str) else 'N/A'}")
+            if not firma or firma.strip() == '':
+                logger.warning("Firma vacía recibida, se establecerá como None")
+                datos['firma'] = None
+        else:
+            logger.warning("No se recibió el campo 'firma' en la solicitud")
 
         # Verificar si el documento o correo ya existen, excluyendo el beneficiario actual
-        documento_existente = beneficiarios.find_one({
+        filtro_documento = {
             'numero_documento': datos.get('numero_documento'),
             '_id': {'$ne': ObjectId(beneficiario_id)}
-        })
+        }
+        documento_existente = beneficiarios.find_one(filtro_documento)
 
-        correo_existente = beneficiarios.find_one({
-            'correo_electronico': datos.get('correo_electronico'),
-            '_id': {'$ne': ObjectId(beneficiario_id)}
-        }) if datos.get('correo_electronico') else None
+        correo = datos.get('correo_electronico')
+        correo_existente = None
+        if correo:
+            filtro_correo = {
+                'correo_electronico': correo,
+                '_id': {'$ne': ObjectId(beneficiario_id)}
+            }
+            correo_existente = beneficiarios.find_one(filtro_correo)
 
         # Verificar conflictos
         if documento_existente:
+            logger.warning(f"Documento {datos.get('numero_documento')} ya existe")
             return jsonify({
                 "msg": "El número de documento ya está registrado para otro beneficiario",
                 "campo": "numero_documento"
             }), 400
 
         if correo_existente:
+            logger.warning(f"Correo {correo} ya existe")
             return jsonify({
                 "msg": "El correo electrónico ya está registrado para otro beneficiario",
                 "campo": "correo_electronico"
             }), 400
 
+        # Preparar datos para la actualización
+        datos_actualizacion = {k: v for k, v in datos.items() if v is not None}
+        
+        # Si hay una firma, asegurarse de que se guarde correctamente
+        if 'firma' in datos_actualizacion:
+            if not datos_actualizacion['firma']:
+                datos_actualizacion['firma'] = None
+                logger.info("Firma establecida como None")
+            else:
+                logger.info("Firma válida recibida, se procederá a guardar")
+        
+        logger.info(f"Campos a actualizar: {list(datos_actualizacion.keys())}")
+
         # Actualizar beneficiario
+        logger.info("Iniciando actualización en la base de datos...")
         resultado = beneficiarios.update_one(
             {'_id': ObjectId(beneficiario_id)},
-            {'$set': datos}
+            {'$set': datos_actualizacion}
         )
 
         if resultado.modified_count == 0:
+            logger.warning("No se realizaron cambios en el beneficiario")
             return jsonify({"msg": "No se realizaron cambios"}), 200
+
+        # Obtener el beneficiario actualizado para verificar
+        beneficiario_actualizado = beneficiarios.find_one({'_id': ObjectId(beneficiario_id)})
+        tiene_firma = 'firma' in beneficiario_actualizado and bool(beneficiario_actualizado['firma'])
+        
+        logger.info(f"Beneficiario actualizado. ¿Tiene firma?: {tiene_firma}")
+        logger.info("=== FIN ACTUALIZACIÓN BENEFICIARIO ===")
 
         return jsonify({
             "msg": "Beneficiario actualizado exitosamente",
-            "beneficiario_id": beneficiario_id
+            "beneficiario_id": beneficiario_id,
+            "tiene_firma": tiene_firma,
+            "firma_actualizada": 'firma' in datos_actualizacion
         }), 200
 
     except Exception as e:
-        current_app.logger.error(f"Error al actualizar beneficiario: {str(e)}")
+        logger.error(f"Error al actualizar beneficiario: {str(e)}", exc_info=True)
         return jsonify({"msg": f"Error interno al actualizar beneficiario: {str(e)}"}), 500
 
 @beneficiarios_bp.route('/verificar-documento/<numero_documento>', methods=['GET'])

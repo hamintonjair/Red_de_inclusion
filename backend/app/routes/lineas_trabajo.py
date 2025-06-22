@@ -16,25 +16,32 @@ logger = logging.getLogger(__name__)
 lineas_trabajo_bp = Blueprint('lineas_trabajo', __name__)
 
 @lineas_trabajo_bp.route('', methods=['GET', 'POST', 'OPTIONS'])
-@jwt_required()
+@jwt_required(optional=True)  # Make JWT optional for OPTIONS requests
 def lineas_trabajo_route():
     """
     Manejar solicitudes GET y POST para líneas de trabajo
     """
     try:
-        # Obtener la colección de líneas de trabajo
-        lineas_trabajo_collection = current_app.config['MONGO_DB']['lineas_trabajo']
-        
-        # Inicializar modelo de líneas de trabajo
-        linea_trabajo_model = LineaTrabajo(lineas_trabajo_collection)
-        
-        # Manejar solicitudes OPTIONS (CORS)
+        # Handle OPTIONS request for CORS preflight
         if request.method == 'OPTIONS':
             response = jsonify(success=True)
             response.headers.add('Access-Control-Allow-Origin', '*')
             response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
             response.headers.add('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
+            response.headers.add('Access-Control-Allow-Credentials', 'true')
             return response
+            
+        # Check if user is authenticated for non-OPTIONS requests
+        from flask_jwt_extended import get_jwt_identity
+        current_user = get_jwt_identity()
+        if not current_user and request.method != 'OPTIONS':
+            return jsonify({"msg": "Missing or invalid token"}), 401
+            
+        # Obtener la colección de líneas de trabajo
+        lineas_trabajo_collection = current_app.config['MONGO_DB']['lineas_trabajo']
+        
+        # Inicializar modelo de líneas de trabajo
+        linea_trabajo_model = LineaTrabajo(lineas_trabajo_collection)
         
         # Manejar solicitudes GET
         if request.method == 'GET':

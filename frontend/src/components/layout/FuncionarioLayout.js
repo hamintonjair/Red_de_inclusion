@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
     Box, 
     CssBaseline, 
@@ -38,14 +38,19 @@ const menuItems = [
     { 
         text: 'Habitantes', 
         icon: <PeopleIcon />, 
-        path: '/funcionario/beneficiarios'
+        path: '/funcionario/beneficiarios',
         // hideForLineaTrabajoNombre: 'Población Migrante'
+    },
+    { 
+        text: 'Asistentes', 
+        icon: <PeopleIcon />, 
+        path: '/funcionario/asistentes'
     },
     { 
         text: 'Migrantes', 
         icon: <PeopleIcon />, 
         path: '/funcionario/poblacion-migrante',
-        disabled: true,
+        // disabled: true,
         hideForLineaTrabajoNombre: [
             'Adulto mayor',
             'Población Religiosa',
@@ -57,7 +62,8 @@ const menuItems = [
             'Renta Ciudadana', 
             'Enlace de Niñas, Niños y Adolecentes',
             'Habitantes Calles',
-            'Discapacidad',
+            'Poblacion con Discapacidad',
+            'Población con Discapacidad',
             'Coordinación de Víctimas',
             'Coordinacion de Victimas'       ] 
     },
@@ -73,11 +79,19 @@ const menuItems = [
     }
 ];
 
-export const FuncionarioLayout = ({ children }) => {
+const FuncionarioLayout = ({ children }) => {
     const [open, setOpen] = useState(true);
+    const [mounted, setMounted] = useState(false);
     const { user, logout } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
+    const drawerRef = useRef(null);
+
+    // Efecto para manejar el montaje/desmontaje seguro
+    useEffect(() => {
+        setMounted(true);
+        return () => setMounted(false);
+    }, []);
 
     const filteredMenuItems = menuItems.filter(item => 
         !item.hideForLineaTrabajoNombre || 
@@ -91,10 +105,12 @@ export const FuncionarioLayout = ({ children }) => {
     };
 
     const handleNavigation = (path) => {
+        if (!mounted) return;
         navigate(path);
     };
 
     const handleLogout = () => {
+        if (!mounted) return;
         logout();
         navigate('/login');
     };
@@ -150,6 +166,7 @@ export const FuncionarioLayout = ({ children }) => {
             <Drawer 
                 variant="permanent" 
                 open={open}
+                ref={drawerRef}
                 sx={{
                     width: open ? 280 : 57,
                     flexShrink: 0,
@@ -162,7 +179,13 @@ export const FuncionarioLayout = ({ children }) => {
                             duration: theme.transitions.duration.enteringScreen,
                         }),
                         overflowX: 'hidden',
+                        position: 'fixed',
+                        height: '100vh',
+                        zIndex: theme => theme.zIndex.drawer + 1,
                     },
+                }}
+                ModalProps={{
+                    keepMounted: true, // Mejora el rendimiento en móviles
                 }}
             >
                 <Toolbar>
@@ -171,22 +194,46 @@ export const FuncionarioLayout = ({ children }) => {
                     </IconButton>
                 </Toolbar>
                 <Divider />
-                <List>
-                    {filteredMenuItems.map((item) => (
-                        <ListItem 
-                            button 
-                            key={item.text}
-                            onClick={() => handleNavigation(item.path)}
-                            selected={
-                                item.path === '/funcionario/beneficiarios' 
-                                    ? location.pathname === item.path 
-                                    : location.pathname.startsWith(item.path)
-                            }
-                        >
-                            <ListItemIcon>{item.icon}</ListItemIcon>
-                            <ListItemText primary={item.text} />
-                        </ListItem>
-                    ))}
+                <List component="nav">
+                    {filteredMenuItems.map((item, index) => {
+                        const isSelected = item.path === '/funcionario/beneficiarios' 
+                            ? location.pathname === item.path 
+                            : location.pathname.startsWith(item.path);
+                            
+                        return (
+                            <ListItem 
+                                button 
+                                key={`${item.text}-${index}`}
+                                onClick={() => !item.disabled && handleNavigation(item.path)}
+                                selected={isSelected}
+                                disabled={item.disabled}
+                                sx={{
+                                    opacity: item.disabled ? 0.6 : 1,
+                                    cursor: item.disabled ? 'not-allowed' : 'pointer',
+                                    '&.Mui-selected': {
+                                        backgroundColor: 'primary.light',
+                                        '&:hover': {
+                                            backgroundColor: 'primary.light',
+                                        },
+                                    },
+                                }}
+                            >
+                                <ListItemIcon sx={{ color: item.disabled ? 'text.disabled' : 'inherit' }}>
+                                    {React.cloneElement(item.icon, { 
+                                        color: item.disabled ? 'disabled' : isSelected ? 'primary' : 'inherit'
+                                    })}
+                                </ListItemIcon>
+                                <ListItemText 
+                                    primary={item.text} 
+                                    primaryTypographyProps={{
+                                        color: item.disabled ? 'text.disabled' : 'inherit',
+                                        variant: 'body2',
+                                        noWrap: true
+                                    }}
+                                />
+                            </ListItem>
+                        );
+                    })}
                 </List>
             </Drawer>
             <Box 

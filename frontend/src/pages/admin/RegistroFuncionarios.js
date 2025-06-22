@@ -76,12 +76,7 @@ export default function RegistroFuncionarios() {
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        console.group('Cambio de Campo');
-        console.log('Nombre del campo:', name);
-        console.log('Valor seleccionado:', value);
-        console.log('Líneas de trabajo actuales:', lineasTrabajo);
-        console.log('Estado actual de funcionario:', funcionario);
-
+      
         // Validar que el valor sea válido para línea de trabajo
         if (name === 'linea_trabajo') {
             const lineaValida = lineasTrabajo.some(linea => linea.id === value);
@@ -97,8 +92,7 @@ export default function RegistroFuncionarios() {
                 [name]: value
             };
             
-            console.log('Nuevo estado:', nuevoEstado);
-            console.groupEnd();
+        
             
             return nuevoEstado;
         });
@@ -176,12 +170,9 @@ export default function RegistroFuncionarios() {
                 linea_trabajo: funcionario.linea_trabajo
             };
 
-            console.log('Datos a enviar:', funcionarioData);
             
             const response = await crearFuncionario(funcionarioData);
-            
-            console.log('Respuesta del servidor:', response);
-            
+                        
             setSuccess('Funcionario registrado exitosamente');
             
             // Limpiar formulario
@@ -402,7 +393,7 @@ export default function RegistroFuncionarios() {
                         <Button 
                             type="submit" 
                             variant="contained" 
-                            color="primary" 
+                            color="success" 
                             fullWidth
                         >
                             Registrar Funcionario

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Avatar,
   Button,
@@ -20,50 +20,86 @@ import fondoImg from '../fondo/fondo.png';
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
   const { enqueueSnackbar } = useSnackbar();
-
-  // Para evitar actualizaciones cuando el componente ya esté desmontado
   const isMounted = useRef(true);
+  const navigateRef = useRef(navigate);
+
+  // Efecto de limpieza al desmontar
   useEffect(() => {
     isMounted.current = true;
-    return () => { isMounted.current = false; };
+    return () => {
+      isMounted.current = false;
+    };
   }, []);
+
+  // Actualizar referencia de navigate
+  useEffect(() => {
+    navigateRef.current = navigate;
+  }, [navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError(null);
-    setLoading(true);
+    
+    if (isLoading) return;
+    
+    // Validación básica
+    if (!email.trim() || !password) {
+      setError('Por favor ingrese correo y contraseña');
+      return;
+    }
+
+    // Resetear estados
+    setError('');
+    setIsLoading(true);
 
     try {
-      const usuario = await login(email, password);
+      // Ejecutar login
+      const usuario = await login(email.trim(), password);
+      
+      // Verificar si el componente sigue montado
       if (!isMounted.current) return;
-
-      switch (usuario.rol) {
-        case 'admin':
-          return navigate('/admin/dashboard');
-        case 'funcionario':
-          return navigate('/funcionario/dashboard');
-        default:
-          setError('Rol no autorizado');
-          enqueueSnackbar('Rol no autorizado', { variant: 'error' });
-      }
+      
+      // Navegar después del login exitoso
+      const path = usuario.rol === 'admin' 
+        ? '/admin/dashboard' 
+        : '/funcionario/dashboard';
+      
+      // Usar replace para evitar que el usuario vuelva al login con el botón atrás
+      navigateRef.current(path, { replace: true });
+      
     } catch (err) {
+      // Manejo de errores
       if (isMounted.current) {
-        const msg = err.message || 'Error de inicio de sesión';
-        setError(msg);
-        enqueueSnackbar(msg, { variant: 'error' });
+        const errorMessage = err.response?.data?.message || 
+                         err.message || 
+                         'Error de inicio de sesión';
+        
+        setError(errorMessage);
+        
+        // Mostrar notificación de error
+        enqueueSnackbar(errorMessage, { 
+          variant: 'error',
+          autoHideDuration: 5000,
+          preventDuplicate: true,
+          anchorOrigin: {
+            vertical: 'top',
+            horizontal: 'center'
+          }
+        });
       }
     } finally {
-      if (isMounted.current) setLoading(false);
+      if (isMounted.current) {
+        setIsLoading(false);
+      }
     }
   };
 
   return (
-    <Grid container component="main" sx={{ height: '100vh' }}>
+    <Grid container component="main" sx={{ minHeight: '100vh', height: '100%' }}>
       <CssBaseline />
 
       {/* Lado izquierdo con imagen */}
@@ -88,14 +124,34 @@ const Login = () => {
           <Typography component="h1" variant="h5">
             Iniciar Sesión
           </Typography>
-          <Box component="form" noValidate onSubmit={handleSubmit} sx={{ mt: 1 }}>
+          <Box 
+            component="form" 
+            noValidate 
+            onSubmit={handleSubmit} 
+            sx={{ 
+              mt: 1, 
+              width: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center'
+            }}
+          >
             {error && (
-              <Alert severity="error" sx={{ width: '100%', mb: 2 }}>
+              <Alert 
+                severity="error" 
+                sx={{ 
+                  width: '100%', 
+                  mb: 2,
+                  '& .MuiAlert-message': {
+                    width: '100%'
+                  }
+                }}
+              >
                 {error}
               </Alert>
             )}
             <TextField
-              disabled={loading}
+              disabled={isLoading}
               margin="normal"
               required
               fullWidth
@@ -106,9 +162,11 @@ const Login = () => {
               autoFocus
               value={email}
               onChange={e => setEmail(e.target.value)}
+              sx={{ mb: 2 }}
+              variant="outlined"
             />
             <TextField
-              disabled={loading}
+              disabled={isLoading}
               margin="normal"
               required
               fullWidth
@@ -119,16 +177,29 @@ const Login = () => {
               autoComplete="current-password"
               value={password}
               onChange={e => setPassword(e.target.value)}
+              sx={{ mb: 3 }}
+              variant="outlined"
             />
             <Button
               type="submit"
               fullWidth
               variant="contained"
-              sx={{ mt: 3, mb: 2 }}
-              disabled={loading}
-              startIcon={loading ? <CircularProgress size={20} /> : null}
+              disabled={isLoading}
+              startIcon={isLoading ? <CircularProgress size={20} /> : null}
+              sx={{
+                mt: 2,
+                mb: 2,
+                py: 1.5,
+                fontSize: '1rem',
+                textTransform: 'none',
+                '&:hover': {
+                  boxShadow: 2,
+                },
+                maxWidth: '300px',
+                alignSelf: 'center'
+              }}
             >
-              {loading ? 'Cargando...' : 'Iniciar Sesión'}
+              {isLoading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
             </Button>
           </Box>
         </Box>

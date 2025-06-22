@@ -26,6 +26,15 @@ class ActividadSchema(Schema):
     linea_trabajo_id = fields.Str(required=True)
     asistentes = fields.List(fields.Nested(AsistenciaSchema), default=[])
     funcionario_id = fields.Str(required=True)
+    # El campo tipo es requerido y solo puede ser 'actividad' o 'reunion'
+    tipo = fields.Str(
+        required=True,
+        validate=validate.OneOf(['actividad', 'reunion']),
+        error_messages={
+            'required': 'El tipo de actividad es requerido',
+            'validator_failed': 'El tipo debe ser \'actividad\' o \'reunion\''
+        }
+    )
     estado = fields.Str(
         validate=validate.OneOf(['pendiente', 'en_progreso', 'completada', 'cancelada']),
         default='pendiente'
@@ -59,18 +68,28 @@ class ActividadModel:
 
     def crear_actividad(self, datos):
         """
-        Crear una nueva actividad
+        Crear una nueva actividad o reunión
         
-        :param datos: Diccionario con datos de la actividad
-        :return: ID de la nueva actividad
+        :param datos: Diccionario con datos de la actividad/reunión
+        :return: ID del nuevo documento creado
         """
         try:
-            # Validar datos
-            datos_validados = self.schema.load(datos)
+            logger.info(f"[MODELO] Datos recibidos en crear_actividad: {datos}")
             
-            # Insertar en la base de datos
-            resultado = self.collection.insert_one(datos_validados)
-            return str(resultado.inserted_id)
+            # Validar datos con el esquema
+            try:
+                # El esquema ya valida que el tipo sea 'actividad' o 'reunion'
+                datos_validados = self.schema.load(datos)
+                logger.info(f"[MODELO] Datos validados correctamente: {datos_validados}")
+                
+                # Insertar en la base de datos
+                resultado = self.collection.insert_one(datos_validados)
+                logger.info(f"[MODELO] Documento creado con ID: {resultado.inserted_id}, Tipo: {datos_validados.get('tipo')}")
+                return str(resultado.inserted_id)
+                
+            except Exception as e:
+                logger.error(f"[MODELO] Error al validar datos: {str(e)}", exc_info=True)
+                raise
             
         except Exception as e:
             raise ValueError(f"Error al crear la actividad: {str(e)}")

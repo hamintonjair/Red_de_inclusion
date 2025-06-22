@@ -99,7 +99,7 @@ const ListadoFuncionarios = () => {
                 </Typography>
                 <Button 
                     variant="contained" 
-                    color="primary" 
+                    color="success" 
                     startIcon={<AddIcon />}
                     onClick={handleNuevoFuncionario}
                 >
