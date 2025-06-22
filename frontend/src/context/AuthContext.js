@@ -1,6 +1,9 @@
-import { createContext, useState, useEffect, useContext } from 'react';
+import { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import usuarioService from '../services/usuarioService';
 import { jwtDecode } from 'jwt-decode';
+
+// Tiempo de inactividad en milisegundos (30 minutos)
+const INACTIVITY_TIMEOUT = 30 * 60 * 1000;
 
 const AuthContext = createContext(null);
 
@@ -8,7 +11,19 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
+    const logout = useCallback(() => {
+        localStorage.removeItem(process.env.REACT_APP_TOKEN_KEY);
+        localStorage.removeItem('user');
+        setUser(null);
+        // Limpiar cualquier temporizador de inactividad existente
+        const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+        events.forEach(event => {
+            window.removeEventListener(event, window.resetInactivityTimer);
+        });
+        clearTimeout(window.inactivityTimer);
+    }, []);
+
+    const checkAuth = useCallback(async () => {
         const token = localStorage.getItem(process.env.REACT_APP_TOKEN_KEY);
         if (token) {
             try {
@@ -17,37 +32,43 @@ export const AuthProvider = ({ children }) => {
 
                 if (decodedToken.exp > currentTime) {
                     // Token válido, obtener información completa del usuario
-                    usuarioService.obtenerUsuarioPorId(decodedToken.sub)
-                        .then(userData => {
-                                 
-                            setUser({
-                                ...userData,
-                                token: token,
-                                telefono: userData.telefono || '' // Asegurar campo de teléfono
-                            });
-                        })
-                        .catch(error => {
-                            localStorage.removeItem(process.env.REACT_APP_TOKEN_KEY);
-                            setUser(null);
-                        })
-                        .finally(() => {
-                            setLoading(false);
-                        });
+                    const userData = await usuarioService.obtenerUsuarioPorId(decodedToken.sub);
+                    return {
+                        ...userData,
+                        token: token,
+                        telefono: userData.telefono || ''
+                    };
                 } else {
                     // Token expirado
-                    localStorage.removeItem(process.env.REACT_APP_TOKEN_KEY);
-                    setUser(null);
-                    setLoading(false);
+                    logout();
+                    return null;
                 }
             } catch (error) {
-                localStorage.removeItem(process.env.REACT_APP_TOKEN_KEY);
-                setUser(null);
+                console.error('Error al verificar autenticación:', error);
+                logout();
+                return null;
+            }
+        }
+        return null;
+    }, [logout]);
+
+    useEffect(() => {
+        // Verificar autenticación al cargar
+        const verifyAuth = async () => {
+            try {
+                const userData = await checkAuth();
+                if (userData) {
+                    setUser(userData);
+                }
+            } catch (error) {
+                console.error('Error al verificar autenticación:', error);
+            } finally {
                 setLoading(false);
             }
-        } else {
-            setLoading(false);
-        }
-    }, []);
+        };
+
+        verifyAuth();
+    }, [checkAuth]);
 
     const login = async (email, password) => {
         try {
@@ -70,12 +91,6 @@ export const AuthProvider = ({ children }) => {
                                  'Error desconocido al iniciar sesión';
             throw new Error(errorMessage);
         }
-    };
-
-    const logout = () => {
-        localStorage.removeItem(process.env.REACT_APP_TOKEN_KEY);
-        localStorage.removeItem('user');
-        setUser(null);
     };
 
     return (
