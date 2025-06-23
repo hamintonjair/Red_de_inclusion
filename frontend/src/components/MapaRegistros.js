@@ -12,15 +12,53 @@ export const COMUNA_COLORS = {
   'Zonas Rurales': '#7f8c8d', // Gris
 };
 
+// Función para normalizar nombres de barrios (quitar espacios, convertir a minúsculas, etc.)
+const normalizarNombreBarrio = (nombre) => {
+  if (!nombre) return '';
+  return nombre
+    .trim()
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // Eliminar acentos
+    .replace(/[^a-z0-9]/g, ''); // Eliminar caracteres especiales
+};
+
 // Agrupa los registros por comuna y barrio
 export function agruparPorComunaYBarrio(registros) {
   const resultado = {};
+  const nombresOriginales = {}; // Para mantener el nombre original del barrio
+  
   registros.forEach(r => {
-    if (!resultado[r.comuna]) resultado[r.comuna] = {};
-    if (!resultado[r.comuna][r.barrio]) resultado[r.comuna][r.barrio] = 0;
-    resultado[r.comuna][r.barrio]++;
+    if (!r.comuna) return; // Saltar registros sin comuna
+    
+    const comuna = r.comuna.trim();
+    const barrioOriginal = r.barrio ? r.barrio.trim() : 'Sin barrio';
+    const barrioKey = normalizarNombreBarrio(barrioOriginal);
+    
+    if (!resultado[comuna]) {
+      resultado[comuna] = {};
+      nombresOriginales[comuna] = {};
+    }
+    
+    // Si es la primera vez que vemos este barrio, guardar el nombre original
+    if (!nombresOriginales[comuna][barrioKey]) {
+      nombresOriginales[comuna][barrioKey] = barrioOriginal;
+    }
+    
+    // Usar el nombre normalizado para agrupar, pero mostrar el nombre original
+    resultado[comuna][barrioKey] = (resultado[comuna][barrioKey] || 0) + 1;
   });
-  return resultado;
+  
+  // Reemplazar las claves normalizadas por los nombres originales
+  const resultadoFinal = {};
+  Object.keys(resultado).forEach(comuna => {
+    resultadoFinal[comuna] = {};
+    Object.keys(resultado[comuna]).forEach(barrioKey => {
+      const nombreOriginal = nombresOriginales[comuna][barrioKey];
+      resultadoFinal[comuna][nombreOriginal] = resultado[comuna][barrioKey];
+    });
+  });
+  
+  return resultadoFinal;
 }
 
 const MapaRegistros = ({ registros }) => {

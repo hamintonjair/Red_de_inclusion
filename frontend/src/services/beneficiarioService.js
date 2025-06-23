@@ -130,18 +130,23 @@ export const crearBeneficiario = async (datos) => {
  * @param {Object} filtros - Objeto con los filtros a aplicar
  * @param {string} [filtros.linea_trabajo] - ID de la línea de trabajo para filtrar
  * @param {string} [filtros.fecha] - Fecha para filtrar beneficiarios (formato YYYY-MM-DD)
- * @param {number} [filtros.por_pagina=1000] - Cantidad de registros por página
- * @returns {Promise<Object>} Respuesta del servidor con los beneficiarios
+ * @param {number} [filtros.por_pagina=20] - Cantidad de registros por página
+ * @param {number} [filtros.pagina=1] - Número de página a solicitar
+ * @returns {Promise<Object>} Respuesta del servidor con los beneficiarios y metadatos de paginación
  */
 export const obtenerBeneficiarios = async (filtros = {}) => {
     try {        
-        // Crear un objeto con los parámetros de consulta
-        const queryParams = {};
+        // Crear un objeto con los parámetros de consulta con valores por defecto
+        const queryParams = {
+            por_pagina: 20, // Valor por defecto más pequeño para mejor rendimiento
+            pagina: 1,
+            ...filtros // Sobrescribir con los filtros proporcionados
+        };
         
-        // Agregar filtros a los parámetros
-        Object.keys(filtros).forEach(key => {
-            if (filtros[key] !== undefined && filtros[key] !== null && filtros[key] !== '') {
-                queryParams[key] = filtros[key];
+        // Limpiar parámetros vacíos o nulos
+        Object.keys(queryParams).forEach(key => {
+            if (queryParams[key] === undefined || queryParams[key] === null || queryParams[key] === '') {
+                delete queryParams[key];
             }
         });
         
@@ -169,26 +174,71 @@ export const obtenerBeneficiarios = async (filtros = {}) => {
             queryParams.linea_trabajo = filtros.linea_trabajo;
         }
         
-      
-        const response = await axiosInstance.get('/beneficiarios/listar', { 
-            params: queryParams,
-            paramsSerializer: params => new URLSearchParams(params).toString()
-        });
-        
-        
-        if (!response.data) {
-            console.warn('La respuesta de la API no contiene datos');
-            return { beneficiarios: [] };
+        // Asegurar que por_pagina no sea demasiado grande para evitar sobrecarga
+        if (queryParams.por_pagina > 200) {
+            queryParams.por_pagina = 200;
         }
         
-        return response.data;
+        // Agregar timestamp para evitar caché del navegador
+        queryParams._t = Date.now();
+        
+        const response = await axiosInstance.get('/beneficiarios/listar', { 
+            params: queryParams,
+            paramsSerializer: params => {
+                // Filtrar parámetros vacíos adicionales
+                const filteredParams = Object.fromEntries(
+                    Object.entries(params).filter(([_, v]) => v !== undefined && v !== null && v !== '')
+                );
+                return new URLSearchParams(filteredParams).toString();
+            }
+        });
+        
+        // Si la respuesta no tiene datos, devolver un objeto con estructura consistente
+        if (!response.data) {
+            console.warn('La respuesta de la API no contiene datos');
+            return { 
+                beneficiarios: [],
+                total: 0,
+                pagina: queryParams.pagina || 1,
+                por_pagina: queryParams.por_pagina || 20
+            };
+        }
+        
+        // Asegurarse de que la respuesta tenga la estructura esperada
+        if (Array.isArray(response.data)) {
+            return {
+                beneficiarios: response.data,
+                total: response.data.length,
+                pagina: 1,
+                por_pagina: response.data.length
+            };
+        }
+        
+        // Si la respuesta ya tiene la estructura esperada, devolverla tal cual
+        return {
+            beneficiarios: response.data.beneficiarios || [],
+            total: response.data.total || 0,
+            pagina: response.data.pagina || 1,
+            por_pagina: response.data.por_pagina || 20,
+            ...response.data // Mantener cualquier otro dato adicional
+        };
+        
     } catch (error) {
-               
-        // Lanzar un error personalizado
+        console.error('Error en obtenerBeneficiarios:', error);
+        
+        // Lanzar un error personalizado con más contexto
         const errorMsg = error.response?.data?.msg || 'Error al obtener beneficiarios';
+        const status = error.response?.status;
+        
         const customError = new Error(errorMsg);
-        customError.status = error.response?.status;
+        customError.status = status;
         customError.data = error.response?.data;
+        
+        // Si es un error de autenticación, forzar cierre de sesión
+        if (status === 401) {
+            localStorage.removeItem(process.env.REACT_APP_TOKEN_KEY || 'authToken');
+            window.location.href = '/login';
+        }
         
         throw customError;
     }

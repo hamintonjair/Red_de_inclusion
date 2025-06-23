@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import SignatureCanvas from 'react-signature-canvas';
-import {
+import { useTheme, useMediaQuery } from '@mui/material';
+import { 
   Container,
   Typography,
   Grid,
@@ -118,6 +119,28 @@ export default function RegistroBeneficiarios() {
   const [openFirmaDialog, setOpenFirmaDialog] = useState(false);
   const [signature, setSignature] = useState(null);
   const sigCanvas = useRef(null);
+  
+  // Estados para detección de dispositivo y orientación
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const [orientation, setOrientation] = useState(
+    typeof window !== 'undefined' ? (window.innerWidth > window.innerHeight ? 'landscape' : 'portrait') : 'portrait'
+  );
+  
+  // Efecto para detectar cambios de orientación
+  useEffect(() => {
+    const handleResize = () => {
+      setOrientation(window.innerWidth > window.innerHeight ? 'landscape' : 'portrait');
+    };
+    
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleResize);
+    
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', handleResize);
+    };
+  }, []);
   
   // Effect to keep signature state in sync with formData
   useEffect(() => {
@@ -2244,17 +2267,42 @@ export default function RegistroBeneficiarios() {
           onClose={handleCloseFirmaDialog}
           maxWidth="md"
           fullWidth
+          fullScreen={isMobile}
           PaperProps={{
             style: {
-              minHeight: '80vh',
-              maxHeight: '90vh',
+              minHeight: isMobile ? '100vh' : '80vh',
+              maxHeight: isMobile ? '100vh' : '90vh',
               width: '100%',
-              maxWidth: '800px'
+              maxWidth: '800px',
+              margin: isMobile ? 0 : '16px',
+              borderRadius: isMobile ? 0 : '4px'
             }
           }}
         >
-          <DialogTitle>Firma del Beneficiario</DialogTitle>
-          <DialogContent style={{ padding: '16px', display: 'flex', flexDirection: 'column', flex: 1 }}>
+          <DialogTitle sx={{ 
+            bgcolor: 'primary.main', 
+            color: 'white',
+            '@media (max-width: 600px)': {
+              textAlign: 'center',
+              padding: '16px'
+            }
+          }}>
+            <Typography variant="h6">
+              {isMobile ? 'Firme en la pantalla' : 'Firma del Beneficiario'}
+            </Typography>
+          </DialogTitle>
+          <DialogContent sx={{ 
+            padding: '16px', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            flex: 1,
+            '@media (max-width: 600px)': {
+              padding: '10px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center'
+            }
+          }}>
             <Box
               sx={{
                 border: '1px solid #e0e0e0',
@@ -2263,12 +2311,27 @@ export default function RegistroBeneficiarios() {
                 flex: 1,
                 display: 'flex',
                 flexDirection: 'column',
-                minHeight: '300px'
+                width: '100%',
+                height: '100%',
+                '@media (max-width: 600px)': {
+                  padding: '8px',
+                  height: 'auto',
+                  minHeight: isMobile && orientation === 'portrait' ? '40vh' : '60vh'
+                }
               }}
             >
-              <Typography variant="body2" color="textSecondary" gutterBottom>
-                Por favor, firme en el área de abajo
-              </Typography>
+              {isMobile && orientation === 'portrait' && (
+                <Typography 
+                  variant="body2" 
+                  color="textSecondary" 
+                  align="center" 
+                  gutterBottom
+                  sx={{ mb: 2 }}
+                >
+                  Para una mejor experiencia, gire su dispositivo a modo horizontal
+                </Typography>
+              )}
+              
               <Box 
                 sx={{
                   flex: 1,
@@ -2277,14 +2340,24 @@ export default function RegistroBeneficiarios() {
                   backgroundColor: '#fff',
                   position: 'relative',
                   overflow: 'hidden',
-                  minHeight: '300px',
-                  width: '100%'
+                  width: '100%',
+                  height: isMobile ? (orientation === 'portrait' ? '40vh' : '60vh') : '400px',
+                  '@media (max-width: 600px)': {
+                    height: isMobile && orientation === 'portrait' ? '35vh' : '50vh'
+                  }
                 }}
               >
                 <SignatureCanvas
                   ref={sigCanvas}
                   penColor="#000"
                   onEnd={handleCanvasEnd}
+                  onBegin={() => setIsCanvasEmpty(false)}
+                  backgroundColor="rgba(255, 255, 255, 0.8)"
+                  velocityFilterWeight={0.7}
+                  minWidth={1.5}
+                  maxWidth={2.5}
+                  dotSize={1}
+                  throttle={16}
                   canvasProps={{
                     className: 'signature-canvas',
                     style: {
@@ -2296,40 +2369,64 @@ export default function RegistroBeneficiarios() {
                       touchAction: 'none'
                     }
                   }}
-                  backgroundColor="rgba(255, 255, 255, 0)"
-                  minWidth={1}
-                  maxWidth={1}
-                  minDistance={1}
-                  throttle={0}
                 />
+              </Box>
+              
+              <Box 
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  marginTop: '16px',
+                  flexWrap: 'wrap',
+                  gap: '8px',
+                  '@media (max-width: 600px)': {
+                    flexDirection: 'row',
+                    width: '100%',
+                    justifyContent: 'space-around',
+                    gap: '8px',
+                    marginTop: '12px'
+                  }
+                }}
+              >
+                <Button
+                  startIcon={<ClearIcon />}
+                  onClick={handleClearFirma}
+                  color="error"
+                  size={isMobile ? 'small' : 'medium'}
+                  variant="outlined"
+                >
+                  Limpiar
+                </Button>
+                <Box>
+                  <Button
+                    startIcon={<CloseIcon />}
+                    onClick={handleCloseFirmaDialog}
+                    size={isMobile ? 'small' : 'medium'}
+                    variant="outlined"
+                    sx={{ mr: 1 }}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    startIcon={<SaveIcon />}
+                    onClick={handleSaveFirma}
+                    variant="contained"
+                    color="primary"
+                    disabled={isCanvasEmpty}
+                    size={isMobile ? 'small' : 'medium'}
+                    sx={{ 
+                      opacity: isCanvasEmpty ? 0.7 : 1,
+                      '@media (max-width: 600px)': {
+                        minWidth: '120px'
+                      }
+                    }}
+                  >
+                    Guardar
+                  </Button>
+                </Box>
               </Box>
             </Box>
           </DialogContent>
-          <DialogActions>
-            <Button
-              startIcon={<ClearIcon />}
-              onClick={handleClearFirma}
-              color="error"
-            >
-              Limpiar
-            </Button>
-            <Button
-              startIcon={<SaveIcon />}
-              onClick={handleSaveFirma}
-              variant="contained"
-              color="primary"
-              disabled={isCanvasEmpty}
-              sx={{ opacity: isCanvasEmpty ? 0.7 : 1 }}
-            >
-              Guardar Firma
-            </Button>
-            <Button
-              startIcon={<CloseIcon />}
-              onClick={handleCloseFirmaDialog}
-            >
-              Cerrar
-            </Button>
-          </DialogActions>
         </Dialog>
 
         {/* Lista de Beneficiarios Registrados */}

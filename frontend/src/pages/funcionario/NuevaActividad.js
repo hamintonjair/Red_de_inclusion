@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { 
@@ -23,22 +23,25 @@ import {
     Typography, 
     Divider,
     CircularProgress,
-    Paper
+    Paper,
+    Tooltip
 } from '@mui/material';
 import { 
     Save as SaveIcon, 
     ArrowBack as ArrowBackIcon,
     Add as AddIcon,
     PersonAdd as PersonAddIcon,
-    Delete as DeleteIcon
+    Delete as DeleteIcon,
+    Refresh as RefreshIcon
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { TimePicker } from '@mui/x-date-pickers/TimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { format as formatDate, parse, parseISO, format } from 'date-fns';
+import { format as formatDate, parse, parseISO, format, isAfter, isBefore, subDays, addDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import ClearAllIcon from '@mui/icons-material/ClearAll';
+import { debounce } from 'lodash';
 import { 
     createActividad, 
     updateActividad, 
@@ -49,6 +52,10 @@ import { obtenerBeneficiarios } from '../../services/beneficiarioService';
 import { obtenerLineasTrabajo } from '../../services/lineaTrabajoService';
 import PageLayout from '../../components/layout/PageLayout';
 
+// Cache para almacenar los beneficiarios por línea de trabajo
+const beneficiariosCache = {};
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos de caché
+
 const NuevaActividad = () => {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -57,11 +64,14 @@ const NuevaActividad = () => {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState(null);
     const [filtroFecha, setFiltroFecha] = useState(null);
+    // Estados para la gestión de beneficiarios
     const [beneficiarios, setBeneficiarios] = useState([]);
     const [beneficiariosFiltrados, setBeneficiariosFiltrados] = useState([]);
     const [lineasTrabajo, setLineasTrabajo] = useState([]);
     const [asistentes, setAsistentes] = useState([]);
+    const [loadingBeneficiarios, setLoadingBeneficiarios] = useState(false);
     
+    // Estado para el formulario
     const [formData, setFormData] = useState({
         tema: '',
         objetivo: '',
@@ -73,6 +83,58 @@ const NuevaActividad = () => {
         observaciones: '',
         linea_trabajo_id: user?.linea_trabajo_id || ''
     });
+
+    // Función para cargar beneficiarios con caché
+    const cargarBeneficiarios = useCallback(async (lineaTrabajoId, forzarActualizacion = false) => {
+        if (!lineaTrabajoId) return;
+
+        // Verificar caché
+        const ahora = Date.now();
+        const cacheEntry = beneficiariosCache[lineaTrabajoId];
+        
+        if (!forzarActualizacion && cacheEntry && (ahora - cacheEntry.timestamp < CACHE_DURATION)) {
+            setBeneficiarios(cacheEntry.data);
+            setBeneficiariosFiltrados(cacheEntry.data);
+            return;
+        }
+
+        setLoadingBeneficiarios(true);
+        try {
+            const response = await obtenerBeneficiarios({ 
+                linea_trabajo: lineaTrabajoId,
+                por_pagina: 1000,
+                _t: ahora // Evitar caché del navegador
+            });
+
+            const data = response.beneficiarios || [];
+            
+            // Actualizar caché
+            beneficiariosCache[lineaTrabajoId] = {
+                data,
+                timestamp: ahora
+            };
+
+            setBeneficiarios(data);
+            setBeneficiariosFiltrados(data);
+        } catch (error) {
+            console.error('Error al cargar beneficiarios:', error);
+            // Si hay caché, usarlo a pesar del error
+            if (cacheEntry?.data) {
+                setBeneficiarios(cacheEntry.data);
+                setBeneficiariosFiltrados(cacheEntry.data);
+            }
+        } finally {
+            setLoadingBeneficiarios(false);
+        }
+    }, []);
+
+    // Efecto para cargar beneficiarios cuando cambia la línea de trabajo
+    useEffect(() => {
+        const lineaTrabajoId = formData.linea_trabajo_id || user?.linea_trabajo_id;
+        if (lineaTrabajoId) {
+            cargarBeneficiarios(lineaTrabajoId);
+        }
+    }, [formData.linea_trabajo_id, user?.linea_trabajo_id, cargarBeneficiarios]);
 
     // Cargar datos iniciales al montar el componente
     useEffect(() => {
@@ -98,52 +160,17 @@ const NuevaActividad = () => {
                         };
                         setFormData(actividadData);
                         setAsistentes(actividad.asistentes?.map(a => a.beneficiario_id) || []);
-                        
-                        // Cargar beneficiarios de la línea de trabajo de la actividad
-                        if (actividadData.linea_trabajo_id) {
-                            try {
-                                // Obtener solo los beneficiarios de la línea de trabajo actual
-                                const response = await obtenerBeneficiarios({ 
-                                    linea_trabajo: actividadData.linea_trabajo_id,
-                                    por_pagina: 1000 
-                                });
-                                
-                                // Extraer el array de beneficiarios de la respuesta
-                                const beneficiariosFiltrados = response.beneficiarios || [];
-                                
-                                setBeneficiarios(beneficiariosFiltrados);
-                                setBeneficiariosFiltrados(beneficiariosFiltrados);
-                            } catch (error) {
-                                console.error('Error al cargar beneficiarios:', error);
-                            }
-                        }
                     }
                 } else if (user?.linea_trabajo_id) {
-                    // Cargar solo los beneficiarios de la línea de trabajo del usuario
-                    try {
-                        // Obtener solo los beneficiarios de la línea de trabajo del usuario
-                        const response = await obtenerBeneficiarios({ 
-                            linea_trabajo: user.linea_trabajo_id,
-                            por_pagina: 1000 
-                        });
-                        
-                        // Extraer el array de beneficiarios de la respuesta
-                        const beneficiariosFiltrados = response.beneficiarios || [];
-                
-                        
-                        setBeneficiarios(beneficiariosFiltrados);
-                        setBeneficiariosFiltrados(beneficiariosFiltrados);
-                        
-                        // Establecer la línea de trabajo del usuario solo si no hay un valor ya establecido
-                        setFormData(prev => ({
-                            ...prev,
-                            linea_trabajo_id: prev.linea_trabajo_id || user.linea_trabajo_id
-                        }));
-                    } catch (error) {
-                        console.error('Error al cargar beneficiarios:', error);
-                    }
+                    // Para nueva actividad, establecer la línea de trabajo del usuario
+                    setFormData(prev => ({
+                        ...prev,
+                        linea_trabajo_id: user.linea_trabajo_id
+                    }));
+                    // Los beneficiarios se cargarán automáticamente por el efecto
                 }
             } catch (err) {
+                console.error('Error al cargar datos iniciales:', err);
                 setError('No se pudieron cargar los datos necesarios');
             } finally {
                 setLoading(false);
@@ -152,81 +179,60 @@ const NuevaActividad = () => {
 
         cargarDatosIniciales();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [id, user?.linea_trabajo_id]);
+    }, [id]);
 
-    // Función para cargar beneficiarios con filtros
-    const cargarBeneficiarios = async (filtrosAdicionales = {}) => {
-        if (!user?.linea_trabajo_id) {
-            console.warn('No se pudo cargar beneficiarios: No hay línea de trabajo definida');
-            return [];
+    // Función para filtrar beneficiarios localmente
+    const filtrarBeneficiarios = useCallback((texto) => {
+        if (!texto || !texto.trim()) {
+            setBeneficiariosFiltrados(beneficiarios);
+            return;
         }
-        
-        try {
-            // Crear objeto de filtros base
-            const filtrosBase = {
-                linea_trabajo: user.linea_trabajo_id,
-                por_pagina: 1000
-            };
-            
-            // Combinar con filtros adicionales
-            const filtros = {
-                ...filtrosBase,
-                ...filtrosAdicionales
-            };
-            
-            // Asegurarse de que la fecha sea un objeto Date válido
-            if (filtros.fecha) {
-                // Si es un string, convertirlo a Date
-                if (typeof filtros.fecha === 'string') {
-                    filtros.fecha = new Date(filtros.fecha);
-                }
-                // Si es una fecha inválida, usar la fecha actual
-                if (isNaN(filtros.fecha.getTime())) {
-                    filtros.fecha = new Date();
-                }
-                // El servicio se encargará del formato ISO
-            }
-                        
-            // Realizar la petición al servidor
-            const response = await obtenerBeneficiarios(filtros);
-            
-            if (!response || !Array.isArray(response.beneficiarios)) {
-                console.warn('La respuesta no contiene un array de beneficiarios:', response);
-                setBeneficiarios([]);
-                setBeneficiariosFiltrados([]);
-                return [];
-            }
-            
-            const beneficiariosFiltrados = response.beneficiarios;
-            
-            // Actualizar el estado con los beneficiarios obtenidos
-            setBeneficiarios(beneficiariosFiltrados);
-            setBeneficiariosFiltrados(beneficiariosFiltrados);
-            
-            return beneficiariosFiltrados;
-        } catch (error) {
-            console.error('Error al cargar beneficiarios:', error);
-            setBeneficiarios([]);
-            setBeneficiariosFiltrados([]);
-            return [];
+
+        const textoBusqueda = texto.toLowerCase();
+        const filtrados = beneficiarios.filter(beneficiario => 
+            (beneficiario.nombre_completo?.toLowerCase().includes(textoBusqueda) ||
+             beneficiario.numero_documento?.includes(textoBusqueda))
+        );
+
+        setBeneficiariosFiltrados(filtrados);
+    }, [beneficiarios]);
+
+    // Función para forzar la actualización de beneficiarios
+    const actualizarListaBeneficiarios = useCallback(() => {
+        const lineaTrabajoId = formData.linea_trabajo_id || user?.linea_trabajo_id;
+        if (lineaTrabajoId) {
+            cargarBeneficiarios(lineaTrabajoId, true);
         }
-    };
+    }, [formData.linea_trabajo_id, user?.linea_trabajo_id, cargarBeneficiarios]);
+
+    // Función para manejar el cambio de búsqueda con debounce
+    const handleBuscarBeneficiario = useMemo(
+        () => debounce((valor) => filtrarBeneficiarios(valor), 300),
+        [filtrarBeneficiarios]
+    );
+
+    // Limpiar el debounce al desmontar
+    useEffect(() => {
+        return () => {
+            handleBuscarBeneficiario.cancel();
+        };
+    }, [handleBuscarBeneficiario]);
 
     // Efecto para cargar beneficiarios cuando cambia la línea de trabajo
     useEffect(() => {
         const cargarDatos = async () => {
             try {
-                // Cargar beneficiarios solo por línea de trabajo, sin filtrar por fecha
-                await cargarBeneficiarios({ 
-                    linea_trabajo: user?.linea_trabajo_id 
-                });
+                const lineaTrabajoId = formData.linea_trabajo_id || user?.linea_trabajo_id;
+                if (lineaTrabajoId) {
+                    await cargarBeneficiarios(lineaTrabajoId);
+                }
             } catch (error) {
                 console.error('Error al cargar beneficiarios:', error);
             }
         };
         
         cargarDatos();
-    }, [user?.linea_trabajo_id]);
+    }, [formData.linea_trabajo_id, user?.linea_trabajo_id, cargarBeneficiarios]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;

@@ -48,9 +48,73 @@ import PageLayout from '../../components/layout/PageLayout';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
+// Estilos para la firma
+const signatureStyles = {
+  signatureContainer: {
+    width: '100%',
+    overflow: 'auto',
+    margin: '10px 0',
+    padding: '10px',
+    backgroundColor: '#f9f9f9',
+    borderRadius: '8px',
+    '@media (max-width: 600px)': {
+      transform: 'rotate(0deg)',
+      height: '180px',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+    }
+  },
+  signatureCanvas: {
+    backgroundColor: 'white',
+    border: '1px solid #ddd',
+    borderRadius: '4px',
+    touchAction: 'none',
+    '@media (max-width: 600px)': {
+      transform: 'rotate(0deg)',
+      width: '90% !important',
+      height: '150px !important',
+    }
+  },
+  buttonsContainer: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    marginTop: '10px',
+    '@media (max-width: 600px)': {
+      flexDirection: 'row',
+      width: '100%',
+      justifyContent: 'space-around',
+      flexWrap: 'wrap',
+      gap: '8px'
+    }
+  },
+  dialogContent: {
+    padding: '20px',
+    '@media (max-width: 600px)': {
+      padding: '10px',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center'
+    }
+  },
+  dialogTitle: {
+    bgcolor: 'primary.main', 
+    color: 'white',
+    '@media (max-width: 600px)': {
+      textAlign: 'center',
+      padding: '16px'
+    }
+  }
+};
+
 const Asistentes = () => {
     // Estados del componente
     const [asistentes, setAsistentes] = useState([]);
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 600);
+    const [orientation, setOrientation] = useState(
+        window.innerWidth > window.innerHeight ? 'landscape' : 'portrait'
+    );
     const [filteredAsistentes, setFilteredAsistentes] = useState([]);
     const [openDialog, setOpenDialog] = useState(false);
     const [editingId, setEditingId] = useState(null);
@@ -71,6 +135,23 @@ const Asistentes = () => {
         dependencia: '',
         tipo_participacion: ''
     });
+
+    // Efecto para detectar cambios en el tamaño de la pantalla y orientación
+    useEffect(() => {
+        const handleResize = () => {
+            setIsMobile(window.innerWidth < 600);
+            setOrientation(window.innerWidth > window.innerHeight ? 'landscape' : 'portrait');
+        };
+
+        window.addEventListener('resize', handleResize);
+        window.addEventListener('orientationchange', handleResize);
+        
+        // Limpiar listeners al desmontar
+        return () => {
+            window.removeEventListener('resize', handleResize);
+            window.removeEventListener('orientationchange', handleResize);
+        };
+    }, []);
     
     // Estados para los diálogos
     const [openSignatureDialog, setOpenSignatureDialog] = useState(false);
@@ -199,8 +280,37 @@ const Asistentes = () => {
             dependencia: '',
             tipo_participacion: ''
         });
-        setFilteredAsistentes(asistentes);
     };
+    
+    // Efecto para aplicar filtros cuando cambian los valores de búsqueda o filtros
+    useEffect(() => {
+        if (asistentes.length > 0) {
+            let result = [...asistentes];
+            
+            // Aplicar búsqueda
+            if (searchText) {
+                const searchLower = searchText.toLowerCase();
+                result = result.filter(asistente => 
+                    (asistente.nombre && asistente.nombre.toLowerCase().includes(searchLower)) ||
+                    (asistente.cedula && asistente.cedula.includes(searchText)) ||
+                    (asistente.dependencia && asistente.dependencia.toLowerCase().includes(searchLower)) ||
+                    (asistente.email && asistente.email.toLowerCase().includes(searchLower))
+                );
+            }
+            
+            // Aplicar filtros
+            if (filters.dependencia) {
+                result = result.filter(a => a.dependencia === filters.dependencia);
+            }
+            
+            if (filters.tipo_participacion) {
+                result = result.filter(a => a.tipo_participacion === filters.tipo_participacion);
+            }
+            
+            setFilteredAsistentes(result);
+            setPage(0); // Resetear a la primera página al aplicar filtros
+        }
+    }, [searchText, filters, asistentes]);
 
     useEffect(() => {
         cargarAsistentes();
@@ -415,19 +525,36 @@ const Asistentes = () => {
                 return;
             }
             
-            // Obtener la firma como imagen en formato base64
-            const signatureData = sigCanvas.current.toDataURL('image/png');
+            // Obtener el canvas de firma
+            const canvas = sigCanvas.current.getCanvas();
             
-            // Actualizar el estado de la firma
+            // Crear un canvas temporal para mejorar la calidad
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+            
+            // Configurar el tamaño del canvas temporal (doble de resolución para mejor calidad)
+            const scale = window.devicePixelRatio || 1;
+            tempCanvas.width = canvas.width * scale;
+            tempCanvas.height = canvas.height * scale;
+            
+            // Aplicar fondo blanco
+            tempCtx.fillStyle = 'white';
+            tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+            
+            // Dibujar la firma escalada
+            tempCtx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
+            
+            // Obtener la firma como imagen PNG
+            const signatureData = tempCanvas.toDataURL('image/png');
+            
+            // Actualizar estados
             setSignature(signatureData);
-            
-            // Actualizar el estado del asistente con la nueva firma
             setAsistente(prev => ({
                 ...prev,
                 firma: signatureData
             }));
             
-            // Cerrar el diálogo de firma
+            // Cerrar el diálogo
             setOpenSignatureDialog(false);
             
             // Limpiar cualquier mensaje de error previo
@@ -895,47 +1022,71 @@ const Asistentes = () => {
                 <Dialog 
                     open={openSignatureDialog} 
                     onClose={handleCloseSignatureDialog}
-                    maxWidth="sm"
+                    maxWidth="md"
                     fullWidth
+                    fullScreen={isMobile}
+                    PaperProps={{
+                        style: {
+                            maxWidth: '800px',
+                            margin: isMobile ? 0 : '16px',
+                            width: isMobile ? '100%' : 'auto',
+                            height: isMobile ? '100%' : 'auto',
+                            maxHeight: isMobile ? 'none' : '90vh'
+                        }
+                    }}
                 >
-                    <DialogTitle sx={{ bgcolor: 'primary.main', color: 'white' }}>
+                    <DialogTitle sx={signatureStyles.dialogTitle}>
                         <Typography variant="h6" component="div">
-                            Agregar Firma Digital
+                            {isMobile ? 'Firme en la pantalla' : 'Agregar Firma Digital'}
                         </Typography>
                     </DialogTitle>
-                    <DialogContent>
-                        <Box border={1} borderColor="divider" borderRadius={1} p={2} mb={2}>
-                            <Typography variant="body2" color="textSecondary" gutterBottom>
-                                Por favor, firme en el área de abajo:
-                            </Typography>
+                    <DialogContent sx={signatureStyles.dialogContent}>
+                        <Box sx={signatureStyles.signatureContainer}>
+                            {isMobile && (
+                                <Typography variant="body2" color="textSecondary" align="center" gutterBottom>
+                                    Por favor, gire su dispositivo a modo horizontal para una mejor experiencia
+                                </Typography>
+                            )}
                             <SignatureCanvas
                                 ref={sigCanvas}
                                 onEnd={() => setSignatureReady(true)}
+                                onBegin={() => setSignatureReady(true)}
+                                penColor="black"
+                                backgroundColor="rgba(255, 255, 255, 0.8)"
+                                velocityFilterWeight={0.7}
+                                minWidth={1.5}
+                                maxWidth={2.5}
+                                dotSize={1}
+                                throttle={16}
                                 canvasProps={{
                                     style: {
+                                        ...signatureStyles.signatureCanvas,
                                         width: '100%',
-                                        height: 200,
+                                        height: isMobile ? '150px' : '200px',
+                                        touchAction: 'none',
                                         border: '1px solid #ddd',
-                                        borderRadius: 4,
+                                        borderRadius: '4px',
                                         backgroundColor: '#fff'
                                     }
                                 }}
                             />
                         </Box>
-                        <Box display="flex" justifyContent="space-between" mt={2}>
+                        <Box sx={signatureStyles.buttonsContainer}>
                             <Button 
                                 variant="outlined" 
                                 onClick={handleClearSignature}
                                 startIcon={<ClearIcon />}
+                                size={isMobile ? 'small' : 'medium'}
                             >
                                 Limpiar
                             </Button>
-                            <div>
+                            <Box>
                                 <Button 
                                     variant="outlined" 
                                     onClick={handleCloseSignatureDialog}
                                     startIcon={<CloseIcon />}
-                                    style={{ marginRight: '8px' }}
+                                    size={isMobile ? 'small' : 'medium'}
+                                    sx={{ mr: 1 }}
                                 >
                                     Cancelar
                                 </Button>
@@ -945,10 +1096,11 @@ const Asistentes = () => {
                                     onClick={handleSaveSignature}
                                     startIcon={<SaveIcon />}
                                     disabled={!signatureReady}
+                                    size={isMobile ? 'small' : 'medium'}
                                 >
-                                    Guardar Firma
+                                    Guardar
                                 </Button>
-                            </div>
+                            </Box>
                         </Box>
                     </DialogContent>
                 </Dialog>
