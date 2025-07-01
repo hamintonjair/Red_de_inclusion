@@ -1,14 +1,16 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Login from '../pages/Login';
 import AdminRoutes from './AdminRoutes';
 import FuncionarioRoutes from './FuncionarioRoutes';
 import CircularProgress from '@mui/material/CircularProgress';
 import Box from '@mui/material/Box';
+import { useEffect } from 'react';
 
 const PrivateRoute = ({ children, allowedRoles }) => {
     const { user, loading } = useAuth();
+    const location = useLocation();
 
     if (loading) {
         return (
@@ -24,7 +26,7 @@ const PrivateRoute = ({ children, allowedRoles }) => {
     }
 
     if (!user) {
-        return <Navigate to="/login" replace />;
+        return <Navigate to="/login" state={{ from: location }} replace />;
     }
 
     if (allowedRoles && !allowedRoles.includes(user.rol)) {

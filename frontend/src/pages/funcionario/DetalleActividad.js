@@ -479,21 +479,23 @@ const DetalleActividad = ({ esReunion = false }) => {
                                 sx={{ mb: 3 }}
                             >
                                 <Tab label="Información" icon={<DescriptionIcon />} />
-                                <Tab label="Asistentes" icon={<PeopleIcon />} />
+                                {!esReunion && (
+                                    <Tab label="Asistentes" icon={<PeopleIcon />} />
+                                )}
                             </Tabs>
 
                             <TabPanel value={tabValue} index={0}>
-                                <Box sx={{ mb: 3 }}>
-                                    <Button 
-                                        variant="outlined" 
-                                        color="primary" 
-                                        fullWidth 
-                                        startIcon={<PeopleIcon />}
-                                        onClick={() => setTabValue(1)}
-                                    >
-                                        Registrar Asistencia
-                                    </Button>
-                                </Box>
+                                    <Box sx={{ mb: 3 }}>
+                                        <Button 
+                                            variant="outlined" 
+                                            color="primary" 
+                                            fullWidth 
+                                            startIcon={<PeopleIcon />}
+                                            onClick={() => setTabValue(1)}
+                                        >
+                                            Registrar Asistencia
+                                        </Button>
+                                    </Box>
 
                                 <Typography 
                                     variant="h6" 

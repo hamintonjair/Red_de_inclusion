@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Avatar,
   Button,
@@ -12,7 +12,7 @@ import {
   Alert
 } from '@mui/material';
 import { LockOutlined as LockOutlinedIcon } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useSnackbar } from 'notistack';
 import fondoImg from '../fondo/fondo.png';
@@ -24,116 +24,114 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { enqueueSnackbar } = useSnackbar();
-  const isMounted = useRef(true);
-  const navigateRef = useRef(navigate);
-
-  // Efecto de limpieza al desmontar
-  useEffect(() => {
-    isMounted.current = true;
-    return () => {
-      isMounted.current = false;
-    };
-  }, []);
-
-  // Actualizar referencia de navigate
-  useEffect(() => {
-    navigateRef.current = navigate;
-  }, [navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     if (isLoading) return;
     
-    // Validación básica
     if (!email.trim() || !password) {
       setError('Por favor ingrese correo y contraseña');
       return;
     }
 
-    // Resetear estados
     setError('');
     setIsLoading(true);
 
     try {
-      // Ejecutar login
       const usuario = await login(email.trim(), password);
       
-      // Verificar si el componente sigue montado
-      if (!isMounted.current) return;
+      // Usar el estado de ubicación para redirigir a la ruta previa o al dashboard
+      const from = location.state?.from?.pathname || 
+                  (usuario.rol === 'admin' ? '/admin/dashboard' : '/funcionario/dashboard');
       
-      // Navegar después del login exitoso
-      const path = usuario.rol === 'admin' 
-        ? '/admin/dashboard' 
-        : '/funcionario/dashboard';
-      
-      // Usar replace para evitar que el usuario vuelva al login con el botón atrás
-      navigateRef.current(path, { replace: true });
+      navigate(from, { replace: true });
       
     } catch (err) {
-      // Manejo de errores
-      if (isMounted.current) {
-        const errorMessage = err.response?.data?.message || 
+      const errorMessage = err.response?.data?.message || 
                          err.message || 
                          'Error de inicio de sesión';
-        
-        setError(errorMessage);
-        
-        // Mostrar notificación de error
-        enqueueSnackbar(errorMessage, { 
-          variant: 'error',
-          autoHideDuration: 5000,
-          preventDuplicate: true,
-          anchorOrigin: {
-            vertical: 'top',
-            horizontal: 'center'
-          }
-        });
-      }
+      
+      setError(errorMessage);
+      enqueueSnackbar(errorMessage, { 
+        variant: 'error',
+        autoHideDuration: 5000,
+        preventDuplicate: true,
+        anchorOrigin: {
+          vertical: 'top',
+          horizontal: 'center'
+        }
+      });
     } finally {
-      if (isMounted.current) {
-        setIsLoading(false);
-      }
+      setIsLoading(false);
     }
   };
 
   return (
-    <Grid container component="main" sx={{ minHeight: '100vh', height: '100%' }}>
+    <Grid container component="main" sx={{ minHeight: '100vh' }}>
       <CssBaseline />
 
       {/* Lado izquierdo con imagen */}
       <Grid
-        item xs={false} sm={4} md={7}
+        item 
+        xs={false} 
+        sm={4} 
+        md={7}
         sx={{
           backgroundImage: `url(${fondoImg})`,
           backgroundRepeat: 'no-repeat',
-          backgroundColor: (t) =>
-            t.palette.mode === 'light' ? t.palette.grey[50] : t.palette.grey[900],
           backgroundSize: 'contain',
-          backgroundPosition: 'left',
+          backgroundPosition: 'center',
+          backgroundColor: '#f5f5f5',
+          backgroundOrigin: 'content-box',
+          padding: '20px',
+          '@media (max-width: 600px)': {
+            display: 'none'
+          }
         }}
       />
 
       {/* Formulario de login */}
-      <Grid item xs={12} sm={8} md={5} component={Paper} elevation={6} square>
-        <Box sx={{ my: 8, mx: 4, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <Grid 
+        item 
+        xs={12} 
+        sm={8} 
+        md={5} 
+        component={Paper} 
+        elevation={6} 
+        square
+        sx={{ 
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center'
+        }}
+      >
+        <Box 
+          sx={{ 
+            my: 8, 
+            mx: 4, 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'center' 
+          }}
+        >
           <Avatar sx={{ m: 1, bgcolor: 'secondary.main' }}>
             <LockOutlinedIcon />
           </Avatar>
           <Typography component="h1" variant="h5">
             Iniciar Sesión
           </Typography>
+          
           <Box 
             component="form" 
             noValidate 
             onSubmit={handleSubmit} 
             sx={{ 
-              mt: 1, 
+              mt: 3,
               width: '100%',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center'
+              maxWidth: 400
             }}
           >
             {error && (
@@ -141,17 +139,14 @@ const Login = () => {
                 severity="error" 
                 sx={{ 
                   width: '100%', 
-                  mb: 2,
-                  '& .MuiAlert-message': {
-                    width: '100%'
-                  }
+                  mb: 2 
                 }}
               >
                 {error}
               </Alert>
             )}
+            
             <TextField
-              disabled={isLoading}
               margin="normal"
               required
               fullWidth
@@ -162,11 +157,10 @@ const Login = () => {
               autoFocus
               value={email}
               onChange={e => setEmail(e.target.value)}
-              sx={{ mb: 2 }}
-              variant="outlined"
-            />
-            <TextField
               disabled={isLoading}
+            />
+            
+            <TextField
               margin="normal"
               required
               fullWidth
@@ -177,29 +171,24 @@ const Login = () => {
               autoComplete="current-password"
               value={password}
               onChange={e => setPassword(e.target.value)}
-              sx={{ mb: 3 }}
-              variant="outlined"
+              disabled={isLoading}
+              sx={{ mt: 2, mb: 2 }}
             />
+            
             <Button
               type="submit"
               fullWidth
               variant="contained"
               disabled={isLoading}
-              startIcon={isLoading ? <CircularProgress size={20} /> : null}
-              sx={{
-                mt: 2,
+              sx={{ 
+                mt: 3, 
                 mb: 2,
                 py: 1.5,
                 fontSize: '1rem',
-                textTransform: 'none',
-                '&:hover': {
-                  boxShadow: 2,
-                },
-                maxWidth: '300px',
-                alignSelf: 'center'
+                textTransform: 'none'
               }}
             >
-              {isLoading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
+              {isLoading ? <CircularProgress size={24} /> : 'Iniciar Sesión'}
             </Button>
           </Box>
         </Box>

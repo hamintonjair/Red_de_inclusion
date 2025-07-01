@@ -70,7 +70,7 @@ const RANGOS_EDAD = [
   "56-65",
   "66 o más",
 ];
-const ETNIAS = ["Afrodescendiente", "Indígena", "Raizal", "Palenquero", "Gitano", "Mestizo"];
+const ETNIAS = ["Afrodescendiente", "Indígena", "Raizal", "Palenquero", "Mestizo"];
 
 // Función para manejar la lógica de la etnia
 const getEtniaValue = (etnia, etniaPersonalizada = '') => {
@@ -127,20 +127,42 @@ export default function RegistroBeneficiarios() {
     typeof window !== 'undefined' ? (window.innerWidth > window.innerHeight ? 'landscape' : 'portrait') : 'portrait'
   );
   
-  // Efecto para detectar cambios de orientación
+  // Efecto para manejar la orientación del dispositivo
   useEffect(() => {
-    const handleResize = () => {
-      setOrientation(window.innerWidth > window.innerHeight ? 'landscape' : 'portrait');
+    const handleOrientationChange = () => {
+      const newOrientation = window.innerHeight > window.innerWidth ? 'portrait' : 'landscape';
+      setOrientation(newOrientation);
+      
+      // Forzar un redibujado del canvas cuando cambia la orientación
+      if (sigCanvas.current) {
+        const currentSignature = signature;
+        sigCanvas.current.clear();
+        
+        // Pequeño retraso para asegurar que el DOM se haya actualizado
+        setTimeout(() => {
+          if (currentSignature) {
+            const img = new Image();
+            img.onload = () => {
+              sigCanvas.current.getCanvas().getContext('2d').drawImage(img, 0, 0);
+            };
+            img.src = currentSignature;
+          }
+        }, 100);
+      }
     };
+
+    // Agregar listeners para cambios de orientación y tamaño
+    window.addEventListener('orientationchange', handleOrientationChange);
+    window.addEventListener('resize', handleOrientationChange);
     
-    window.addEventListener('resize', handleResize);
-    window.addEventListener('orientationchange', handleResize);
-    
+    // Inicializar la orientación
+    handleOrientationChange();
+
     return () => {
-      window.removeEventListener('resize', handleResize);
-      window.removeEventListener('orientationchange', handleResize);
+      window.removeEventListener('orientationchange', handleOrientationChange);
+      window.removeEventListener('resize', handleOrientationChange);
     };
-  }, []);
+  }, [signature]);
   
   // Effect to keep signature state in sync with formData
   useEffect(() => {
@@ -2218,18 +2240,22 @@ export default function RegistroBeneficiarios() {
                 {signature ? 'Editar Firma' : 'Agregar Firma'}
               </Button>
               {signature && (
-                <Box
+                <Box 
                   component="img"
                   src={signature}
-                  alt="Firma del beneficiario"
+                  alt="Firma del beneficiaria"
                   sx={{
                     mt: 2,
-                    maxHeight: 100,
+                    height: '100px',
+                    width: 'auto',
+                    maxWidth: '100%',
                     border: '1px solid #ddd',
                     borderRadius: '4px',
                     padding: '8px',
                     display: 'block',
-                    margin: '0 auto'
+                    margin: '0 auto',
+                    objectFit: 'contain',
+                    backgroundColor: 'white'
                   }}
                 />
               )}
@@ -2282,9 +2308,15 @@ export default function RegistroBeneficiarios() {
           <DialogTitle sx={{ 
             bgcolor: 'primary.main', 
             color: 'white',
+            position: 'sticky',
+            top: 0,
+            zIndex: 1,
             '@media (max-width: 600px)': {
               textAlign: 'center',
-              padding: '16px'
+              padding: '16px',
+              position: 'fixed',
+              width: '100%',
+              boxSizing: 'border-box'
             }
           }}>
             <Typography variant="h6">
@@ -2341,10 +2373,11 @@ export default function RegistroBeneficiarios() {
                   position: 'relative',
                   overflow: 'hidden',
                   width: '100%',
-                  height: isMobile ? (orientation === 'portrait' ? '40vh' : '60vh') : '400px',
+                  height: isMobile ? (orientation === 'portrait' ? '50vh' : '70vh') : '500px',
                   '@media (max-width: 600px)': {
-                    height: isMobile && orientation === 'portrait' ? '35vh' : '50vh'
-                  }
+                    height: isMobile && orientation === 'portrait' ? '50vh' : '70vh'
+                  },
+                  touchAction: 'none'
                 }}
               >
                 <SignatureCanvas
@@ -2354,10 +2387,10 @@ export default function RegistroBeneficiarios() {
                   onBegin={() => setIsCanvasEmpty(false)}
                   backgroundColor="rgba(255, 255, 255, 0.8)"
                   velocityFilterWeight={0.7}
-                  minWidth={1.5}
-                  maxWidth={2.5}
-                  dotSize={1}
-                  throttle={16}
+                  minWidth={isMobile ? 2.5 : 1.5}
+                  maxWidth={isMobile ? 4.5 : 3.5}
+                  dotSize={isMobile ? 2 : 1}
+                  throttle={8}
                   canvasProps={{
                     className: 'signature-canvas',
                     style: {
@@ -2366,7 +2399,8 @@ export default function RegistroBeneficiarios() {
                       position: 'absolute',
                       top: 0,
                       left: 0,
-                      touchAction: 'none'
+                      touchAction: 'none',
+                      WebkitOverflowScrolling: 'touch'
                     }
                   }}
                 />
