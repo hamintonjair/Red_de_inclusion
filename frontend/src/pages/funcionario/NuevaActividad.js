@@ -41,6 +41,9 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { format as formatDate, parse, parseISO, format, isAfter, isBefore, subDays, addDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import ClearAllIcon from '@mui/icons-material/ClearAll';
+import SearchIcon from '@mui/icons-material/Search';
+import ClearIcon from '@mui/icons-material/Clear';
+import InputAdornment from '@mui/material/InputAdornment';
 import { debounce } from 'lodash';
 import { 
     createActividad, 
@@ -64,9 +67,9 @@ const NuevaActividad = () => {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState(null);
     const [filtroFecha, setFiltroFecha] = useState(null);
+    const [terminoBusqueda, setTerminoBusqueda] = useState('');
     // Estados para la gestión de beneficiarios
     const [beneficiarios, setBeneficiarios] = useState([]);
-    const [beneficiariosFiltrados, setBeneficiariosFiltrados] = useState([]);
     const [lineasTrabajo, setLineasTrabajo] = useState([]);
     const [asistentes, setAsistentes] = useState([]);
     const [loadingBeneficiarios, setLoadingBeneficiarios] = useState(false);
@@ -94,7 +97,6 @@ const NuevaActividad = () => {
         
         if (!forzarActualizacion && cacheEntry && (ahora - cacheEntry.timestamp < CACHE_DURATION)) {
             setBeneficiarios(cacheEntry.data);
-            setBeneficiariosFiltrados(cacheEntry.data);
             return;
         }
 
@@ -115,13 +117,11 @@ const NuevaActividad = () => {
             };
 
             setBeneficiarios(data);
-            setBeneficiariosFiltrados(data);
         } catch (error) {
             console.error('Error al cargar beneficiarios:', error);
             // Si hay caché, usarlo a pesar del error
             if (cacheEntry?.data) {
                 setBeneficiarios(cacheEntry.data);
-                setBeneficiariosFiltrados(cacheEntry.data);
             }
         } finally {
             setLoadingBeneficiarios(false);
@@ -181,21 +181,30 @@ const NuevaActividad = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [id]);
 
-    // Función para filtrar beneficiarios localmente
-    const filtrarBeneficiarios = useCallback((texto) => {
-        if (!texto || !texto.trim()) {
-            setBeneficiariosFiltrados(beneficiarios);
-            return;
+    // Filtrar beneficiarios según la fecha seleccionada y término de búsqueda
+    const beneficiariosFiltrados = useMemo(() => {
+        let filtrados = [...beneficiarios];
+        
+        // Filtrar por fecha si hay una fecha seleccionada
+        if (filtroFecha) {
+            filtrados = filtrados.filter(b => {
+                if (!b.fecha_atencion) return false;
+                return format(parseISO(b.fecha_atencion), 'yyyy-MM-dd') === format(filtroFecha, 'yyyy-MM-dd');
+            });
         }
-
-        const textoBusqueda = texto.toLowerCase();
-        const filtrados = beneficiarios.filter(beneficiario => 
-            (beneficiario.nombre_completo?.toLowerCase().includes(textoBusqueda) ||
-             beneficiario.numero_documento?.includes(textoBusqueda))
-        );
-
-        setBeneficiariosFiltrados(filtrados);
-    }, [beneficiarios]);
+        
+        // Filtrar por término de búsqueda si existe
+        if (terminoBusqueda.trim() !== '') {
+            const termino = terminoBusqueda.toLowerCase().trim();
+            filtrados = filtrados.filter(b => 
+                (b.nombre_completo?.toLowerCase().includes(termino) ||
+                b.numero_documento?.toLowerCase().includes(termino) ||
+                b.correo_electronico?.toLowerCase().includes(termino))
+            );
+        }
+        
+        return filtrados;
+    }, [beneficiarios, filtroFecha, terminoBusqueda]);
 
     // Función para forzar la actualización de beneficiarios
     const actualizarListaBeneficiarios = useCallback(() => {
@@ -207,8 +216,8 @@ const NuevaActividad = () => {
 
     // Función para manejar el cambio de búsqueda con debounce
     const handleBuscarBeneficiario = useMemo(
-        () => debounce((valor) => filtrarBeneficiarios(valor), 300),
-        [filtrarBeneficiarios]
+        () => debounce((valor) => setTerminoBusqueda(valor), 300),
+        [setTerminoBusqueda]
     );
 
     // Limpiar el debounce al desmontar
@@ -702,11 +711,39 @@ const NuevaActividad = () => {
                                 <Divider sx={{ mb: 2 }} />
                                 
                                 <Box mb={2}>
-                                    <Typography variant="subtitle2" gutterBottom>
-                                        Beneficiarios disponibles ({beneficiariosFiltrados.length})
-                                    </Typography>
+                                    <Box mb={2}>
+                                        <TextField
+                                            fullWidth
+                                            size="small"
+                                            variant="outlined"
+                                            placeholder="Buscar por nombre o documento..."
+                                            value={terminoBusqueda}
+                                            onChange={(e) => handleBuscarBeneficiario(e.target.value)}
+                                            InputProps={{
+                                                startAdornment: (
+                                                    <InputAdornment position="start">
+                                                        <SearchIcon />
+                                                    </InputAdornment>
+                                                ),
+                                                endAdornment: terminoBusqueda && (
+                                                    <InputAdornment position="end">
+                                                        <IconButton 
+                                                            size="small" 
+                                                            onClick={() => setTerminoBusqueda('')}
+                                                        >
+                                                            <ClearIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </InputAdornment>
+                                                )
+                                            }}
+                                        />
+                                    </Box>
                                     
-                                    <Box display="flex" justifyContent="space-between" mb={1}>
+                                    <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                                        <Typography variant="subtitle2">
+                                            Beneficiarios disponibles ({beneficiariosFiltrados.length})
+                                        </Typography>
+                                        
                                         <Button 
                                             size="small"
                                             onClick={() => {

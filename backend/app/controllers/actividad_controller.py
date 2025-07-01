@@ -1085,7 +1085,7 @@ def exportar_actividad(actividad_id, columnas=None):
                 'sabe_escribir': 'Sí' if beneficiario.get('sabe_escribir', False) else 'No',
                 'tipo_vivienda': beneficiario.get('tipo_vivienda', ''),
                 'situacion_laboral': beneficiario.get('situacion_laboral', ''),
-                  'grupo_etnico': beneficiario.get('etnia', ''),
+                'grupo_etnico': beneficiario.get('etnia', ''),
                 'ayuda_humanitaria': 'Sí' if beneficiario.get('ayuda_humanitaria', False) else 'No',
                 'tipo_ayuda_humanitaria': beneficiario.get('descripcion_ayuda_humanitaria', ''),
                 'discapacidad': 'Sí' if beneficiario.get('tiene_discapacidad', False) else 'No',
