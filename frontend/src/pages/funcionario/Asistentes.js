@@ -672,11 +672,11 @@ const Asistentes = () => {
                 <Table>
                     <TableHead>
                         <TableRow>
-                            <TableCell>Nombre</TableCell>
-                            <TableCell>Cédula</TableCell>
-                            <TableCell>Dependencia</TableCell>
-                            <TableCell>Cargo</TableCell>
-                            <TableCell>Acciones</TableCell>
+                            <TableCell sx={{ backgroundColor: 'primary.main', color: 'white', fontWeight: 'bold' }}>Nombre</TableCell>
+                            <TableCell sx={{ backgroundColor: 'primary.main', color: 'white', fontWeight: 'bold' }}>Cédula</TableCell>
+                            <TableCell sx={{ backgroundColor: 'primary.main', color: 'white', fontWeight: 'bold' }}>Dependencia</TableCell>
+                            <TableCell sx={{ backgroundColor: 'primary.main', color: 'white', fontWeight: 'bold' }}>Cargo</TableCell>
+                            <TableCell sx={{ backgroundColor: 'primary.main', color: 'white', fontWeight: 'bold' }}>Acciones</TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
