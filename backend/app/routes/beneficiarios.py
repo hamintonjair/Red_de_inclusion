@@ -793,6 +793,7 @@ def exportar_beneficiarios_excel():
                 'Estudia Actualmente': 'Sí' if r.get('estudia_actualmente') else 'No',
                 'Nivel Educativo': r.get('nivel_educativo', ''),
                 'Situación Laboral': r.get('situacion_laboral', ''),
+                'Tiene Certificado Discapacidad': 'Sí' if r.get('tiene_certificado_discapacidad') else 'No',
                 'Víctima Conflicto': 'Sí' if r.get('victima_conflicto') else 'No',
                 'Tiene Discapacidad': 'Sí' if r.get('tiene_discapacidad') else 'No'
             })

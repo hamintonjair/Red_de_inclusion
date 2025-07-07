@@ -376,6 +376,7 @@ export default function RegistroBeneficiarios() {
     tipo_discapacidad: "",
     nombre_cuidadora: "",
     labora_cuidadora: false,
+    tiene_certificado_discapacidad: false,
 
     // Conflicto armado
     victima_conflicto: false,
@@ -522,6 +523,7 @@ export default function RegistroBeneficiarios() {
           sabe_escribir: beneficiario.sabe_escribir !== undefined ? !!beneficiario.sabe_escribir : true,
           tiene_discapacidad: !!beneficiario.tiene_discapacidad,
           labora_cuidadora: !!beneficiario.labora_cuidadora,
+          tiene_certificado_discapacidad: !!beneficiario.tiene_certificado_discapacidad,
           victima_conflicto: !!beneficiario.victima_conflicto,
           estudia_actualmente: !!beneficiario.estudia_actualmente,
           ayuda_humanitaria: !!beneficiario.ayuda_humanitaria,
@@ -543,6 +545,7 @@ export default function RegistroBeneficiarios() {
           sabe_escribir: beneficiario.sabe_escribir !== undefined ? !!beneficiario.sabe_escribir : true,
           tiene_discapacidad: !!beneficiario.tiene_discapacidad,
           labora_cuidadora: !!beneficiario.labora_cuidadora,
+          tiene_certificado_discapacidad: !!beneficiario.tiene_certificado_discapacidad,
           victima_conflicto: !!beneficiario.victima_conflicto,
           estudia_actualmente: !!beneficiario.estudia_actualmente,
           ayuda_humanitaria: !!beneficiario.ayuda_humanitaria,
@@ -1164,7 +1167,10 @@ export default function RegistroBeneficiarios() {
             formData.labora_cuidadora !== undefined
               ? formData.labora_cuidadora
               : false,
-
+          tiene_certificado_discapacidad:
+            formData.tiene_certificado_discapacidad !== undefined
+              ? formData.tiene_certificado_discapacidad
+              : false,
           // Conflicto armado
           victima_conflicto:
             formData.victima_conflicto !== undefined
@@ -1349,7 +1355,10 @@ export default function RegistroBeneficiarios() {
             formData.labora_cuidadora !== undefined
               ? formData.labora_cuidadora
               : false,
-
+          tiene_certificado_discapacidad:
+            formData.tiene_certificado_discapacidad !== undefined
+              ? formData.tiene_certificado_discapacidad
+              : false,
           // Conflicto armado
           victima_conflicto:
             formData.victima_conflicto !== undefined
@@ -1533,6 +1542,7 @@ export default function RegistroBeneficiarios() {
           tipo_discapacidad: beneficiario.tipo_discapacidad || "",
           nombre_cuidadora: beneficiario.nombre_cuidadora || "",
           labora_cuidadora: beneficiario.labora_cuidadora !== undefined ? beneficiario.labora_cuidadora : false,
+          tiene_certificado_discapacidad: beneficiario.tiene_certificado_discapacidad !== undefined ? beneficiario.tiene_certificado_discapacidad : false,
 
           // Conflicto armado
           victima_conflicto: beneficiario.victima_conflicto || false,
@@ -2081,6 +2091,24 @@ export default function RegistroBeneficiarios() {
                       }
                       label="¿Labora la Cuidadora?"
                     />
+                  </Grid>
+                  <Grid item xs={12} sm={12}>
+                    <FormControl component="fieldset" variant="standard">
+                      <FormLabel component="legend">¿Tiene certificado de discapacidad? *</FormLabel>
+                      <FormGroup>
+                        <FormControlLabel
+                          control={
+                            <Switch
+                              checked={formData.tiene_certificado_discapacidad || false}
+                              onChange={handleChange}
+                              name="tiene_certificado_discapacidad"
+                              disabled={!formData.tiene_discapacidad}
+                            />
+                          }
+                          label={formData.tiene_certificado_discapacidad ? "Sí" : "No"}
+                        />
+                      </FormGroup>
+                    </FormControl>
                   </Grid>
                 </Grid>
               )}

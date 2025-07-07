@@ -73,6 +73,7 @@ class BeneficiarioSchema(Schema):
     tipo_discapacidad = fields.Str()
     nombre_cuidadora = fields.Str()
     labora_cuidadora = fields.Bool()
+    tiene_certificado_discapacidad = fields.Bool()
     victima_conflicto = fields.Bool()
     hijos_a_cargo = fields.Int()
     estudia_actualmente = fields.Bool()

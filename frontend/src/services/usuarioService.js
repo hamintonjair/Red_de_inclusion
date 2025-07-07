@@ -6,7 +6,7 @@ const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 // Crear una instancia de axios con configuración base
 const axiosInstance = axios.create({
     baseURL: API_URL,
-    timeout: 15000, // Aumentar el timeout para Render
+    timeout: 45000, // Aumentar el timeout para Render
     headers: {
         'Content-Type': 'application/json',
     },

@@ -99,32 +99,68 @@ const ListadoBeneficiarios = () => {
         cargarDatos();
     }, [page, rowsPerPage, filtro, lineaTrabajoFiltro, enqueueSnackbar]);
 
-    const handleEliminar = async () => {
-        try {
-            await beneficiarioService.eliminarBeneficiario(beneficiarioSeleccionado._id);
-            setOpenConfirmDialog(false);
-            // Recargar datos después de eliminar
-            const { data: beneficiariosData, total } = await beneficiarioService.listarBeneficiariosAdmin(
-                page + 1, 
-                rowsPerPage,
-                filtro
-            );
+    // const handleEliminar = async () => {
+    //     try {
+    //         await beneficiarioService.eliminarBeneficiario(beneficiarioSeleccionado._id);
+    //         setOpenConfirmDialog(false);
+    //         // Recargar datos después de eliminar
+    //         const { data: beneficiariosData, total } = await beneficiarioService.listarBeneficiariosAdmin(
+    //             page + 1, 
+    //             rowsPerPage,
+    //             filtro
+    //         );
             
-            // Formatear beneficiarios nuevamente
-            const beneficiariosFormateados = beneficiariosData.map(beneficiario => ({
-                ...beneficiario,
-                nombre: beneficiario.nombre_completo,
-                identificacion: beneficiario.numero_documento,
-                lineaTrabajo: beneficiario.linea_trabajo
-            }));
+    //         // Formatear beneficiarios nuevamente
+    //         const beneficiariosFormateados = beneficiariosData.map(beneficiario => ({
+    //             ...beneficiario,
+    //             nombre: beneficiario.nombre_completo,
+    //             identificacion: beneficiario.numero_documento,
+    //             lineaTrabajo: beneficiario.linea_trabajo
+    //         }));
 
-            setBeneficiarios(beneficiariosFormateados);
-            setTotalBeneficiarios(total);
+    //         setBeneficiarios(beneficiariosFormateados);
+    //         setTotalBeneficiarios(total);
+    //     } catch (error) {
+    //         console.error('Error al eliminar beneficiario:', error);
+    //     }
+    // };
+    const handleEliminar = async () => {
+        if (!beneficiarioSeleccionado) return;
+        
+        try {
+            setLoadingOverlay(true);
+            await beneficiarioService.eliminarBeneficiario(beneficiarioSeleccionado._id);
+            
+            // Actualizar la lista local eliminando el beneficiario
+            setBeneficiarios(prevBeneficiarios => {
+                const nuevosBeneficiarios = prevBeneficiarios.filter(
+                    b => b._id !== beneficiarioSeleccionado._id
+                );
+                return nuevosBeneficiarios;
+            });
+            
+            // Actualizar el contador total
+            setTotalBeneficiarios(prev => prev - 1);
+            
+            // Cerrar el diálogo de confirmación
+            setOpenConfirmDialog(false);
+            
+            // Mostrar mensaje de éxito
+            enqueueSnackbar('Beneficiario eliminado correctamente', { variant: 'success' });
+            
+            // Si era el último elemento de la página, retroceder una página
+            if (beneficiarios.length === 1 && page > 0) {
+                setPage(prevPage => prevPage - 1);
+            }
         } catch (error) {
             console.error('Error al eliminar beneficiario:', error);
+            enqueueSnackbar(error.message || 'Error al eliminar el beneficiario', { 
+                variant: 'error' 
+            });
+        } finally {
+            setLoadingOverlay(false);
         }
     };
-
     const confirmarEliminacion = (beneficiario) => {
         setBeneficiarioSeleccionado(beneficiario);
         setOpenConfirmDialog(true);
@@ -214,6 +250,7 @@ const ListadoBeneficiarios = () => {
                 'TIPO DE AYUDA': b.descripcion_ayuda_humanitaria,
                 'DISCAPACIDAD': b.tiene_discapacidad ? 'Sí' : 'No',
                 'TIPO DE DISCAPACIDAD': b.tipo_discapacidad,
+                '¿TIENE CERTIFICADO DISCAPACIDAD?': b.tiene_certificado_discapacidad ? 'Sí' : 'No',
                 'NOMBRE DEL CUIDADOR/A': b.nombre_cuidadora || '',
                 '¿TRABAJA?': b.labora_cuidadora ? 'Sí' : 'No',
                 '¿VÍCTIMA?': b.victima_conflicto ? 'Sí' : 'No'
@@ -253,6 +290,7 @@ const ListadoBeneficiarios = () => {
             { label: 'Nivel Educativo', value: beneficiarioSeleccionado.nivel_educativo },
             { label: 'Situación Laboral', value: beneficiarioSeleccionado.situacion_laboral },
             { label: 'Tipo de Discapacidad', value: beneficiarioSeleccionado.tipo_discapacidad || '' },
+            { label: '¿Tiene Certificado Discapacidad?', value: beneficiarioSeleccionado.tiene_certificado_discapacidad ? 'Sí' : 'No' },
             { label: 'Nombre de la Cuidadora', value: beneficiarioSeleccionado.nombre_cuidadora || '' },
             { label: '¿Labora la Cuidadora?', value: beneficiarioSeleccionado.labora_cuidadora ? 'Sí' : 'No' },
         ];
@@ -263,6 +301,7 @@ const ListadoBeneficiarios = () => {
             { label: 'Sabe Leer', value: beneficiarioSeleccionado.sabe_leer ? 'Sí' : 'No' },
             { label: 'Sabe Escribir', value: beneficiarioSeleccionado.sabe_escribir ? 'Sí' : 'No' },
             { label: 'Tiene Discapacidad', value: beneficiarioSeleccionado.tiene_discapacidad ? 'Sí' : 'No' },
+            { label: '¿Tiene Certificado Discapacidad?', value: beneficiarioSeleccionado.tiene_certificado_discapacidad ? 'Sí' : 'No' },
             { label: 'Víctima de Conflicto', value: beneficiarioSeleccionado.victima_conflicto ? 'Sí' : 'No' },
         ];
 

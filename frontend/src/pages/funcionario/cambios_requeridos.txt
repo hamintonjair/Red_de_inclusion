@@ -1,0 +1,56 @@
+PASO 1: Agregar el campo al estado inicial (alrededor de la línea 375)
+--------------------------------------------------------------
+Busca esta sección:
+
+    // Discapacidad
+    tiene_discapacidad: false,
+    tipo_discapacidad: "",
+    nombre_cuidadora: "",
+    labora_cuidadora: false,
+
+Y cámbiala por:
+
+    // Discapacidad
+    tiene_discapacidad: false,
+    tipo_discapacidad: "",
+    tiene_certificado_discapacidad: false,
+    nombre_cuidadora: "",
+    labora_cuidadora: false,
+
+PASO 2: Agregar el campo al formulario (alrededor de la línea 2057)
+--------------------------------------------------------------
+Busca esta sección (después del selector de tipo de discapacidad):
+
+                  </Grid>
+                  <Grid item xs={12} sm={12}>
+                    <TextField
+                      fullWidth
+                      label="Nombre de la Cuidadora"
+
+Y justo antes de esa parte, inserta este código:
+
+                  </Grid>
+                  <Grid item xs={12} sm={12}>
+                    <FormControl required component="fieldset" variant="standard">
+                      <FormLabel component="legend">¿Tiene certificado de discapacidad? *</FormLabel>
+                      <FormGroup>
+                        <FormControlLabel
+                          control={
+                            <Switch
+                              checked={formData.tiene_certificado_discapacidad || false}
+                              onChange={handleChange}
+                              name="tiene_certificado_discapacidad"
+                              disabled={!formData.tiene_discapacidad}
+                            />
+                          }
+                          label={formData.tiene_certificado_discapacidad ? "Sí" : "No"}
+                        />
+                      </FormGroup>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12} sm={12}>
+                    <TextField
+                      fullWidth
+                      label="Nombre de la Cuidadora"
+
+(Por favor, asegúrate de que la indentación sea consistente con el resto del código)

@@ -54,6 +54,7 @@ export async function exportarListadoBeneficiariosAExcel({ beneficiarios, nombre
         '¿RECIBE AYUDA?': 5,
         'TIPO DE AYUDA': 25,
         'DISCAPACIDAD': 5,
+        '¿TIENE CERTIFICADO DISCAPACIDAD?': 15,
         'TIPO DE DISCAPACIDAD': 10,
         'NOMBRE DEL CUIDADOR/A': 25,
         '¿TRABAJA?': 5,
