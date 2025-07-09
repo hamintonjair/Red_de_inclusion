@@ -19,7 +19,19 @@ ETNIAS = ['Indígena', 'Afrodescendiente', 'Raizal', 'Palenquero', 'ROM', 'Mesti
 TIPOS_DISCAPACIDAD = ['Visual', 'Auditiva', 'Motriz', 'Psicosocial', 'Cognitiva', 'Otra']
 NIVELES_EDUCATIVOS = ['Ninguno', 'Primaria incompleta', 'Primaria completa', 'Secundaria incompleta', 'Secundaria completa', 'Técnica', 'Tecnológica', 'Universitaria', 'Posgrado']
 SITUACIONES_LABORALES = ['Empleado', 'Independiente', 'Desempleado', 'Pensionado', 'Otro']
-TIPOS_VIVIENDA = ['Propia', 'Arriendo', 'Familiar', 'Invasión', 'Otra']
+TIPOS_VIVIENDA = [
+    'Propia', 
+    'Arriendo', 
+    'Familiar', 
+    'Compartida',
+    'Cedida / prestada',
+    'En custodia',
+    'Habitación / Inquilinato',
+    'Cambuche / Rancho',
+    'Situación de calle',
+    'Refugio / Albergue',
+    'Institucional',
+]
 TIPOS_VERIFICACION = ['huella_digital', 'firma_digital']
 ESTADOS_VERIFICACION = ['pendiente', 'verificado', 'rechazado']
 
@@ -310,6 +322,41 @@ class BeneficiarioModel:
                 **filtro_base,
                'tipo_vivienda': 'Compartida'
             })
+
+            vivienda_cedida = self.collection.count_documents({
+                **filtro_base,
+                'tipo_vivienda': 'Cedida / prestada'
+            })
+
+            vivienda_en_custodia = self.collection.count_documents({
+                **filtro_base,
+                'tipo_vivienda': 'En custodia'
+            })
+
+            vivienda_habitacion = self.collection.count_documents({
+                **filtro_base,
+                'tipo_vivienda': 'Habitación / Inquilinato'
+            })
+
+            vivienda_cambuche = self.collection.count_documents({
+                **filtro_base,
+                'tipo_vivienda': 'Cambuche / Rancho'
+            })
+
+            vivienda_calle = self.collection.count_documents({
+                **filtro_base,
+                'tipo_vivienda': 'Situación de calle'
+            })
+
+            vivienda_refugio = self.collection.count_documents({
+                **filtro_base,
+                'tipo_vivienda': 'Refugio / Albergue'
+            })
+
+            vivienda_institucional = self.collection.count_documents({
+                **filtro_base,
+                'tipo_vivienda': 'Institucional'
+            })
             
             estadisticas = {
                 # Estadísticas previas
@@ -341,6 +388,13 @@ class BeneficiarioModel:
                 'vivienda_arrendada': vivienda_arrendada,
                 'vivienda_familiar': vivienda_familiar,
                 'vivienda_compartida': vivienda_compartida,
+                'vivienda_cedida': vivienda_cedida,
+                'vivienda_en_custodia': vivienda_en_custodia,
+                'vivienda_habitacion': vivienda_habitacion,
+                'vivienda_cambuche': vivienda_cambuche,
+                'vivienda_calle': vivienda_calle,
+                'vivienda_refugio': vivienda_refugio,
+                'vivienda_institucional': vivienda_institucional,
                 
                 # Estadísticas de edad previas
                 'total_menores_13': self.collection.count_documents({
@@ -478,6 +532,33 @@ class BeneficiarioModel:
                 'tipo_vivienda': 'Compartida'
             })
             
+            vivienda_cedida = self.collection.count_documents({
+                'tipo_vivienda': 'Cedida / prestada'
+            })
+            
+            vivienda_en_custodia = self.collection.count_documents({
+                'tipo_vivienda': 'En custodia'
+            })
+            
+            vivienda_habitacion = self.collection.count_documents({
+                'tipo_vivienda': 'Habitación / Inquilinato'
+            })
+            
+            vivienda_cambuche = self.collection.count_documents({
+                'tipo_vivienda': 'Cambuche / Rancho'
+            })
+            
+            vivienda_calle = self.collection.count_documents({
+                'tipo_vivienda': 'Situación de calle'
+            })
+            
+            vivienda_refugio = self.collection.count_documents({
+                'tipo_vivienda': 'Refugio / Albergue'
+            })
+            
+            vivienda_institucional = self.collection.count_documents({
+                'tipo_vivienda': 'Institucional'
+            })
             
             estadisticas = {
                 'total_beneficiarios': total_beneficiarios,
@@ -496,7 +577,14 @@ class BeneficiarioModel:
                 'vivienda_propia': vivienda_propia,
                 'vivienda_arrendada': vivienda_arrendada,
                 'vivienda_familiar': vivienda_familiar,
-                'vivienda_compartida': vivienda_compartida
+                'vivienda_compartida': vivienda_compartida,
+                'vivienda_cedida': vivienda_cedida,
+                'vivienda_en_custodia': vivienda_en_custodia,
+                'vivienda_habitacion': vivienda_habitacion,
+                'vivienda_cambuche': vivienda_cambuche,
+                'vivienda_calle': vivienda_calle,
+                'vivienda_refugio': vivienda_refugio,
+                'vivienda_institucional': vivienda_institucional,
             }
             
             logging.info(f"Estadísticas globales administrativas obtenidas: {estadisticas}")

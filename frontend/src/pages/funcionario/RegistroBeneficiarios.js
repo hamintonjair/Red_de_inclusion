@@ -104,7 +104,18 @@ const SITUACIONES_LABORALES = [
   "Independiente",
   "Jubilado",
 ];
-const TIPOS_VIVIENDA = ["Propia", "Arrendada", "Familiar", "Compartida"];
+const TIPOS_VIVIENDA = [
+  "Propia",
+  "Arrendada", 
+  "Familiar", 
+  "Compartida", 
+  "Cedida / prestada", 
+  "En custodia", 
+  "Habitación / Inquilinato", 
+  "Cambuche / Rancho", 
+  "Situación de calle", 
+  "Refugio / Albergue", 
+  "Institucional"];
 
 // Constantes de validación
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

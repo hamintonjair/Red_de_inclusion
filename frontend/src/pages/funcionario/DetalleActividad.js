@@ -118,6 +118,7 @@ const DetalleActividad = ({ esReunion = false }) => {
         { campo: 'ayuda_humanitaria', etiqueta: 'AYUDA HUMANITARIA', visiblePorDefecto: false },
         { campo: 'tipo_ayuda_humanitaria', etiqueta: 'TIPO DE AYUDA HUMANITARIA', visiblePorDefecto: false },
         { campo: 'discapacidad', etiqueta: 'DISCAPACIDAD', visiblePorDefecto: false },
+        { campo: 'tiene_certificado_discapacidad', etiqueta: 'TIENE CERTIFICADO DE DISCAPACIDAD', visiblePorDefecto: false },
         { campo: 'tipo_discapacidad', etiqueta: 'TIPO DE DISCAPACIDAD', visiblePorDefecto: false },
         { campo: 'nombre_cuidadora', etiqueta: 'NOMBRE DE LA CUIDADORA', visiblePorDefecto: false },
         { campo: 'labora_actualmente', etiqueta: 'LABORA ACTUALMENTE', visiblePorDefecto: false },

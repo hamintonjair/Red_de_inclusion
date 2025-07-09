@@ -85,7 +85,7 @@ export async function exportarListadoBeneficiariosAExcel({ beneficiarios, nombre
     ws['!cols'] = colWidths;
     
     // 7. Ajustar la altura de la fila del encabezado (duplicada)
-    ws['!rows'] = [{ hpx: 60 }]; // 60px de altura (aproximadamente el doble de 30px)
+    ws['!rows'] = [{ hpx: 70 }]; // 60px de altura (aproximadamente el doble de 30px)
     
     // 8. Asegurar que el texto del encabezado se ajuste y se muestre completo
     const columnRange = XLSX.utils.decode_range(ws['!ref']);
