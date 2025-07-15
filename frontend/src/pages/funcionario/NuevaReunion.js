@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { 
@@ -75,10 +75,12 @@ const NuevaReunion = () => {
     const [loading, setLoading] = useState(!!id);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState(null);
+    const [loadingBeneficiarios, setLoadingBeneficiarios] = useState(false);
     const [filtroFecha, setFiltroFecha] = useState(null);
     const [asistentes, setAsistentes] = useState([]);
     const [asistentesDisponibles, setAsistentesDisponibles] = useState([]);
     const [asistentesFiltrados, setAsistentesFiltrados] = useState([]);
+    const [terminoBusqueda, setTerminoBusqueda] = useState('');
     const [filtroAsistente, setFiltroAsistente] = useState('');
     const [lineasTrabajo, setLineasTrabajo] = useState([]);
     
@@ -270,6 +272,33 @@ const NuevaReunion = () => {
             return [];
         }
     };
+
+    // Función para cargar asistentes disponibles
+    const cargarAsistentesDisponibles = useCallback(async (fecha = null) => {
+        try {
+            setLoadingBeneficiarios(true);
+            const response = await obtenerAsistentes();
+            const asistentes = response.asistentes || [];
+            setAsistentesDisponibles(asistentes);
+            
+            // Filtrar por fecha si hay una fecha seleccionada
+            if (fecha) {
+                const fechaSeleccionada = format(fecha, 'yyyy-MM-dd');
+                const asistentesFiltrados = asistentes.filter(a => 
+                    a.fecha_registro === fechaSeleccionada
+                );
+                setAsistentesFiltrados(asistentesFiltrados);
+            } else {
+                setAsistentesFiltrados(asistentes);
+            }
+            
+            setLoadingBeneficiarios(false);
+        } catch (error) {
+            console.error('Error al cargar asistentes:', error);
+            setError('Error al cargar asistentes');
+            setLoadingBeneficiarios(false);
+        }
+    }, []);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -703,8 +732,100 @@ const NuevaReunion = () => {
                                             )}
                                         </Box>
                                         
-                                        <Paper variant="outlined" sx={{ maxHeight: 200, overflow: 'auto', mb: 2 }}>
-                                            {asistentesFiltrados.length > 0 ? (
+                                        <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+                                            <TextField 
+                                                fullWidth 
+                                                placeholder="Buscar asistentes..."
+                                                value={terminoBusqueda}
+                                                onChange={(e) => {
+                                                    const termino = e.target.value.toLowerCase();
+                                                    setTerminoBusqueda(termino);
+                                                    const filtrados = asistentesFiltrados.filter(a => 
+                                                        a.nombre_completo?.toLowerCase().includes(termino) ||
+                                                        a.numero_documento?.toLowerCase().includes(termino) ||
+                                                        a.correo_electronico?.toLowerCase().includes(termino)
+                                                    );
+                                                    setAsistentesFiltrados(filtrados);
+                                                }}
+                                            />
+                                            <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={es}>
+                                                <DatePicker
+                                                    label="Filtrar por fecha"
+                                                    value={filtroFecha}
+                                                    onChange={(date) => {
+                                                        setFiltroFecha(date);
+                                                        cargarAsistentesDisponibles(date);
+                                                    }}
+                                                    renderInput={(params) => (
+                                                        <TextField {...params} size="small" />
+                                                    )}
+                                                />
+                                            </LocalizationProvider>
+                                        </Box>
+                                        
+                                        <Box mb={3}>
+                                        <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                                            <Typography variant="subtitle2">
+                                                Seleccionar asistentes
+                                                {asistentesFiltrados.length > 0 && (
+                                                    <Typography component="span" variant="caption" color="textSecondary" sx={{ ml: 1 }}>
+                                                        ({asistentesFiltrados.length} disponibles)
+                                                    </Typography>
+                                                )}
+                                            </Typography>
+                                            {asistentesFiltrados.length > 0 && (
+                                                <Button 
+                                                    size="small" 
+                                                    onClick={() => {
+                                                        if (asistentes.length === asistentesFiltrados.length) {
+                                                            setAsistentes([]);
+                                                        } else {
+                                                            setAsistentes(asistentesFiltrados.map(a => a._id));
+                                                        }
+                                                    }}
+                                                >
+                                                    {asistentes.length === asistentesFiltrados.length ? 'Desmarcar todos' : 'Seleccionar todos'}
+                                                </Button>
+                                            )}
+                                        </Box>
+                                        
+                                        <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+                                            <TextField 
+                                                fullWidth 
+                                                placeholder="Buscar asistentes..."
+                                                value={terminoBusqueda}
+                                                onChange={(e) => {
+                                                    const termino = e.target.value.toLowerCase();
+                                                    setTerminoBusqueda(termino);
+                                                    const filtrados = asistentesFiltrados.filter(a => 
+                                                        a.nombre_completo?.toLowerCase().includes(termino) ||
+                                                        a.numero_documento?.toLowerCase().includes(termino) ||
+                                                        a.correo_electronico?.toLowerCase().includes(termino)
+                                                    );
+                                                    setAsistentesFiltrados(filtrados);
+                                                }}
+                                            />
+                                            <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={es}>
+                                                <DatePicker
+                                                    label="Filtrar por fecha"
+                                                    value={filtroFecha}
+                                                    onChange={(date) => {
+                                                        setFiltroFecha(date);
+                                                        cargarAsistentesDisponibles(date);
+                                                    }}
+                                                    renderInput={(params) => (
+                                                        <TextField {...params} size="small" />
+                                                    )}
+                                                />
+                                            </LocalizationProvider>
+                                        </Box>
+                                        
+                                        <Paper variant="outlined" sx={{ maxHeight: 200, overflow: 'auto' }}>
+                                            {loadingBeneficiarios ? (
+                                                <Box display="flex" justifyContent="center" alignItems="center" height="100%">
+                                                    <CircularProgress size={24} />
+                                                </Box>
+                                            ) : asistentesFiltrados.length > 0 ? (
                                                 <List dense>
                                                     {asistentesFiltrados.map((asistente) => (
                                                         <ListItem 
@@ -737,11 +858,12 @@ const NuevaReunion = () => {
                                             ) : (
                                                 <Box sx={{ p: 2, textAlign: 'center' }}>
                                                     <Typography variant="body2" color="textSecondary">
-                                                        No hay asistentes disponibles
+                                                        {filtroFecha ? 'No hay asistentes disponibles para esta fecha' : 'No hay asistentes disponibles'}
                                                     </Typography>
                                                 </Box>
                                             )}
                                         </Paper>
+                                    </Box>
                                     </Box>
                                     
                                     {/* Lista de asistentes seleccionados */}

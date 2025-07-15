@@ -68,11 +68,13 @@ const NuevaActividad = () => {
     const [error, setError] = useState(null);
     const [filtroFecha, setFiltroFecha] = useState(null);
     const [terminoBusqueda, setTerminoBusqueda] = useState('');
+    const [loadingBeneficiarios, setLoadingBeneficiarios] = useState(false);
     // Estados para la gestión de beneficiarios
     const [beneficiarios, setBeneficiarios] = useState([]);
     const [lineasTrabajo, setLineasTrabajo] = useState([]);
     const [asistentes, setAsistentes] = useState([]);
-    const [loadingBeneficiarios, setLoadingBeneficiarios] = useState(false);
+
+
     
     // Estado para el formulario
     const [formData, setFormData] = useState({
@@ -88,8 +90,10 @@ const NuevaActividad = () => {
     });
 
     // Función para cargar beneficiarios con caché
-    const cargarBeneficiarios = useCallback(async (lineaTrabajoId, forzarActualizacion = false) => {
+    const cargarBeneficiarios = useCallback(async (lineaTrabajoId, forzarActualizacion = false, fecha = null) => {
         if (!lineaTrabajoId) return;
+
+        setLoadingBeneficiarios(true);
 
         // Verificar caché
         const ahora = Date.now();
@@ -105,7 +109,8 @@ const NuevaActividad = () => {
             const response = await obtenerBeneficiarios({ 
                 linea_trabajo: lineaTrabajoId,
                 por_pagina: 1000,
-                _t: ahora // Evitar caché del navegador
+                _t: ahora, // Evitar caché del navegador
+                fecha_registro: fecha // Pasar la fecha si existe
             });
 
             const data = response.beneficiarios || [];
@@ -115,6 +120,8 @@ const NuevaActividad = () => {
                 data,
                 timestamp: ahora
             };
+
+            setLoadingBeneficiarios(false);
 
             setBeneficiarios(data);
         } catch (error) {
@@ -187,9 +194,10 @@ const NuevaActividad = () => {
         
         // Filtrar por fecha si hay una fecha seleccionada
         if (filtroFecha) {
+            const fechaSeleccionada = format(filtroFecha, 'yyyy-MM-dd');
             filtrados = filtrados.filter(b => {
-                if (!b.fecha_atencion) return false;
-                return format(parseISO(b.fecha_atencion), 'yyyy-MM-dd') === format(filtroFecha, 'yyyy-MM-dd');
+                if (!b.fecha_registro) return false;
+                return b.fecha_registro === fechaSeleccionada;
             });
         }
         
@@ -684,8 +692,13 @@ const NuevaActividad = () => {
                                             label="Filtrar por fecha"
                                             value={filtroFecha}
                                             onChange={(date) => {
+                                                const fechaFormateada = date ? format(date, 'yyyy-MM-dd') : null;
                                                 setFiltroFecha(date);
-                                                cargarBeneficiarios(date ? { fecha: format(date, 'yyyy-MM-dd') } : {});
+                                                const lineaTrabajoId = formData.linea_trabajo_id || user?.linea_trabajo_id;
+                                                if (lineaTrabajoId) {
+                                                    cargarBeneficiarios(lineaTrabajoId, true, fechaFormateada);
+                                                }
+                                                cargarBeneficiarios(date ? { fecha: fechaFormateada } : {});
                                             }}
                                             renderInput={(params) => (
                                                 <TextField 
@@ -775,7 +788,11 @@ const NuevaActividad = () => {
                                     </Box>
                                     
                                     <Box sx={{ maxHeight: 200, overflow: 'auto', border: '1px solid #e0e0e0', borderRadius: 1, p: 1, mb: 2 }}>
-                                        {beneficiariosFiltrados.length > 0 ? (
+                                        {loadingBeneficiarios ? (
+                                            <Box display="flex" justifyContent="center" alignItems="center" height="100%">
+                                                <CircularProgress size={24} />
+                                            </Box>
+                                        ) : beneficiariosFiltrados.length > 0 ? (
                                             <List dense>
                                                 {beneficiariosFiltrados.map((beneficiario) => (
                                                     <ListItem 
@@ -806,7 +823,7 @@ const NuevaActividad = () => {
                                             </List>
                                         ) : (
                                             <Typography variant="body2" color="textSecondary" align="center" sx={{ p: 2 }}>
-                                                No hay beneficiarios disponibles
+                                                {filtroFecha ? 'No hay beneficiarios disponibles para esta fecha' : 'No hay beneficiarios disponibles'}
                                             </Typography>
                                         )}
                                     </Box>
@@ -868,6 +885,7 @@ const NuevaActividad = () => {
                                                                 <DeleteIcon fontSize="small" />
                                                             </IconButton>
                                                         }
+                                                        secondary={`Registrado: ${asistente.fecha_registro}`}
                                                     >
                                                         <ListItemText 
                                                             primary={`${asistente.nombre_completo}`} 

@@ -237,7 +237,7 @@ export default function ListadoBeneficiarios() {
                                     <TableCell>{beneficiario.nombre_linea_trabajo || beneficiario.linea_trabajo}</TableCell>
                                     <TableCell>{beneficiario.nombre_completo}</TableCell>
                                     <TableCell>
-                                        {new Date(beneficiario.fecha_registro).toLocaleDateString()}
+                                        {beneficiario.fecha_registro.split('T')[0].split('-').reverse().join('/')}
                                     </TableCell>
                                     <TableCell>
                                         <Tooltip title="Editar">
@@ -306,7 +306,7 @@ export default function ListadoBeneficiarios() {
                                     <ListItem key={index}>
                                         <ListItemText
                                             primary={`Formulario ${index + 1}`}
-                                            secondary={`Fecha: ${new Date(formulario.fecha_registro).toLocaleString()}`}
+                                            secondary={`Fecha: ${formulario.fecha_registro.split('T')[0].split('-').reverse().join('/')}`}
                                         />
                                     </ListItem>
                                 ))}

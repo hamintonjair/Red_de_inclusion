@@ -822,19 +822,19 @@ def exportar_beneficiarios_excel():
         return jsonify({'msg': f'Error al exportar: {str(e)}'}), 500
         df = pd.DataFrame(datos_exportacion)
 
-        # Crear archivo Excel en memoria
-        output = io.BytesIO()
-        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-            df.to_excel(writer, sheet_name='Beneficiarios', index=False)
+        # # Crear archivo Excel en memoria
+        # output = io.BytesIO()
+        # with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        #     df.to_excel(writer, sheet_name='Beneficiarios', index=False)
 
-        output.seek(0)
+        # output.seek(0)
 
-        return send_file(
-            output,
-            as_attachment=True,
-            download_name='Beneficiarios.xlsx',
-            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        )
+        # return send_file(
+        #     output,
+        #     as_attachment=True,
+        #     download_name='Beneficiarios.xlsx',
+        #     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        # )
 
     except Exception as e:
         logger.error(f"Error al exportar beneficiarios a Excel: {str(e)}", exc_info=True)
