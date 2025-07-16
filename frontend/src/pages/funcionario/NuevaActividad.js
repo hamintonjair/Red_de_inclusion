@@ -108,7 +108,7 @@ const NuevaActividad = () => {
         try {
             const response = await obtenerBeneficiarios({ 
                 linea_trabajo: lineaTrabajoId,
-                por_pagina: 1000,
+                por_pagina: 2000,
                 _t: ahora, // Evitar caché del navegador
                 fecha_registro: fecha // Pasar la fecha si existe
             });
@@ -204,11 +204,44 @@ const NuevaActividad = () => {
         // Filtrar por término de búsqueda si existe
         if (terminoBusqueda.trim() !== '') {
             const termino = terminoBusqueda.toLowerCase().trim();
-            filtrados = filtrados.filter(b => 
-                (b.nombre_completo?.toLowerCase().includes(termino) ||
-                b.numero_documento?.toLowerCase().includes(termino) ||
-                b.correo_electronico?.toLowerCase().includes(termino))
-            );
+            const terminoNormalizado = termino.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); // Eliminar acentos
+            
+            // Si el término es muy corto (menos de 3 caracteres), no filtrar a menos que sea un número de documento
+            if (termino.length < 3 && !/^\d+$/.test(termino)) {
+                return filtrados;
+            }
+            
+            filtrados = filtrados.filter(b => {
+                // Normalizar los campos para búsqueda sin acentos
+                const nombreCompleto = (b.nombre_completo || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+                const documento = (b.numero_documento || '').toLowerCase();
+                const email = (b.correo_electronico || '').toLowerCase();
+                
+                // Buscar coincidencias parciales en el nombre completo sin dividir por palabras
+                const coincideNombreCompleto = nombreCompleto.includes(terminoNormalizado);
+                
+                // Si el término tiene espacios, buscar coincidencia exacta en el orden de las palabras
+                let coincideOrdenPalabras = false;
+                if (terminoNormalizado.includes(' ')) {
+                    const palabrasBusqueda = terminoNormalizado.split(/\s+/);
+                    const regexBusqueda = new RegExp(palabrasBusqueda.join('.*'), 'i');
+                    coincideOrdenPalabras = regexBusqueda.test(nombreCompleto);
+                }
+                
+                // Buscar en cada palabra individual
+                const coincideAlgunaPalabra = terminoNormalizado.split(/\s+/).some(palabra => {
+                    if (palabra.length < 3) return false; // Ignorar palabras muy cortas
+                    return nombreCompleto.includes(palabra);
+                });
+                
+                return (
+                    coincideNombreCompleto || // Coincidencia en cualquier parte del nombre completo
+                    coincideOrdenPalabras || // Coincidencia en el orden de las palabras
+                    coincideAlgunaPalabra || // Coincidencia en cualquier palabra individual
+                    documento.includes(termino) || // Coincidencia en documento
+                    email.includes(termino) // Coincidencia en email
+                );
+            });
         }
         
         return filtrados;

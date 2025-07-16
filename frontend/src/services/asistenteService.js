@@ -7,9 +7,10 @@ import axiosInstance from '../utils/axiosConfig';
  */
 export const obtenerAsistentes = async () => {
   try {
-    console.log('Solicitando asistentes a la API...');
-    const response = await axiosInstance.get('/api/asistente');
-    console.log('Respuesta de la API de asistentes:', response);
+    const response = await axiosInstance.get('/api/asistente', {
+      timeout: 60000, // Aumentar timeout a 60 segundos
+      timeoutErrorMessage: 'La solicitud está tomando más tiempo de lo esperado. Por favor, intente nuevamente.'
+    });
     
     // Verificar si la respuesta tiene datos
     if (!response.data) {
@@ -19,18 +20,47 @@ export const obtenerAsistentes = async () => {
     
     // Manejar diferentes formatos de respuesta
     const asistentes = response.data.data || response.data.asistentes || response.data || [];
-    console.log('Asistentes obtenidos:', asistentes);
+    
+    if (asistentes.length === 0) {
+      console.warn('La lista de asistentes está vacía');
+    }
     
     return asistentes;
   } catch (error) {
     console.error('Error al obtener los asistentes:', error);
-    console.error('Detalles del error:', {
-      status: error.response?.status,
-      statusText: error.response?.statusText,
-      data: error.response?.data
-    });
-    // Si hay un error, devolvemos un array vacío para evitar romper la UI
-    return [];
+    
+    // Manejar diferentes tipos de errores
+    if (error.code === 'ECONNABORTED') {
+      console.error('La solicitud ha excedido el tiempo de espera');
+      throw new Error('El servidor está tardando demasiado en responder. Por favor, verifica tu conexión e inténtalo de nuevo.');
+    }
+    
+    if (error.response) {
+      // El servidor respondió con un código de estado fuera del rango 2xx
+      console.error('Error de respuesta del servidor:', {
+        status: error.response.status,
+        statusText: error.response.statusText,
+        data: error.response.data
+      });
+      
+      if (error.response.status === 401) {
+        // No autorizado - redirigir a login
+        localStorage.removeItem(process.env.REACT_APP_TOKEN_KEY || 'token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+        return [];
+      }
+      
+      throw new Error(error.response.data.message || 'Error al cargar los asistentes');
+    } else if (error.request) {
+      // La solicitud fue hecha pero no se recibió respuesta
+      console.error('No se recibió respuesta del servidor');
+      throw new Error('No se pudo conectar con el servidor. Por favor, verifica tu conexión a internet.');
+    } else {
+      // Algo más causó el error
+      console.error('Error al configurar la solicitud:', error.message);
+      throw new Error('Error al procesar la solicitud');
+    }
   }
 };
 

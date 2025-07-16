@@ -37,13 +37,15 @@ import {
   Clear as ClearIcon,
 } from "@mui/icons-material";
 import { barriosPorComuna } from "../../data/barriosPorComuna";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useSnackbar } from "../../context/SnackbarContext";
 import lineaTrabajoService from "../../services/lineaTrabajoService";
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ErrorIcon from '@mui/icons-material/Error';
 import CircularProgress from '@mui/material/CircularProgress';
+import PageLayout from '../../components/layout/PageLayout';
+
 import {
   crearBeneficiario,
   actualizarBeneficiario,
@@ -122,6 +124,7 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function RegistroBeneficiarios() {
   const { user } = useAuth();
+  const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const { enqueueSnackbar } = useSnackbar();
@@ -1011,6 +1014,17 @@ export default function RegistroBeneficiarios() {
     return false; // No se necesitó sincronización
   };
 
+  // Función para formatear texto con primera letra mayúscula
+  const formatearNombre = (texto) => {
+    if (!texto) return '';
+    return texto
+      .toLowerCase()
+      .split(' ')
+      .map(palabra => palabra.charAt(0).toUpperCase() + palabra.slice(1))
+      .join(' ')
+      .trim();
+  };
+
   // Modificar handleSubmit para incluir validaciones
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -1064,17 +1078,6 @@ export default function RegistroBeneficiarios() {
       return;
     }
     
-    console.log('Todos los campos son válidos, procediendo con el envío...');
-    
-
-    
-    // Validar documento único
-    console.log('Validando documento:', {
-      numero_documento: formData.numero_documento,
-      modoEdicion,
-      beneficiarioId,
-      locationState: location.state
-    });
     
     const esDocumentoValido = await validarDocumentoUnico(
       formData.numero_documento,
@@ -1146,7 +1149,7 @@ export default function RegistroBeneficiarios() {
           fecha_registro: formData.fecha_registro || new Date().toISOString(),
 
           // Datos personales
-          nombre_completo: formData.nombre_completo,
+          nombre_completo: formatearNombre(formData.nombre_completo),
           tipo_documento: formData.tipo_documento || "Cédula de ciudadanía",
           numero_documento: formData.numero_documento,
           genero: formData.genero || "Prefiere no decirlo",
@@ -1292,6 +1295,16 @@ export default function RegistroBeneficiarios() {
           return;
         }
 
+        // Verificar token de autenticación
+        const token = localStorage.getItem(process.env.REACT_APP_TOKEN_KEY || 'authToken');
+        if (!token) {
+          enqueueSnackbar("No se encontró el token de autenticación. Por favor, inicie sesión nuevamente.", { 
+            variant: "error" 
+          });
+          navigate('/login');
+          return;
+        }
+
         try {
           const respuesta = await actualizarBeneficiario(
             beneficiarioId,
@@ -1334,7 +1347,7 @@ export default function RegistroBeneficiarios() {
           fecha_registro: new Date().toISOString(),
 
           // Datos personales
-          nombre_completo: formData.nombre_completo,
+          nombre_completo: formatearNombre(formData.nombre_completo),
           tipo_documento: formData.tipo_documento || "Cédula de ciudadanía",
           numero_documento: formData.numero_documento,
           genero: formData.genero || "Prefiere no decirlo",
@@ -1426,8 +1439,16 @@ export default function RegistroBeneficiarios() {
           linea_trabajo: user.linea_trabajo,
           fecha_registro: new Date().toISOString().split("T")[0],
           // No limpiar la firma si se está en modo edición
-          ...(modoEdicion ? { firma: formData.firma } : {})
+          ...(modoEdicion ? { firma: formData.firma } : { firma: null })
         });
+        
+        // Limpiar también el estado de la firma si no estamos en modo edición
+        if (!modoEdicion) {
+          setSignature(null);
+          if (sigCanvas.current) {
+            sigCanvas.current.clear();
+          }
+        }
 
         // Limpiar errores
         setErrores({
@@ -1673,8 +1694,15 @@ export default function RegistroBeneficiarios() {
       setValidando(prev => ({ ...prev, correo: false }));
     }
   };
+ const pageTitle = id ? 'Editar Registro' : 'Nuevo Registro';
+    const pageDescription = (
+        <Typography variant="h5" component="h1">
+            {id ? 'Edita los detalles del registro' : 'Crea un nuevo registro'}
+        </Typography>
+    );
 
   return (
+    <PageLayout title={pageTitle} description={pageDescription}>
     <Container maxWidth="md">
       <Paper elevation={3} sx={{ p: 4, mt: 4 }}>
         <form onSubmit={handleSubmit}>
@@ -2515,5 +2543,6 @@ export default function RegistroBeneficiarios() {
         )}
       </Paper>
     </Container>
+    </PageLayout>
   );
 }

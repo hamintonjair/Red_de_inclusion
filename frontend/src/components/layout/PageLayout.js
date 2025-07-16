@@ -13,14 +13,17 @@ const PageLayout = ({ title, description, children }) => {
       display: 'flex', 
       flexDirection: 'column',
       pt: { xs: 2, sm: 4, md: 6 },
-      pb: { xs: 2, sm: 4, md: 6 }
+      pb: { xs: 2, sm: 4, md: 6 },
+      bgcolor: '#e0e0e0' // Usa el color de fondo por defecto del tema
+
     }}>
       <Container maxWidth="lg">
         <Paper 
           elevation={3} 
           sx={{ 
             p: { xs: 2, sm: 3, md: 4 },
-            mb: { xs: 2, sm: 3, md: 4 }
+            mb: { xs: 2, sm: 3, md: 4 },
+             bgcolor: 'primary.main'
           }}
         >
           <Typography 
@@ -29,7 +32,7 @@ const PageLayout = ({ title, description, children }) => {
             gutterBottom 
             sx={{ 
               fontWeight: 600,
-              color: 'primary.main',
+              color: '#fff',
               textAlign: 'center'
             }}
           >

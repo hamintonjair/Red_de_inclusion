@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
+    Alert,
     Box, 
     Button, 
     Card, 
@@ -9,6 +10,7 @@ import {
     Divider, 
     Grid, 
     IconButton, 
+    Snackbar,
     Table, 
     TableBody, 
     TableCell, 
@@ -44,6 +46,7 @@ import {
 } from '@mui/icons-material';
 import SignatureCanvas from 'react-signature-canvas';
 import axiosInstance from '../../utils/axiosConfig';
+import { obtenerAsistentes } from '../../services/asistenteService';
 import PageLayout from '../../components/layout/PageLayout';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -126,6 +129,19 @@ const Asistentes = () => {
     // Estados para paginación y ordenamiento
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(10);
+    const [snackbar, setSnackbar] = useState({
+        open: false,
+        message: '',
+        severity: 'info'
+    });
+    
+    // Función para cerrar el snackbar
+    const handleCloseSnackbar = () => {
+        setSnackbar(prev => ({
+            ...prev,
+            open: false
+        }));
+    };
     const [order, setOrder] = useState('asc');
     const [orderBy, setOrderBy] = useState('nombre');
     
@@ -189,18 +205,44 @@ const Asistentes = () => {
 
     const navigate = useNavigate();
 
-    // Cargar asistentes con filtros
+    // Cargar asistentes con manejo de errores mejorado
     const cargarAsistentes = async () => {
         try {
             setLoading(true);
-            const response = await axiosInstance.get('/api/asistente');
-            const data = response.data.data || [];
+            setError(null);
+            
+            // Mostrar mensaje de carga
+            setSnackbar({
+                open: true,
+                message: 'Cargando lista de asistentes...',
+                severity: 'info'
+            });
+            
+            const data = await obtenerAsistentes();
+            
             setAsistentes(data);
             setFilteredAsistentes(data);
+            
+            // Mostrar mensaje de éxito si no hay datos
+            if (data.length === 0) {
+                setSnackbar({
+                    open: true,
+                    message: 'No se encontraron asistentes registrados',
+                    severity: 'info'
+                });
+            }
         } catch (error) {
             console.error('Error al cargar asistentes:', error);
-            const mensajeError = error.response?.data?.message || 'Error al cargar la lista de asistentes';
+            
+            // Mostrar mensaje de error específico
+            const mensajeError = error.message || 'Error al cargar la lista de asistentes';
             setError(mensajeError);
+            
+            setSnackbar({
+                open: true,
+                message: mensajeError,
+                severity: 'error'
+            });
         } finally {
             setLoading(false);
         }
@@ -208,17 +250,42 @@ const Asistentes = () => {
     
     // Aplicar filtros y búsqueda
     const aplicarFiltros = () => {
+        console.log('=== INICIANDO BÚSQUEDA ===');
+        console.log('Término de búsqueda:', searchText);
+        
         let result = [...asistentes];
         
-        // Aplicar búsqueda
+        // Aplicar búsqueda solo por nombre y apellidos
         if (searchText) {
-            const searchLower = searchText.toLowerCase();
-            result = result.filter(asistente => 
-                asistente.nombre.toLowerCase().includes(searchLower) ||
-                asistente.cedula.includes(searchText) ||
-                asistente.dependencia.toLowerCase().includes(searchLower) ||
-                (asistente.email && asistente.email.toLowerCase().includes(searchLower))
-            );
+            const searchTerm = searchText.trim().toLowerCase();
+            
+            // Si el término de búsqueda es muy corto, no filtrar
+            if (searchTerm.length < 2) {
+                console.log('Término de búsqueda muy corto, mostrando todos los resultados');
+                setFilteredAsistentes(result);
+                return;
+            }
+            
+            // Eliminar acentos y caracteres especiales del término de búsqueda
+            const normalizedSearchTerm = searchTerm.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            console.log('Término normalizado:', normalizedSearchTerm);
+            
+            result = result.filter(asistente => {
+                // Obtener nombre completo y normalizarlo (sin acentos, todo minúsculas)
+                const nombreCompleto = (asistente.nombre || '').toLowerCase()
+                    .normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g, '');
+                
+                console.log('---');
+                console.log('Nombre original:', asistente.nombre);
+                console.log('Nombre normalizado:', nombreCompleto);
+                console.log('Coincide con', normalizedSearchTerm, '?', nombreCompleto.includes(normalizedSearchTerm));
+                
+                // Verificar si el término de búsqueda está en cualquier parte del nombre
+                return nombreCompleto.includes(normalizedSearchTerm);
+            });
+            
+            console.log('Resultados encontrados:', result.length);
         }
         
         // Aplicar filtros
@@ -1104,6 +1171,22 @@ const Asistentes = () => {
                         </Box>
                     </DialogContent>
                 </Dialog>
+                
+                {/* Snackbar para notificaciones */}
+                <Snackbar
+                    open={snackbar.open}
+                    autoHideDuration={6000}
+                    onClose={handleCloseSnackbar}
+                    anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+                >
+                    <Alert 
+                        onClose={handleCloseSnackbar} 
+                        severity={snackbar.severity}
+                        sx={{ width: '100%' }}
+                    >
+                        {snackbar.message}
+                    </Alert>
+                </Snackbar>
             </Box>
         </PageLayout>
     );

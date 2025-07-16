@@ -24,7 +24,8 @@ import {
     TableHead,
     TableRow,
     TextField,
-    Typography
+    Typography,
+    Snackbar
 } from '@mui/material';
 import { 
     Save as SaveIcon, 
@@ -35,12 +36,14 @@ import {
     Group as GroupIcon,
     Close as CloseIcon
 } from '@mui/icons-material';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { TimePicker } from '@mui/x-date-pickers/TimePicker';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { format as formatDate, parse, parseISO, format } from 'date-fns';
+import { format, parse } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { TimePicker, DatePicker } from '@mui/x-date-pickers';
+import InputAdornment from '@mui/material/InputAdornment';
+import SearchIcon from '@mui/icons-material/Search';
+import ClearIcon from '@mui/icons-material/Clear';
 import ClearAllIcon from '@mui/icons-material/ClearAll';
 import PageLayout from '../../components/layout/PageLayout';
 import { 
@@ -51,7 +54,6 @@ import {
 } from '../../services/actividadService';
 import funcionarioService from '../../services/funcionarioService';
 import { obtenerLineasTrabajo } from '../../services/lineaTrabajoService';
-import { obtenerActividadPorId } from '../../services/actividadService';
 import { obtenerAsistentes } from '../../services/asistenteService';
 
 // Función para obtener una reunión por su ID
@@ -59,7 +61,6 @@ const obtenerReunionPorId = async (id) => {
     try {
         // Aquí deberías reemplazar esto con una llamada real a tu API
         // Por ahora, devolvemos un objeto vacío para evitar errores
-        console.log('Obteniendo reunión con ID:', id);
         return {};
     } catch (error) {
         console.error('Error al obtener la reunión:', error);
@@ -76,7 +77,6 @@ const NuevaReunion = () => {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState(null);
     const [loadingBeneficiarios, setLoadingBeneficiarios] = useState(false);
-    const [filtroFecha, setFiltroFecha] = useState(null);
     const [asistentes, setAsistentes] = useState([]);
     const [asistentesDisponibles, setAsistentesDisponibles] = useState([]);
     const [asistentesFiltrados, setAsistentesFiltrados] = useState([]);
@@ -100,134 +100,65 @@ const NuevaReunion = () => {
         linea_trabajo_id: user?.linea_trabajo_id || '',
         es_reunion: true
     });
-
-    // Cargar asistentes cuando el componente se monte o cambie la línea de trabajo
-    useEffect(() => {
-        console.log('useEffect - Cargando datos iniciales...');
-        const cargarDatosIniciales = async () => {
-            try {
-                console.log('Iniciando carga de datos iniciales...');
-                setLoading(true);
-                
-                // Cargar datos de la reunión si estamos editando
-                if (id) {
-                    const reunion = await obtenerReunionPorId(id);
-                    if (reunion) {
-                        console.log('Reunión cargada:', reunion);
-                        const reunionData = {
-                            ...reunion,
-                            fecha: reunion.fecha ? new Date(reunion.fecha) : new Date(),
-                        };
-                        setFormData(reunionData);
-                        setAsistentes(reunion.asistentes?.map(a => a.funcionario_id) || []);
-                    }
-                }
-                
-                // Cargar asistentes (funcionarios) de la línea de trabajo
-                if (user?.linea_trabajo_id) {
-                    console.log(`Cargando asistentes para línea de trabajo: ${user.linea_trabajo_id}`);
-                    const asistentesCargados = await cargarAsistentes({ 
-                        linea_trabajo: user.linea_trabajo_id,
-                        por_pagina: 1000 
-                    });
-                    console.log('Asistentes cargados en el efecto principal:', asistentesCargados);
-                } else {
-                    console.warn('No se pudo cargar asistentes: No hay línea de trabajo definida');
-                    console.log('Datos del usuario:', user);
-                }
-                
-            } catch (error) {
-                setError('No se pudieron cargar los datos necesarios');
-            } finally {
-                setLoading(false);
-            }
-        };
-        
-        cargarDatosIniciales();
-    }, [id, user?.linea_trabajo_id]);
     
-    // Efecto para depuración
-    useEffect(() => {
-        console.log('Estado actual de asistentes:', {
-            asistentesDisponibles: asistentesDisponibles,
-            asistentesFiltrados: asistentesFiltrados,
-            asistentesSeleccionados: asistentes,
-            hayAsistentes: asistentesFiltrados.length > 0
-        });
-    }, [asistentesDisponibles, asistentesFiltrados, asistentes]);
+    // Estado para el snackbar de notificaciones
+    const [snackbar, setSnackbar] = useState({
+        open: false,
+        message: '',
+        severity: 'info',
+        autoHideDuration: 3000
+    });
+    
+    // Función para cerrar el snackbar
+    const handleCloseSnackbar = () => {
+        setSnackbar(prev => ({
+            ...prev,
+            open: false
+        }));
+    };
 
-    // Cargar datos iniciales al montar el componente
-    useEffect(() => {
-        const cargarDatosIniciales = async () => {
-            try {
-                setLoading(true);
-                
-                // Cargar líneas de trabajo
-                try {
-                    const lineas = await obtenerLineasTrabajo();
-                    setLineasTrabajo(lineas);
-                } catch (error) {
-                    console.error('Error al cargar líneas de trabajo:', error);
-                }
-                
-                // Si es edición, cargar datos de la actividad
-                if (id) {
-                    const actividad = await getActividadById(id);
-                    if (actividad) {
-                        const actividadData = {
-                            ...actividad,
-                            fecha: actividad.fecha ? new Date(actividad.fecha) : new Date(),
-                        };
-                        setFormData(actividadData);
-                        setAsistentes(actividad.asistentes?.map(a => a.beneficiario_id) || []);
-                        
-                        // Cargar todos los asistentes sin filtrar
-                        await cargarAsistentes();
-                    }
-                } else {
-                    // Cargar todos los asistentes sin filtrar
-                    await cargarAsistentes();
-                    
-                    // Establecer la línea de trabajo del usuario
-                    setFormData(prev => ({
-                        ...prev,
-                        linea_trabajo_id: user.linea_trabajo_id,
-                        dependencia: user.dependencia || prev.dependencia
-                    }));
-                }
-            } catch (err) {
-                setError('No se pudieron cargar los datos necesarios');
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        cargarDatosIniciales();
-    }, [id, user]);
-
-    // Función para cargar todos los asistentes sin condiciones
-    const cargarAsistentes = async (filtros = {}) => {
+    // Función para cargar todos los asistentes con manejo de errores mejorado
+    const cargarAsistentes = useCallback(async (filtros = {}) => {
         try {
-            console.log('Iniciando carga de asistentes con filtros:', filtros);
             
-            // Obtener todos los asistentes sin filtrar
-            const response = await obtenerAsistentes();
-            console.log('Respuesta de obtenerAsistentes():', response);
-            
-            // Asegurarse de que tenemos un array de asistentes
-            let asistentesArray = [];
-            
-            // Manejar diferentes formatos de respuesta
-            if (Array.isArray(response)) {
-                asistentesArray = response;
-            } else if (response && Array.isArray(response.data)) {
-                asistentesArray = response.data;
-            } else if (response && response.asistentes && Array.isArray(response.asistentes)) {
-                asistentesArray = response.asistentes;
+            // Mostrar estado de carga
+            if (!filtros.fecha) {
+                setLoadingBeneficiarios(true);
             }
             
-            console.log('Asistentes después de procesar la respuesta:', asistentesArray);
+            // Mostrar snackbar de carga
+            setSnackbar({
+                open: true,
+                message: 'Cargando lista de asistentes...',
+                severity: 'info',
+                autoHideDuration: 3000
+            });
+            
+            // Obtener asistentes con manejo de errores mejorado
+            const asistentesArray = await obtenerAsistentes();
+            
+            // Verificar si se recibieron asistentes
+            if (!asistentesArray || asistentesArray.length === 0) {
+                setSnackbar({
+                    open: true,
+                    message: 'No se encontraron asistentes registrados',
+                    severity: 'info',
+                    autoHideDuration: 4000
+                });
+                
+                setAsistentesDisponibles([]);
+                setAsistentesFiltrados([]);
+                return [];
+            }
                         
+            // Mostrar mensaje de éxito
+            setSnackbar({
+                open: true,
+                message: `Se cargaron ${asistentesArray.length} asistentes`,
+                severity: 'success',
+                autoHideDuration: 3000
+            });
+            
             // Mapear los datos de los asistentes al formato esperado
             const asistentesData = asistentesArray.map(asistente => {
                 // Asegurarse de que cada asistente tenga un ID
@@ -255,12 +186,11 @@ const NuevaReunion = () => {
                     linea_trabajo_nombre: asistente.linea_trabajo_nombre || 'Sin línea asignada'
                 };
             });
-                        
+            
             // Actualizar estados con todos los asistentes
-            console.log('Asistentes cargados:', asistentesData);
             setAsistentesDisponibles(asistentesData);
             setAsistentesFiltrados(asistentesData);
-            
+            setLoadingBeneficiarios(false);
             return asistentesData;
             
         } catch (error) {
@@ -269,33 +199,84 @@ const NuevaReunion = () => {
             
             setAsistentesDisponibles([]);
             setAsistentesFiltrados([]);
+            setLoadingBeneficiarios(false);
+            setError('Error al cargar los asistentes. Por favor, intente nuevamente.');
             return [];
         }
-    };
+    }, []);
 
-    // Función para cargar asistentes disponibles
-    const cargarAsistentesDisponibles = useCallback(async (fecha = null) => {
-        try {
-            setLoadingBeneficiarios(true);
-            const response = await obtenerAsistentes();
-            const asistentes = response.asistentes || [];
-            setAsistentesDisponibles(asistentes);
+    // Función para aplicar filtros y búsqueda mejorada
+    const aplicarFiltros = useCallback(() => {
+        
+        let result = [...asistentesDisponibles];
+        
+        // Aplicar búsqueda
+        if (terminoBusqueda) {
+            const searchTerm = terminoBusqueda.trim().toLowerCase();
             
-            // Filtrar por fecha si hay una fecha seleccionada
-            if (fecha) {
-                const fechaSeleccionada = format(fecha, 'yyyy-MM-dd');
-                const asistentesFiltrados = asistentes.filter(a => 
-                    a.fecha_registro === fechaSeleccionada
-                );
-                setAsistentesFiltrados(asistentesFiltrados);
-            } else {
-                setAsistentesFiltrados(asistentes);
+            // Si el término de búsqueda es muy corto, no filtrar
+            if (searchTerm.length < 2) {
+                setAsistentesFiltrados(result);
+                return;
             }
             
+            // Eliminar acentos y caracteres especiales del término de búsqueda
+            const normalizedSearchTerm = searchTerm.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            
+            result = result.filter(asistente => {
+                // Construir nombre completo si no existe
+                const nombreCompleto = asistente.nombre_completo || 
+                    `${asistente.nombres || ''} ${asistente.apellidos || ''}`.trim();
+                
+                // Normalizar nombre completo para búsqueda
+                const nombreNormalizado = nombreCompleto
+                    .toLowerCase()
+                    .normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g, '');
+                
+                // Obtener documento (probando diferentes campos posibles)
+                const documento = [
+                    asistente.documento,
+                    asistente.numero_documento,
+                    asistente.identificacion,
+                    asistente.cedula
+                ]
+                .filter(Boolean) // Eliminar valores nulos/undefined
+                .map(d => d.toString().toLowerCase())
+                .join(' ');
+                                
+                // Buscar en nombre completo o documento
+                const encontradoEnNombre = nombreNormalizado.includes(normalizedSearchTerm);
+                const encontradoEnDocumento = documento.includes(normalizedSearchTerm);
+              
+                return encontradoEnNombre || encontradoEnDocumento;
+            });
+            
+        }
+        
+        setAsistentesFiltrados(result);
+    }, [terminoBusqueda, asistentesDisponibles]);
+
+    // Efecto para aplicar filtros cuando cambia el término de búsqueda
+    useEffect(() => {
+        aplicarFiltros();
+    }, [aplicarFiltros]);
+
+    // Función para cargar asistentes disponibles
+    const cargarAsistentesDisponibles = useCallback(async () => {
+        try {
+            setLoadingBeneficiarios(true);
+            
+            // Cargar asistentes usando la función principal
+            const asistentes = await cargarAsistentes();
+            
+            // Mostrar todos los asistentes
+            setAsistentesFiltrados(asistentes);
             setLoadingBeneficiarios(false);
+            
         } catch (error) {
-            console.error('Error al cargar asistentes:', error);
-            setError('Error al cargar asistentes');
+            console.error('Error al cargar asistentes disponibles:', error);
+            setError('Error al cargar los asistentes. Por favor, intente nuevamente.');
             setLoadingBeneficiarios(false);
         }
     }, []);
@@ -333,6 +314,11 @@ const NuevaReunion = () => {
         }));
     };
     
+    // Cargar asistentes al montar el componente
+    useEffect(() => {
+        cargarAsistentes();
+    }, [cargarAsistentes]);
+
     const validarFormulario = () => {
         if (!formData.tema || formData.tema.trim().length < 3) {
             throw new Error('El tema es requerido y debe tener al menos 3 caracteres');
@@ -704,7 +690,6 @@ const NuevaReunion = () => {
                                         <GroupIcon sx={{ verticalAlign: 'middle', mr: 1 }} />
                                         Asistentes
                                     </Typography>
-                                    
                                     {/* Lista de asistentes disponibles */}
                                     <Box mb={3}>
                                         <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
@@ -732,92 +717,39 @@ const NuevaReunion = () => {
                                             )}
                                         </Box>
                                         
-                                        <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+                                        <Box sx={{ mb: 2 }}>
                                             <TextField 
                                                 fullWidth 
-                                                placeholder="Buscar asistentes..."
+                                                size="small"
+                                                variant="outlined"
+                                                placeholder="Buscar por documento"
                                                 value={terminoBusqueda}
                                                 onChange={(e) => {
-                                                    const termino = e.target.value.toLowerCase();
-                                                    setTerminoBusqueda(termino);
-                                                    const filtrados = asistentesFiltrados.filter(a => 
-                                                        a.nombre_completo?.toLowerCase().includes(termino) ||
-                                                        a.numero_documento?.toLowerCase().includes(termino) ||
-                                                        a.correo_electronico?.toLowerCase().includes(termino)
-                                                    );
-                                                    setAsistentesFiltrados(filtrados);
+                                                    setTerminoBusqueda(e.target.value);
+                                                }}
+                                                InputProps={{
+                                                    startAdornment: (
+                                                        <InputAdornment position="start">
+                                                            <SearchIcon />
+                                                        </InputAdornment>
+                                                    ),
+                                                    endAdornment: terminoBusqueda && (
+                                                        <InputAdornment position="end">
+                                                            <IconButton
+                                                                edge="end"
+                                                                size="small"
+                                                                onClick={() => {
+                                                                    setTerminoBusqueda('');
+                                                                    // Restaurar la lista completa
+                                                                    setAsistentesFiltrados(asistentesDisponibles);
+                                                                }}
+                                                            >
+                                                                <ClearIcon fontSize="small" />
+                                                            </IconButton>
+                                                        </InputAdornment>
+                                                    )
                                                 }}
                                             />
-                                            <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={es}>
-                                                <DatePicker
-                                                    label="Filtrar por fecha"
-                                                    value={filtroFecha}
-                                                    onChange={(date) => {
-                                                        setFiltroFecha(date);
-                                                        cargarAsistentesDisponibles(date);
-                                                    }}
-                                                    renderInput={(params) => (
-                                                        <TextField {...params} size="small" />
-                                                    )}
-                                                />
-                                            </LocalizationProvider>
-                                        </Box>
-                                        
-                                        <Box mb={3}>
-                                        <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-                                            <Typography variant="subtitle2">
-                                                Seleccionar asistentes
-                                                {asistentesFiltrados.length > 0 && (
-                                                    <Typography component="span" variant="caption" color="textSecondary" sx={{ ml: 1 }}>
-                                                        ({asistentesFiltrados.length} disponibles)
-                                                    </Typography>
-                                                )}
-                                            </Typography>
-                                            {asistentesFiltrados.length > 0 && (
-                                                <Button 
-                                                    size="small" 
-                                                    onClick={() => {
-                                                        if (asistentes.length === asistentesFiltrados.length) {
-                                                            setAsistentes([]);
-                                                        } else {
-                                                            setAsistentes(asistentesFiltrados.map(a => a._id));
-                                                        }
-                                                    }}
-                                                >
-                                                    {asistentes.length === asistentesFiltrados.length ? 'Desmarcar todos' : 'Seleccionar todos'}
-                                                </Button>
-                                            )}
-                                        </Box>
-                                        
-                                        <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-                                            <TextField 
-                                                fullWidth 
-                                                placeholder="Buscar asistentes..."
-                                                value={terminoBusqueda}
-                                                onChange={(e) => {
-                                                    const termino = e.target.value.toLowerCase();
-                                                    setTerminoBusqueda(termino);
-                                                    const filtrados = asistentesFiltrados.filter(a => 
-                                                        a.nombre_completo?.toLowerCase().includes(termino) ||
-                                                        a.numero_documento?.toLowerCase().includes(termino) ||
-                                                        a.correo_electronico?.toLowerCase().includes(termino)
-                                                    );
-                                                    setAsistentesFiltrados(filtrados);
-                                                }}
-                                            />
-                                            <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={es}>
-                                                <DatePicker
-                                                    label="Filtrar por fecha"
-                                                    value={filtroFecha}
-                                                    onChange={(date) => {
-                                                        setFiltroFecha(date);
-                                                        cargarAsistentesDisponibles(date);
-                                                    }}
-                                                    renderInput={(params) => (
-                                                        <TextField {...params} size="small" />
-                                                    )}
-                                                />
-                                            </LocalizationProvider>
                                         </Box>
                                         
                                         <Paper variant="outlined" sx={{ maxHeight: 200, overflow: 'auto' }}>
@@ -858,14 +790,12 @@ const NuevaReunion = () => {
                                             ) : (
                                                 <Box sx={{ p: 2, textAlign: 'center' }}>
                                                     <Typography variant="body2" color="textSecondary">
-                                                        {filtroFecha ? 'No hay asistentes disponibles para esta fecha' : 'No hay asistentes disponibles'}
+                                                        No hay asistentes disponibles
                                                     </Typography>
                                                 </Box>
                                             )}
                                         </Paper>
                                     </Box>
-                                    </Box>
-                                    
                                     {/* Lista de asistentes seleccionados */}
                                     <Box>
                                         <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
@@ -945,6 +875,22 @@ const NuevaReunion = () => {
                         </Grid>
                     </Grid>
                 </form>
+                
+                {/* Snackbar para notificaciones */}
+                <Snackbar
+                    open={snackbar.open}
+                    autoHideDuration={snackbar.autoHideDuration || 6000}
+                    onClose={handleCloseSnackbar}
+                    anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+                >
+                    <Alert 
+                        onClose={handleCloseSnackbar} 
+                        severity={snackbar.severity}
+                        sx={{ width: '100%' }}
+                    >
+                        {snackbar.message}
+                    </Alert>
+                </Snackbar>
             </Box>
         </PageLayout>
     );

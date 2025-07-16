@@ -115,12 +115,46 @@ export const crearBeneficiario = async (datos) => {
             throw new Error(`Campos requeridos faltantes: ${camposFaltantes.join(', ')}`);
         }
 
+        console.log('Enviando solicitud a /beneficiarios/registrar con datos:', {
+            url: '/beneficiarios/registrar',
+            data: datosValidados,
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem(process.env.REACT_APP_TOKEN_KEY || 'authToken')}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
         const response = await axiosInstance.post('/beneficiarios/registrar', datosValidados);
         return response.data;
     } catch (error) {
-               
-        // Detalles adicionales del error
-              
+        console.error('Error al crear beneficiario:', {
+            message: error.message,
+            response: error.response?.data,
+            status: error.response?.status,
+            headers: error.response?.headers,
+            config: {
+                url: error.config?.url,
+                method: error.config?.method,
+                headers: error.config?.headers
+            }
+        });
+        
+        if (error.response?.status === 403) {
+            // Token might be missing or invalid
+            const token = localStorage.getItem(process.env.REACT_APP_TOKEN_KEY || 'authToken');
+            console.error('Authentication error. Token exists:', !!token);
+            
+            if (!token) {
+                console.error('No authentication token found in localStorage');
+            } else {
+                console.error('Token might be expired or invalid');
+            }
+            
+            // Redirect to login if token is missing or invalid
+            localStorage.removeItem(process.env.REACT_APP_TOKEN_KEY || 'authToken');
+            window.location.href = '/login';
+        }
+        
         throw error;
     }
 };

@@ -407,13 +407,7 @@ const usuarioService = {
             
             return userData;
         } catch (error) {
-            console.error('Error al obtener usuario por ID:', {
-                mensaje: error.response?.data?.mensaje || error.message,
-                detalles: error.response?.data || 'Sin detalles adicionales',
-                url: error.config?.url,
-                method: error.config?.method,
-                fullError: error
-            });
+        
             throw error;
         }
     },
