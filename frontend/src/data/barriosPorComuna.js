@@ -81,9 +81,13 @@ export const barriosPorComuna = [
       { nombre: "Alameda Reyes", lat: 5.6860, lng: -76.6690 },
       { nombre: "Yesquita", lat: 5.6870, lng: -76.6710 },
       { nombre: "Yesca Grande", lat: 5.6870, lng: -76.6690 },
-      { nombre: "Garcia Gomez", lat: 5.6873, lng: -76.6760 },
-      { nombre: "Chambacú", lat: 5.6867, lng: -76.66650 }
-      // Puntos angostos (a la derecha e izquierda de Roma)
+      { nombre: "Garcia Gomez", lat: 5.6873, lng: -76.6695 },
+      { nombre: "Chambacú", lat: 5.6867, lng: -76.6690 },
+      { nombre: "Avenida Bahía Solano", lat: 5.6870, lng: -76.6690 },
+      { nombre: "Pandeyuca", lat: 5.6860, lng: -76.6695 },
+      { nombre: "Alameda Sector los Guaduales", lat: 5.6860, lng: -76.6710 },
+
+      // Puntos angostos (a la derecha e izquierda de Roma) SECTOR  LOS GUADUADUALES
     //   { nombre: "Roma Vieja", lat: 5.6870 + 0.0006, lng: -76.6700 + 0.0011 },
     //   { nombre: "Roma Nueva", lat: 5.6870 - 0.0006, lng: -76.6700 - 0.0011 },
     //   { nombre: "El Progreso", lat: 5.6870 + 0.0008, lng: -76.6700 + 0.0013 },

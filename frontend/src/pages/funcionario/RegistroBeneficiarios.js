@@ -646,11 +646,14 @@ export default function RegistroBeneficiarios() {
       );
       setCurrentComunaCentroide(comunaSeleccionadaData ? comunaSeleccionadaData.centroide : null);
 
+      // Si se selecciona "Zonas Rurales", forzar coordenadas a null
+      const esZonaRural = value === "Zonas Rurales";
+
       setFormData((prevData) => ({
         ...prevData,
         comuna: value,
-        barrio: "",
-        otroBarrio: "",
+        barrio: esZonaRural ? "Zona Rural" : "",
+        otroBarrio: esZonaRural ? "Zona Rural" : "",
         barrio_lat: null,
         barrio_lng: null,
       }));
@@ -1163,12 +1166,20 @@ export default function RegistroBeneficiarios() {
           numero_celular: formData.numero_celular || "",
           correo_electronico: formData.correo_electronico || "",
 
+          // // Datos socioculturales
+          // etnia: formData.etnia === "Otro" ? (formData.etniaPersonalizada || "Otra") : (formData.etnia || "Ninguna"),
+          // comuna: formData.comuna || "",
+          // barrio: formData.barrio === "otro" ? (formData.otroBarrio || "No especificado") : (formData.barrio || "No especificado"),
+          // barrio_lat: formData.barrio_lat || null,
+          // barrio_lng: formData.barrio_lng || null,
           // Datos socioculturales
           etnia: formData.etnia === "Otro" ? (formData.etniaPersonalizada || "Otra") : (formData.etnia || "Ninguna"),
           comuna: formData.comuna || "",
-          barrio: formData.barrio === "otro" ? (formData.otroBarrio || "No especificado") : (formData.barrio || "No especificado"),
-          barrio_lat: formData.barrio_lat || null,
-          barrio_lng: formData.barrio_lng || null,
+          // Asegurar que para Zonas Rurales el barrio sea 'Zona Rural' y coordenadas sean null
+          barrio: formData.comuna === "Zonas Rurales" ? "Zona Rural" : (formData.barrio === "otro" ? (formData.otroBarrio || "No especificado") : (formData.barrio || "No especificado")),
+          // Forzar coordenadas a null para Zonas Rurales
+          barrio_lat: formData.comuna === "Zonas Rurales" ? null : (formData.barrio_lat || null),
+          barrio_lng: formData.comuna === "Zonas Rurales" ? null : (formData.barrio_lng || null),
 
           // Discapacidad
           tiene_discapacidad:

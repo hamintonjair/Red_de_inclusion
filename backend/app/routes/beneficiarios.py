@@ -474,9 +474,22 @@ def actualizar_beneficiario(beneficiario_id):
             }), 400
 
         # Preparar datos para la actualización
-        datos_actualizacion = {k: v for k, v in datos.items() if v is not None}
+        # Incluir todos los campos, incluso los que son None para asegurar que se actualicen correctamente
+        datos_actualizacion = {}
+        campos_especiales = ['barrio_lat', 'barrio_lng', 'firma']
         
-        # Si hay una firma, asegurarse de que se guarde correctamente
+        # Para campos especiales, asegurarse de que se incluyan aunque sean None
+        for campo in campos_especiales:
+            if campo in datos:
+                datos_actualizacion[campo] = datos[campo]
+                logger.info(f"Campo especial '{campo}' incluido en la actualización con valor: {datos[campo]}")
+        
+        # Para los demás campos, mantener la lógica actual de excluir None
+        for k, v in datos.items():
+            if k not in campos_especiales and v is not None:
+                datos_actualizacion[k] = v
+        
+        # Manejo especial para la firma
         if 'firma' in datos_actualizacion:
             if not datos_actualizacion['firma']:
                 datos_actualizacion['firma'] = None
