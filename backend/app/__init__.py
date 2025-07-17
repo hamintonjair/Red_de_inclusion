@@ -35,6 +35,23 @@ load_dotenv()
 def create_app():
     app = Flask(__name__)
     
+    # Configuración de CORS
+    CORS(app, 
+         resources={
+             r"/*": {
+                 "origins": [
+                     'https://red-de-inclusion-1.onrender.com',
+                     'http://localhost:3000',
+                     'http://127.0.0.1:3000'
+                 ],
+                 "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+                 "allow_headers": ["Content-Type", "Authorization", "x-user-id"],
+                 "supports_credentials": True,
+                 "expose_headers": ["Content-Disposition"]
+             }
+         }
+    )
+    
     # Configuración de logging
     import logging
     import os
@@ -53,9 +70,6 @@ def create_app():
         ]
     )
     
-    # Desactivar la configuración automática de CORS
-    # Manejaremos CORS manualmente con middlewares
-    
     # Middleware de depuración para todas las solicitudes
     @app.before_request
     def log_request_info():
@@ -63,29 +77,6 @@ def create_app():
         app.logger.debug('Método: %s', request.method)
         app.logger.debug('URL: %s', request.url)
         app.logger.debug('Datos: %s', request.get_data())
-        
-        # Manejar solicitudes OPTIONS
-        if request.method == 'OPTIONS':
-            response = app.make_default_options_response()
-            return response
-    
-    # Añadir encabezados CORS a todas las respuestas
-    @app.after_request
-    def add_cors_headers(response):
-        # Obtener el origen de la solicitud
-        origin = request.headers.get('Origin')
-        
-        # Solo configurar encabezados si hay un origen en la solicitud
-        if origin:
-            # Establecer (no añadir) los encabezados CORS
-            response.headers['Access-Control-Allow-Origin'] = origin
-            response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, x-user-id'
-            response.headers['Access-Control-Allow-Methods'] = 'GET, PUT, POST, DELETE, OPTIONS'
-            response.headers['Access-Control-Allow-Credentials'] = 'true'
-        
-       
-        
-        return response
     
     # Configuración de MongoDB sin opciones de conexión directa
     try:
