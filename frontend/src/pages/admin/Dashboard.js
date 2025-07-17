@@ -282,62 +282,105 @@ const exportarMapaYListadoPDF = async () => {
 
     // Loading and error states are already declared above
 
-    useEffect(() => {
-        const fetchStats = async () => {
-            try {
-                setLoading(true); // 3. Activar carga al inicio
+//     useEffect(() => {
+//         const fetchStats = async () => {
+//             try {
+//                 setLoading(true); // 3. Activar carga al inicio
 
-                const funcionarios = await funcionarioService.obtenerFuncionarios();
-                const lineasTrabajoCount = await usuarioService.obtenerLineasTrabajo();
+//                 const funcionarios = await funcionarioService.obtenerFuncionarios();
+//                 const lineasTrabajoCount = await usuarioService.obtenerLineasTrabajo();
 
-                let estadisticasBeneficiarios = {};
-                let estadisticasMensuales = [];
+//                 let estadisticasBeneficiarios = {};
+//                 let estadisticasMensuales = [];
 
-                try {
-                    estadisticasBeneficiarios = lineaSeleccionada
-                        ? await estadisticasService.obtenerEstadisticasPorLinea(lineaSeleccionada)
-                        : await estadisticasService.obtenerEstadisticasGlobalesAdmin();
-                } catch (error) {
-                    console.error('Error al obtener estadísticas globales admin:', error);
-                }
+//                 try {
+//                     estadisticasBeneficiarios = lineaSeleccionada
+//                         ? await estadisticasService.obtenerEstadisticasPorLinea(lineaSeleccionada)
+//                         : await estadisticasService.obtenerEstadisticasGlobalesAdmin();
+//                 } catch (error) {
+//                     console.error('Error al obtener estadísticas globales admin:', error);
+//                 }
 
-                // Obtener datos mensuales
-                try {
-                    estadisticasMensuales = await estadisticasService.obtenerEstadisticasMensuales();
-                    // CORRECCIÓN: Si la API devuelve null o undefined, usar []
-                    if (!estadisticasMensuales) estadisticasMensuales = [];
-                    const datosMensualesTransformados = Array.isArray(estadisticasMensuales)
-    ? estadisticasMensuales.map(item => ({
-        name: item.mes || item.nombre || item.label || '',
-        beneficiarios: item.cantidad ?? item.total ?? item.value ?? 0
-    }))
-    : [];
-setDatosMensuales(datosMensualesTransformados);
-                } catch (error) {
-                    setDatosMensuales([]);
-                    console.error('Error al obtener estadísticas mensuales:', error);
-                }
+//                 // Obtener datos mensuales
+//                 try {
+//                     estadisticasMensuales = await estadisticasService.obtenerEstadisticasMensuales();
+//                     // CORRECCIÓN: Si la API devuelve null o undefined, usar []
+//                     if (!estadisticasMensuales) estadisticasMensuales = [];
+//                     const datosMensualesTransformados = Array.isArray(estadisticasMensuales)
+//     ? estadisticasMensuales.map(item => ({
+//         name: item.mes || item.nombre || item.label || '',
+//         beneficiarios: item.cantidad ?? item.total ?? item.value ?? 0
+//     }))
+//     : [];
+// setDatosMensuales(datosMensualesTransformados);
+//                 } catch (error) {
+//                     setDatosMensuales([]);
+//                     console.error('Error al obtener estadísticas mensuales:', error);
+//                 }
 
-                setStats({
-                    totalFuncionarios: funcionarios.length,
-                    totalLineasTrabajo: lineasTrabajoCount.length,
-                    totalBeneficiarios: estadisticasBeneficiarios.total_beneficiarios
-                });
+//                 setStats({
+//                     totalFuncionarios: funcionarios.length,
+//                     totalLineasTrabajo: lineasTrabajoCount.length,
+//                     totalBeneficiarios: estadisticasBeneficiarios.total_beneficiarios
+//                 });
 
-                setEstadisticasBeneficiarios(estadisticasBeneficiarios);
-                setEstadisticasGlobales(estadisticasBeneficiarios);
+//                 setEstadisticasBeneficiarios(estadisticasBeneficiarios);
+//                 setEstadisticasGlobales(estadisticasBeneficiarios);
                 
-                // Procesar datos para gráficos
-                procesarDatosGraficos(estadisticasBeneficiarios);
-            } catch (err) {
-                console.error('Error al cargar estadísticas:', err);
-            }finally {
-                setLoading(false); // 4. Desactivar carga al finalizar (éxito o error)
-            }
-        };
-        fetchStats();
-    }, [lineaSeleccionada]);
+//                 // Procesar datos para gráficos
+//                 procesarDatosGraficos(estadisticasBeneficiarios);
+//             } catch (err) {
+//                 console.error('Error al cargar estadísticas:', err);
+//             }finally {
+//                 setLoading(false); // 4. Desactivar carga al finalizar (éxito o error)
+//             }
+//         };
+//         fetchStats();
+//     }, [lineaSeleccionada]);
+useEffect(() => {
+    const fetchStats = async () => {
+        try {
+            setLoading(true);
+            
+            // Ejecutar en paralelo
+            const [funcionarios, lineasTrabajoCount] = await Promise.all([
+                funcionarioService.obtenerFuncionarios(),
+                usuarioService.obtenerLineasTrabajo()
+            ]);
 
+            // Obtener estadísticas con manejo de error individual
+            let estadisticasBeneficiarios = {};
+            try {
+                estadisticasBeneficiarios = lineaSeleccionada
+                    ? await estadisticasService.obtenerEstadisticasPorLinea(lineaSeleccionada)
+                    : await estadisticasService.obtenerEstadisticasGlobalesAdmin();
+            } catch (error) {
+                console.error('Error al obtener estadísticas:', error);
+                // Manejar el error, quizás mostrar un mensaje al usuario
+            }
+
+            // Obtener datos mensuales con manejo de error
+            let estadisticasMensuales = [];
+            try {
+                const response = await estadisticasService.obtenerEstadisticasMensuales();
+                estadisticasMensuales = Array.isArray(response) ? response : [];
+            } catch (error) {
+                console.error('Error al obtener estadísticas mensuales:', error);
+                // Manejar el error, quizás mostrar un mensaje al usuario
+            }
+
+            // Procesar los datos...
+            
+        } catch (error) {
+            console.error('Error general al cargar datos:', error);
+            // Mostrar mensaje de error al usuario
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    fetchStats();
+}, [lineaSeleccionada]);
     useEffect(() => {
         const cargarRegistros = async () => {
             try {
