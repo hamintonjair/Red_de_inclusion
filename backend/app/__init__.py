@@ -35,22 +35,24 @@ load_dotenv()
 def create_app():
     app = Flask(__name__)
     
-    # Configuración de CORS
-    CORS(app, 
-         resources={
-             r"/*": {
-                 "origins": [
-                     'https://red-de-inclusion-1.onrender.com',
-                     'http://localhost:3000',
-                     'http://127.0.0.1:3000'
-                 ],
-                 "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-                 "allow_headers": ["Content-Type", "Authorization", "x-user-id"],
-                 "supports_credentials": True,
-                 "expose_headers": ["Content-Disposition"]
-             }
-         }
-    )
+    # Configuración de CORS simplificada
+    CORS_ORIGINS = [
+        'https://red-de-inclusion-1.onrender.com',
+        'http://localhost:3000',
+        'http://127.0.0.1:3000'
+    ]
+    
+    # Configuración básica de CORS
+    @app.after_request
+    def add_cors_headers(response):
+        origin = request.headers.get('Origin')
+        if origin in CORS_ORIGINS:
+            response.headers['Access-Control-Allow-Origin'] = origin
+            response.headers['Access-Control-Allow-Credentials'] = 'true'
+            response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, x-user-id'
+            response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+            response.headers['Vary'] = 'Origin'
+        return response
     
     # Configuración de logging
     import logging
