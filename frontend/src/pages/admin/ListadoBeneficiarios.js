@@ -192,84 +192,152 @@ const ListadoBeneficiarios = () => {
     const handleExportarConfirmar = async () => {
         setLoadingExport(true);
         setExportProgress(0);
+        
         try {
             if (tipoExportacion === 'rango' && (!fechaInicio || !fechaFin)) {
                 enqueueSnackbar('Debe seleccionar ambas fechas', { variant: 'warning' });
                 setLoadingExport(false);
                 return;
             }
-            setExportProgress(15);
-            // Obtener datos según tipo de exportación
-           
-            let beneficiariosExportar = [];
+
+            setExportProgress(5); // 5% - Inicio del proceso
+
+            // 1. Obtener el total de registros primero
+            let total = 0;
             if (tipoExportacion === 'todos') {
-                // Obtener TODOS los beneficiarios (sin paginación)
-                const { data } = await beneficiarioService.listarBeneficiariosAdmin(1, 1000000000, filtro, lineaTrabajoFiltro); // ajustar 10000 si hay más
-                beneficiariosExportar = data;
-               
-            } else if (tipoExportacion === 'rango') {
-               
-                // Obtener beneficiarios por rango de fechas
-                const { data } = await beneficiarioService.listarBeneficiariosPorRango({
+                const response = await beneficiarioService.listarBeneficiariosAdmin(1, 1, filtro, lineaTrabajoFiltro);
+                total = response.total || 0;
+            } else {
+                const response = await beneficiarioService.listarBeneficiariosPorRango({
                     fecha_inicio: fechaInicio,
                     fecha_fin: fechaFin,
                     filtro,
-                    lineaTrabajo: lineaTrabajoFiltro
+                    lineaTrabajo: lineaTrabajoFiltro,
+                    pagina: 1,
+                    por_pagina: 1
                 });
-              
-                beneficiariosExportar = data;
+                total = response.total || 0;
             }
-            setExportProgress(70);
-            if (!beneficiariosExportar || beneficiariosExportar.length === 0) {
-                enqueueSnackbar('No hay datos para exportar en el rango seleccionado.', { variant: 'info' });
+
+            setExportProgress(10); // 10% - Total obtenido
+
+            if (total === 0) {
+                enqueueSnackbar('No hay datos para exportar', { variant: 'info' });
                 setLoadingExport(false);
-                setExportProgress(0);
                 return;
             }
-            // Formatear datos para Excel (puedes personalizar columnas aquí)
-            const beneficiariosFormateados = beneficiariosExportar.map(b => ({
-               'FECHA DE REGISTRO': b.fecha_registro,
-                NOMBRE: b.nombre_completo,
-                'TIPO DOCUMENTO': b.tipo_documento,
-                IDENTIFICACIÓN: b.numero_documento,
-                GÉNERO: b.genero,
-                'RANGO DE EDAD': b.rango_edad,
-                COMUNA: b.comuna,
-                BARRIO: b.barrio,
-                'CORREO ELECTRÓNICO': b.correo_electronico,
-                'NÚMERO CELULAR': b.numero_celular,
-                'LÍNEA DE TRABAJO': lineasTrabajo && (lineasTrabajo[b.linea_trabajo] || lineasTrabajo[b.lineaTrabajo]) ? (lineasTrabajo[b.linea_trabajo] || lineasTrabajo[b.lineaTrabajo]) : 'Sin línea',
-                '¿ESTUDIA?': b.estudia_actualmente ? 'Sí' : 'No',
-                'NIVEL EDUCATIVO': b.nivel_educativo,
-                '¿LABORA/ESTUDIA?': b.situacion_laboral,
-                '¿LEE?': b.sabe_leer ? 'Sí' : 'No',
-                '¿ESCRIBE?': b.sabe_escribir ? 'Sí' : 'No',
-                'TIPO DE VIVIENDA': b.tipo_vivienda,
-                'ÉTNIA': b.etnia,
-                '¿RECIBE AYUDA?': b.ayuda_humanitaria ? 'Sí' : 'No',
-                'TIPO DE AYUDA': b.descripcion_ayuda_humanitaria,
-                'DISCAPACIDAD': b.tiene_discapacidad ? 'Sí' : 'No',
-                'TIPO DE DISCAPACIDAD': b.tipo_discapacidad,
-                '¿TIENE CERTIFICADO DISCAPACIDAD?': b.tiene_certificado_discapacidad ? 'Sí' : 'No',
-                'NOMBRE DEL CUIDADOR/A': b.nombre_cuidadora || '',
-                '¿TRABAJA?': b.labora_cuidadora ? 'Sí' : 'No',
-                '¿VÍCTIMA?': b.victima_conflicto ? 'Sí' : 'No'
 
-            }));
-            setExportProgress(90);
-            await exportarListadoBeneficiariosAExcel({ beneficiarios: beneficiariosFormateados });
+            const porPagina = 100; // Tamaño de página más pequeño para mejor feedback
+            const totalPaginas = Math.ceil(total / porPagina);
+            let todosLosBeneficiarios = [];
+
+            // Función para actualizar el progreso de manera suave
+            const actualizarProgreso = (progresoActual, progresoMaximo) => {
+                // El 10% al 90% es para la descarga de datos
+                const progreso = 10 + (progresoActual / totalPaginas) * 80;
+                setExportProgress(Math.min(progreso, progresoMaximo || 90));
+            };
+
+            // 2. Descargar los datos en lotes
+            for (let pagina = 1; pagina <= totalPaginas; pagina++) {
+                let data;
+                
+                if (tipoExportacion === 'todos') {
+                    const response = await beneficiarioService.listarBeneficiariosAdmin(
+                        pagina, 
+                        porPagina, 
+                        filtro, 
+                        lineaTrabajoFiltro
+                    );
+                    data = response.data;
+                } else {
+                    const response = await beneficiarioService.listarBeneficiariosPorRango({
+                        fecha_inicio: fechaInicio,
+                        fecha_fin: fechaFin,
+                        filtro,
+                        lineaTrabajo: lineaTrabajoFiltro,
+                        pagina,
+                        por_pagina: porPagina
+                    });
+                    data = response.data;
+                }
+
+                todosLosBeneficiarios = [...todosLosBeneficiarios, ...data];
+                actualizarProgreso(pagina, 90); // Llegamos al 90% al finalizar la descarga
+            }
+
+            // 3. Formatear datos para Excel (10% del progreso)
+            const actualizarProgresoFormateo = (progreso) => {
+                setExportProgress(90 + (progreso / 100) * 10);
+            };
+
+            const beneficiariosFormateados = [];
+            const totalBeneficiarios = todosLosBeneficiarios.length;
+            
+            for (let i = 0; i < totalBeneficiarios; i++) {
+                const b = todosLosBeneficiarios[i];
+                beneficiariosFormateados.push({
+                    'FECHA DE REGISTRO': b.fecha_registro,
+                    NOMBRE: b.nombre_completo,
+                    'TIPO DOCUMENTO': b.tipo_documento,
+                    IDENTIFICACIÓN: b.numero_documento,
+                    GÉNERO: b.genero,
+                    'RANGO DE EDAD': b.rango_edad,
+                    COMUNA: b.comuna,
+                    BARRIO: b.barrio,
+                    'CORREO ELECTRÓNICO': b.correo_electronico,
+                    'NÚMERO CELULAR': b.numero_celular,
+                    'LÍNEA DE TRABAJO': lineasTrabajo && (lineasTrabajo[b.linea_trabajo] || lineasTrabajo[b.lineaTrabajo]) || 'Sin línea',
+                    '¿ESTUDIA?': b.estudia_actualmente ? 'Sí' : 'No',
+                    'NIVEL EDUCATIVO': b.nivel_educativo,
+                    '¿LABORA/ESTUDIA?': b.situacion_laboral,
+                    '¿LEE?': b.sabe_leer ? 'Sí' : 'No',
+                    '¿ESCRIBE?': b.sabe_escribir ? 'Sí' : 'No',
+                    'TIPO DE VIVIENDA': b.tipo_vivienda,
+                    'ÉTNIA': b.etnia,
+                    '¿RECIBE AYUDA?': b.ayuda_humanitaria ? 'Sí' : 'No',
+                    'TIPO DE AYUDA': b.descripcion_ayuda_humanitaria,
+                    'DISCAPACIDAD': b.tiene_discapacidad ? 'Sí' : 'No',
+                    'TIPO DE DISCAPACIDAD': b.tipo_discapacidad || '',
+                    '¿TIENE CERTIFICADO DISCAPACIDAD?': b.tiene_certificado_discapacidad ? 'Sí' : 'No',
+                    'NOMBRE DEL CUIDADOR/A': b.nombre_cuidadora || '',
+                    '¿TRABAJA?': b.labora_cuidadora ? 'Sí' : 'No',
+                    '¿VÍCTIMA?': b.victima_conflicto ? 'Sí' : 'No'
+                });
+
+                // Actualizar progreso cada 10 registros
+                if (i > 0 && i % 10 === 0) {
+                    actualizarProgresoFormateo((i / totalBeneficiarios) * 100);
+                }
+            }
+            actualizarProgresoFormateo(100);
+
+            // 4. Generar Excel (últimos 5%)
+            setExportProgress(95);
+            await exportarListadoBeneficiariosAExcel({ 
+                beneficiarios: beneficiariosFormateados,
+                onProgress: (progreso) => {
+                    // Ajustar el progreso entre 95% y 100%
+                    setExportProgress(95 + (progreso / 100) * 5);
+                }
+            });
+
             setExportProgress(100);
             enqueueSnackbar('Exportación exitosa', { variant: 'success' });
+            
             setTimeout(() => {
                 setOpenExportDialog(false);
             }, 500);
         } catch (error) {
-            enqueueSnackbar('Error al exportar beneficiarios', { variant: 'error' });
+            console.error('Error al exportar:', error);
+            enqueueSnackbar('Error al exportar beneficiarios: ' + (error.message || 'Error desconocido'), { 
+                variant: 'error' 
+            });
         } finally {
             setTimeout(() => {
                 setLoadingExport(false);
                 setExportProgress(0);
-            }, 800);
+            }, 1000);
         }
     };
 

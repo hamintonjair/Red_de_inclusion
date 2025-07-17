@@ -5,14 +5,44 @@ import * as XLSX from 'xlsx-js-style';
  * @param {Array<Object>} beneficiarios - Lista de beneficiarios, cada objeto representa una fila.
  * @param {string} nombreArchivo - Nombre del archivo a descargar (por defecto 'listado_beneficiarios.xlsx').
  */
-export async function exportarListadoBeneficiariosAExcel({ beneficiarios, nombreArchivo = 'listado_beneficiarios.xlsx' }) {
+export async function exportarListadoBeneficiariosAExcel({ 
+    beneficiarios, 
+    nombreArchivo = 'listado_beneficiarios.xlsx',
+    onProgress 
+}) {
     if (!beneficiarios || beneficiarios.length === 0) return;
 
     // 1. Crear un nuevo libro de trabajo
     const wb = XLSX.utils.book_new();
     
-    // 2. Convertir los datos a una hoja de trabajo
-    const ws = XLSX.utils.json_to_sheet(beneficiarios);
+    // 2. Procesar los datos en lotes para actualizar el progreso
+    const totalFilas = beneficiarios.length;
+    const loteSize = Math.max(1, Math.ceil(totalFilas / 10)); // Dividir en 10 lotes
+    let filasProcesadas = 0;
+
+    // Función para actualizar el progreso
+    const actualizarProgreso = (incremento) => {
+        if (onProgress) {
+            filasProcesadas += incremento;
+            const progreso = (filasProcesadas / totalFilas) * 100;
+            onProgress(progreso);
+        }
+    };
+
+    // 3. Procesar los datos en lotes
+    const datosProcesados = [];
+    for (let i = 0; i < beneficiarios.length; i++) {
+        datosProcesados.push(beneficiarios[i]);
+        
+        // Actualizar progreso cada lote
+        if (i > 0 && i % loteSize === 0) {
+            actualizarProgreso(loteSize);
+        }
+    }
+    actualizarProgreso(totalFilas % loteSize || 0); // Último lote
+
+    // 4. Convertir los datos a una hoja de trabajo
+    const ws = XLSX.utils.json_to_sheet(datosProcesados);
     
     // 3. Obtener los encabezados
     const header = Object.keys(beneficiarios[0] || {});
