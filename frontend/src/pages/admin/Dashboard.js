@@ -342,45 +342,110 @@ useEffect(() => {
         try {
             setLoading(true);
             
-            // Ejecutar en paralelo
+            // 1. Obtener datos básicos en paralelo
             const [funcionarios, lineasTrabajoCount] = await Promise.all([
-                funcionarioService.obtenerFuncionarios(),
-                usuarioService.obtenerLineasTrabajo()
+                funcionarioService.obtenerFuncionarios().catch(err => {
+                    console.error('Error al obtener funcionarios:', err);
+                    return [];
+                }),
+                usuarioService.obtenerLineasTrabajo().catch(err => {
+                    console.error('Error al obtener líneas de trabajo:', err);
+                    return [];
+                })
             ]);
 
-            // Obtener estadísticas con manejo de error individual
+            // 2. Obtener estadísticas de beneficiarios
             let estadisticasBeneficiarios = {};
             try {
+                console.log('Solicitando estadísticas...');
                 estadisticasBeneficiarios = lineaSeleccionada
                     ? await estadisticasService.obtenerEstadisticasPorLinea(lineaSeleccionada)
                     : await estadisticasService.obtenerEstadisticasGlobalesAdmin();
+                
+                console.log('Estadísticas obtenidas:', estadisticasBeneficiarios);
+                
+                // Actualizar el estado con las estadísticas
+                setEstadisticasBeneficiarios(estadisticasBeneficiarios);
+                setEstadisticasGlobales(estadisticasBeneficiarios);
+                
+                // Actualizar estadísticas generales
+                setStats(prev => ({
+                    ...prev,
+                    totalFuncionarios: Array.isArray(funcionarios) ? funcionarios.length : 0,
+                    totalLineasTrabajo: Array.isArray(lineasTrabajoCount) ? lineasTrabajoCount.length : 0,
+                    totalBeneficiarios: estadisticasBeneficiarios.total_beneficiarios || 0
+                }));
+                
             } catch (error) {
                 console.error('Error al obtener estadísticas:', error);
-                // Manejar el error, quizás mostrar un mensaje al usuario
+                enqueueSnackbar('Error al cargar las estadísticas. Mostrando datos limitados.', { 
+                    variant: 'error',
+                    autoHideDuration: 5000
+                });
+                
+                // Establecer valores por defecto
+                const defaultStats = {
+                    total_beneficiarios: 0,
+                    total_victimas: 0,
+                    total_discapacidad: 0,
+                    total_ayuda_humanitaria: 0,
+                    total_menores_13: 0,
+                    total_13_25: 0,
+                    total_mayores_60: 0,
+                    total_alfabetizados: 0,
+                    total_analfabetas: 0,
+                    total_mujeres_menores_con_hijos: 0
+                };
+                
+                setEstadisticasBeneficiarios(defaultStats);
+                setEstadisticasGlobales(defaultStats);
+                setStats(prev => ({
+                    ...prev,
+                    totalBeneficiarios: 0
+                }));
             }
 
-            // Obtener datos mensuales con manejo de error
-            let estadisticasMensuales = [];
+            // 3. Obtener datos mensuales
             try {
+                console.log('Solicitando estadísticas mensuales...');
                 const response = await estadisticasService.obtenerEstadisticasMensuales();
-                estadisticasMensuales = Array.isArray(response) ? response : [];
+                const estadisticasMensuales = Array.isArray(response) ? response : [];
+                
+                // Procesar datos para gráficos
+                const datosMensualesTransformados = estadisticasMensuales.map(item => ({
+                    name: item.mes || item.nombre || item.label || '',
+                    beneficiarios: item.cantidad ?? item.total ?? item.value ?? 0
+                }));
+                
+                setDatosMensuales(datosMensualesTransformados);
+                
             } catch (error) {
                 console.error('Error al obtener estadísticas mensuales:', error);
-                // Manejar el error, quizás mostrar un mensaje al usuario
+                setDatosMensuales([]);
+                enqueueSnackbar('No se pudieron cargar las estadísticas mensuales', { 
+                    variant: 'warning',
+                    autoHideDuration: 3000
+                });
             }
-
-            // Procesar los datos...
             
         } catch (error) {
             console.error('Error general al cargar datos:', error);
-            // Mostrar mensaje de error al usuario
+            enqueueSnackbar('Ocurrió un error al cargar los datos del dashboard', { 
+                variant: 'error',
+                autoHideDuration: 5000
+            });
         } finally {
             setLoading(false);
         }
     };
 
     fetchStats();
-}, [lineaSeleccionada]);
+    
+    // Limpiar al desmontar
+    return () => {
+        // Cualquier limpieza necesaria
+    };
+}, [lineaSeleccionada, enqueueSnackbar]);
     useEffect(() => {
         const cargarRegistros = async () => {
             try {

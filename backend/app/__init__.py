@@ -35,25 +35,6 @@ load_dotenv()
 def create_app():
     app = Flask(__name__)
     
-    # Configuración de CORS simplificada
-    CORS_ORIGINS = [
-        'https://red-de-inclusion-1.onrender.com',
-        'http://localhost:3000',
-        'http://127.0.0.1:3000'
-    ]
-    
-    # Configuración básica de CORS
-    @app.after_request
-    def add_cors_headers(response):
-        origin = request.headers.get('Origin')
-        if origin in CORS_ORIGINS:
-            response.headers['Access-Control-Allow-Origin'] = origin
-            response.headers['Access-Control-Allow-Credentials'] = 'true'
-            response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, x-user-id'
-            response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
-            response.headers['Vary'] = 'Origin'
-        return response
-    
     # Configuración de logging
     import logging
     import os
@@ -72,6 +53,9 @@ def create_app():
         ]
     )
     
+    # Desactivar la configuración automática de CORS
+    # Manejaremos CORS manualmente con middlewares
+    
     # Middleware de depuración para todas las solicitudes
     @app.before_request
     def log_request_info():
@@ -79,6 +63,38 @@ def create_app():
         app.logger.debug('Método: %s', request.method)
         app.logger.debug('URL: %s', request.url)
         app.logger.debug('Datos: %s', request.get_data())
+        
+        # Manejar solicitudes OPTIONS
+        if request.method == 'OPTIONS':
+            response = app.make_default_options_response()
+            return response
+    
+    # Añadir encabezados CORS a todas las respuestas
+    @app.after_request
+    def add_cors_headers(response):
+        # Obtener el origen de la solicitud
+      # Lista de orígenes permitidos
+        allowed_origins = [
+            'https://red-de-inclusion-1.onrender.com',
+            'http://localhost:3000',
+            'http://127.0.0.1:3000'
+        ]
+        
+        # Obtener el origen de la solicitud
+        origin = request.headers.get('Origin')
+        
+        # Si el origen está en la lista de permitidos, configurar los encabezados
+        if origin in allowed_origins:
+            response.headers['Access-Control-Allow-Origin'] = origin
+            response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, x-user-id'
+            response.headers['Access-Control-Allow-Methods'] = 'GET, PUT, POST, DELETE, OPTIONS'
+            response.headers['Access-Control-Allow-Credentials'] = 'true'
+            
+            # Configurar encabezados adicionales para CORS
+            if request.method == 'OPTIONS':
+                response.headers['Access-Control-Max-Age'] = '86400'  # 24 horas
+        
+        return response
     
     # Configuración de MongoDB sin opciones de conexión directa
     try:
