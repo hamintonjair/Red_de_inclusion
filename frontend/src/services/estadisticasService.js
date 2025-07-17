@@ -47,25 +47,72 @@ const estadisticasService = {
     },
     obtenerEstadisticasBeneficiarios: async (lineaTrabajoId) => {
         try {
- 
+            console.log(`Obteniendo estadísticas para línea de trabajo: ${lineaTrabajoId}`);
+            
             // Usar URL completa con el prefijo correcto de beneficiarios
             const urlCompleta = `${axiosInstance.defaults.baseURL}/api/beneficiario/estadisticas/${lineaTrabajoId}`;
-         
+            console.log('URL de la solicitud:', urlCompleta);
             
             const response = await axiosInstance.get(urlCompleta);
+            console.log('Respuesta del servidor:', response.data);
             
-           
-
             // Validar estructura de respuesta
-            if (!response.data || !response.data.estadisticas) {
-                throw new Error('Respuesta de estadísticas inválida');
+            if (!response.data) {
+                throw new Error('La respuesta del servidor está vacía');
             }
-
-            return response.data.estadisticas;
-        } catch (error) {
-          
             
-            throw error;
+            if (response.data.status === 'error') {
+                throw new Error(response.data.msg || 'Error al obtener estadísticas');
+            }
+            
+            if (!response.data.estadisticas) {
+                throw new Error('La respuesta no contiene el campo "estadisticas"');
+            }
+            
+            // Asegurarse de que los valores numéricos sean números
+            const estadisticas = response.data.estadisticas;
+            const estadisticasProcesadas = {};
+            
+            // Convertir todos los valores a números
+            Object.keys(estadisticas).forEach(key => {
+                if (typeof estadisticas[key] === 'number') {
+                    estadisticasProcesadas[key] = estadisticas[key];
+                } else if (typeof estadisticas[key] === 'string' && !isNaN(estadisticas[key])) {
+                    estadisticasProcesadas[key] = parseFloat(estadisticas[key]);
+                } else {
+                    estadisticasProcesadas[key] = 0; // Valor por defecto si no es un número
+                }
+            });
+            
+            console.log('Estadísticas procesadas:', estadisticasProcesadas);
+            return estadisticasProcesadas;
+            
+        } catch (error) {
+            console.error('Error en obtenerEstadisticasBeneficiarios:', error);
+            console.error('Detalles del error:', {
+                message: error.message,
+                response: error.response?.data,
+                status: error.response?.status,
+                config: {
+                    url: error.config?.url,
+                    method: error.config?.method,
+                    data: error.config?.data
+                }
+            });
+            
+            // Devolver un objeto con valores por defecto en caso de error
+            return {
+                total_beneficiarios: 0,
+                total_victimas: 0,
+                total_discapacidad: 0,
+                total_ayuda_humanitaria: 0,
+                total_menores_13: 0,
+                total_13_25: 0,
+                total_mayores_60: 0,
+                total_alfabetizados: 0,
+                total_analfabetas: 0,
+                total_mujeres_menores_con_hijos: 0
+            };
         }
     },
     obtenerEstadisticasGlobalesAdmin: async () => {

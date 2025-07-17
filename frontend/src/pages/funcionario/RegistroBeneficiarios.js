@@ -89,6 +89,7 @@ const TIPOS_DISCAPACIDAD = [
   "Auditiva",
   "Cognitiva",
   "Múltiple",
+  "Psicosocial",
 ];
 const NIVELES_EDUCATIVOS = [
   "Primaria",
@@ -835,8 +836,8 @@ export default function RegistroBeneficiarios() {
       },
       { 
         campo: 'tipo_vivienda', 
-        etiqueta: 'Tipo de Vivienda',
-        mensaje: 'El tipo de vivienda es requerido',
+        etiqueta: 'Tenencia de la vivienda',
+        mensaje: 'La tenencia de la vivienda es requerida',
         tipo: 'select',
         opcionInicial: 'Seleccione...'
       },
@@ -2257,12 +2258,12 @@ export default function RegistroBeneficiarios() {
             </Grid>
             <Grid item xs={12} sm={6}>
               <FormControl fullWidth required error={!!errores.tipo_vivienda}>
-                <InputLabel id="tipo-vivienda-label">Tipo de Vivienda *</InputLabel>
+                <InputLabel id="tipo-vivienda-label">Tenencia de la vivienda *</InputLabel>
                 <Select
                   name="tipo_vivienda"
                   value={formData.tipo_vivienda || ''}
                   labelId="tipo-vivienda-label"
-                  label="Tipo de Vivienda *"
+                  label="Tenencia de la vivienda *"
                   onChange={handleChange}
                   error={!!errores.tipo_vivienda}
                 >

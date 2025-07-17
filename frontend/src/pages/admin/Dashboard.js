@@ -1,5 +1,5 @@
 // Modificación para Dashboard.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import LineaTrabajoFiltro from '../../components/LineaTrabajoFiltro';
 import html2canvas from 'html2canvas';
@@ -31,7 +31,9 @@ import {
     School,
     PersonSearch,
     People,
-    Work
+    Work,
+    Elderly,
+    GppMaybe
 } from '@mui/icons-material';
 import { useSnackbar } from 'notistack';
 import usuarioService from '../../services/usuarioService';
@@ -47,10 +49,33 @@ import ComunasSidebar from '../../components/ComunasSidebar';
 import { agruparPorComunaYBarrio, COMUNA_COLORS } from '../../components/MapaRegistros';
 
 const Dashboard = () => {
-    // Estado para los registros de beneficiarios (asegúrate de que SOLO esté aquí)
+    // Estado para los registros de beneficiarios
     const [registros, setRegistros] = useState([]);
+    const [loadingRegistros, setLoadingRegistros] = useState(true);
+    const [errorRegistros, setErrorRegistros] = useState(null);
 
-    // ...otros estados y hooks
+    // Cargar todos los registros sin paginación
+    const cargarRegistros = useCallback(async () => {
+        setLoadingRegistros(true);
+        try {
+            // Usar la función que obtiene todos los registros sin paginación
+            const items = await beneficiarioService.obtenerTodosBeneficiarios({});
+            console.log(`Total de registros cargados: ${items?.length || 0}`);
+            setRegistros(items || []);
+            setErrorRegistros(null);
+        } catch (error) {
+            console.error('Error al cargar los registros:', error);
+            setErrorRegistros('Error al cargar los registros. Por favor, intente nuevamente.');
+            setRegistros([]);
+        } finally {
+            setLoadingRegistros(false);
+        }
+    }, []);
+
+    // Cargar registros al montar el componente
+    useEffect(() => {
+        cargarRegistros();
+    }, [cargarRegistros]);
 
 const exportarMapaYListadoPDF = async () => {
   // Tamaño oficio: 8.5 x 13 pulgadas = 612 x 936 pt
@@ -214,7 +239,7 @@ const exportarMapaYListadoPDF = async () => {
         total_ayuda_humanitaria: 0,
         total_menores_13: 0,
         total_13_25: 0,
-        total_mayores_25: 0,
+        total_mayores_60: 0,
         total_alfabetizados: 0,
         total_analfabetas: 0,
         total_mujeres_menores_con_hijos: 0
@@ -255,9 +280,7 @@ const exportarMapaYListadoPDF = async () => {
         '#ef6c00', '#d84315', '#4e342e', '#424242', '#263238', '#212121', '#b71c1c', '#ff6f00', '#00bfae', '#3949ab'
     ];
 
-    // Estado para los registros de beneficiarios
-    const [loadingRegistros, setLoadingRegistros] = useState(true);
-    const [errorRegistros, setErrorRegistros] = useState(null);
+    // Loading and error states are already declared above
 
     useEffect(() => {
         const fetchStats = async () => {
@@ -391,7 +414,7 @@ setDatosMensuales(datosMensualesTransformados);
             { Título: 'Total Ayuda Humanitaria', Valor: estadisticasBeneficiarios.total_ayuda_humanitaria },
             { Título: 'Total Menores de 13', Valor: estadisticasBeneficiarios.total_menores_13 },
             { Título: 'Total 13-25', Valor: estadisticasBeneficiarios.total_13_25 },
-            { Título: 'Total Mayores de 25', Valor: estadisticasBeneficiarios.total_mayores_25 },
+            { Título: 'Total Mayores de 56', Valor: estadisticasBeneficiarios.total_mayores_60 },
             { Título: 'Total Alfabetizados', Valor: estadisticasBeneficiarios.total_alfabetizados },
             { Título: 'Total Analfabetas', Valor: estadisticasBeneficiarios.total_analfabetas },
             { Título: 'Total Mujeres Menores con Hijos', Valor: estadisticasBeneficiarios.total_mujeres_menores_con_hijos },
@@ -430,7 +453,7 @@ setDatosMensuales(datosMensualesTransformados);
         const datosEdad = [
             { name: 'Menores de 13', value: datos.total_menores_13 || 0 },
             { name: 'Entre 13 y 25', value: datos.total_13_25 || 0 },
-            { name: 'Mayores de 25', value: datos.total_mayores_25 || 0 }
+            { name: 'Mayores de 56', value: datos.total_mayores_60 || 0 }
         ];
         
         const datosAlfabetizacion = [
@@ -778,7 +801,7 @@ setDatosMensuales(datosMensualesTransformados);
                 {renderTarjetaEstadistica(
                     'Total Víctimas de Conflicto', 
                     estadisticasBeneficiarios.total_victimas, 
-                    <PersonSearch color="warning" sx={{ fontSize: 50 }} />,
+                    <GppMaybe color="warning" sx={{ fontSize: 50 }} />,
                     "warning"
                 )}
                 {renderTarjetaEstadistica(
@@ -806,9 +829,9 @@ setDatosMensuales(datosMensualesTransformados);
                     "info"
                 )}
                 {renderTarjetaEstadistica(
-                    'Mayores de 25', 
-                    estadisticasBeneficiarios.total_mayores_25, 
-                    <School color="secondary" sx={{ fontSize: 50 }} />,
+                    'Mayores de 56', 
+                    estadisticasBeneficiarios.total_mayores_60, 
+                    <Elderly color="secondary" sx={{ fontSize: 50 }} />,
                     "secondary"
                 )}
                 {renderTarjetaEstadistica(

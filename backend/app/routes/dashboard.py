@@ -215,9 +215,9 @@ def exportar_grafico(tipo):
                     'Total Víctimas de Conflicto': [{'$match': {'victima_conflicto': True}}, {'$count': 'total'}],
                     'Con Discapacidad': [{'$match': {'tiene_discapacidad': True}}, {'$count': 'total'}],
                     'Ayuda Humanitaria': [{'$match': {'recibe_ayuda_humanitaria': True}}, {'$count': 'total'}],
-                    'Menores de 13': [{'$match': {'rango_edad': 'Menor de 13'}}, {'$count': 'total'}],
-                    'Entre 13 y 25': [{'$match': {'rango_edad': 'Entre 13 y 25'}}, {'$count': 'total'}],
-                    'Mayores de 25': [{'$match': {'rango_edad': 'Mayor de 25'}}, {'$count': 'total'}],
+                    'Menores de 13': [{'$match': {'rango_edad': '0-12'}}, {'$count': 'total'}],
+                    'Entre 13 y 25': [{'$match': {'rango_edad': {'$in': ['13-18', '19-25']}}}, {'$count': 'total'}],
+                    'Mayores de 60': [{'$match': {'rango_edad': {'$in': ['56-65', '66 o más']}}}, {'$count': 'total'}],
                     'Alfabetizados': [{'$match': {'alfabetizado': True}}, {'$count': 'total'}],
                     'Analfabetas': [{'$match': {'alfabetizado': False}}, {'$count': 'total'}],
                     'Mujeres Menores con Hijos': [

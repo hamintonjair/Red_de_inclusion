@@ -278,6 +278,98 @@ export const obtenerBeneficiarios = async (filtros = {}) => {
     }
 };
 
+/**
+ * Obtiene TODOS los beneficiarios sin paginación
+ * @param {Object} filtros - Filtros opcionales para la búsqueda
+ * @returns {Promise<Array>} Lista de todos los beneficiarios
+ */
+export const obtenerTodosBeneficiarios = async (filtros = {}) => {
+    try {
+        // Configurar parámetros para obtener todos los registros
+        const queryParams = {
+            por_pagina: 10000000, // Número grande para obtener la mayoría de los registros
+            pagina: 1,
+            ...filtros // Mantener cualquier otro filtro proporcionado
+        };
+
+        // Limpiar parámetros vacíos o nulos
+        Object.keys(queryParams).forEach(key => {
+            if (queryParams[key] === undefined || queryParams[key] === null || queryParams[key] === '') {
+                delete queryParams[key];
+            }
+        });
+
+        // Hacer la primera petición para obtener el total de registros
+        const primeraRespuesta = await axiosInstance.get('/beneficiarios/listar', {
+            params: {
+                ...queryParams,
+                por_pagina: 1, // Solo necesitamos el total
+                pagina: 1
+            }
+        });
+
+        // Obtener el total de registros
+        const totalRegistros = primeraRespuesta.data?.total || 0;
+        
+        if (totalRegistros === 0) {
+            return [];
+        }
+
+        // Calcular número de páginas necesarias
+        const porPagina = 1000; // Máximo por petición
+        const totalPaginas = Math.ceil(totalRegistros / porPagina);
+
+        // Crear un array con todas las promesas de las páginas restantes
+        const promesas = [];
+        for (let pagina = 1; pagina <= totalPaginas; pagina++) {
+            promesas.push(
+                axiosInstance.get('/beneficiarios/listar', {
+                    params: {
+                        ...queryParams,
+                        por_pagina: porPagina,
+                        pagina: pagina
+                    }
+                })
+            );
+        }
+
+        // Ejecutar todas las peticiones en paralelo
+        const respuestas = await Promise.all(promesas);
+
+        // Combinar todos los resultados
+        const todosLosBeneficiarios = respuestas.reduce((acumulador, respuesta) => {
+            const datos = respuesta.data;
+            if (Array.isArray(datos)) {
+                return [...acumulador, ...datos];
+            } else if (Array.isArray(datos?.beneficiarios)) {
+                return [...acumulador, ...datos.beneficiarios];
+            }
+            return acumulador;
+        }, []);
+
+        return todosLosBeneficiarios;
+
+    } catch (error) {
+        console.error('Error en obtenerTodosBeneficiarios:', error);
+        
+        // Lanzar un error personalizado con más contexto
+        const errorMsg = error.response?.data?.msg || 'Error al obtener todos los beneficiarios';
+        const status = error.response?.status;
+        
+        const customError = new Error(errorMsg);
+        customError.status = status;
+        customError.data = error.response?.data;
+        
+        // Si es un error de autenticación, forzar cierre de sesión
+        if (status === 401) {
+            localStorage.removeItem(process.env.REACT_APP_TOKEN_KEY || 'authToken');
+            window.location.href = '/login';
+        }
+        
+        throw customError;
+    }
+};
+
 export const obtenerBeneficiarioPorId = async (beneficiarioId) => {
     try {
         const response = await axiosInstance.get(`/beneficiarios/${beneficiarioId}`);
@@ -625,6 +717,7 @@ export const listarBeneficiariosPorRango = async ({ fecha_inicio, fecha_fin, fil
 const beneficiarioService = {
     crearBeneficiario,
     obtenerBeneficiarios,
+    obtenerTodosBeneficiarios,
     obtenerBeneficiarioPorId,
     actualizarBeneficiario,
     eliminarBeneficiario,

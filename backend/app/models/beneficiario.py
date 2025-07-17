@@ -405,9 +405,12 @@ class BeneficiarioModel:
                     **filtro_base,
                     'rango_edad': {'$in': ['13-18', '19-25']}
                 }),
-                'total_mayores_25': self.collection.count_documents({
+                'total_mayores_60': self.collection.count_documents({
                     **filtro_base,
-                    'rango_edad': {'$in': ['26-35', '36-45', '46-55', '56-65', '66 o más']}
+                    '$or': [
+                        {'rango_edad': '56-65'},
+                        {'rango_edad': '66 o más'}
+                    ]
                 }),
                 
                 # Alfabetización
@@ -502,6 +505,11 @@ class BeneficiarioModel:
                 {"$group": {"_id": "$comuna", "cantidad": {"$sum": 1}}}
             ]))
             
+            # Contar beneficiarios mayores de 56 años (56-65 y 66 o más)
+            total_mayores_60 = self.collection.count_documents({
+                'rango_edad': {'$in': ['56-65', '66 o más']}
+            })
+            
             comunas_conteo = {str(item['_id']): item['cantidad'] for item in total_comunas}
             
             # Menores de 18 años que estudian
@@ -567,7 +575,7 @@ class BeneficiarioModel:
                 'total_ayuda_humanitaria': total_ayuda_humanitaria,
                 'total_menores_13': total_menores_13,
                 'total_13_25': total_13_25,
-                'total_mayores_25': total_mayores_25,
+                'total_mayores_60': total_mayores_60,
                 'total_alfabetizados': total_alfabetizados,
                 'total_analfabetas': total_analfabetas,
                 'total_mujeres_menores_con_hijos': total_mujeres_menores_con_hijos,

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import DashboardMapa from './DashboardMapa';
 import { 
     Grid, 
@@ -13,7 +13,9 @@ import {
     Accessibility as AccessibilityIcon,
     ChildCare as ChildCareIcon,
     School as SchoolIcon,
-    PersonSearch as PersonSearchIcon
+    PersonSearch as PersonSearchIcon,
+    Elderly as ElderlyIcon,
+    GppMaybe as GppMaybeIcon
 } from '@mui/icons-material';
 import { useAuth } from '../../context/AuthContext';
 import estadisticasService from '../../services/estadisticasService';
@@ -28,7 +30,7 @@ const Dashboard = () => {
         total_ayuda_humanitaria: 0,
         total_menores_13: 0,
         total_13_25: 0,
-        total_mayores_25: 0,
+        total_mayores_60: 0,
         total_alfabetizados: 0,
         total_analfabetas: 0,
         total_mujeres_menores_con_hijos: 0
@@ -122,7 +124,7 @@ const Dashboard = () => {
                 {renderTarjetaEstadistica(
                     'Víctimas de Conflicto', 
                     estadisticas.total_victimas, 
-                    <PersonSearchIcon color="warning" sx={{ fontSize: 50 }} />
+                    <GppMaybeIcon color="warning" sx={{ fontSize: 50 }} />
                 )}
                 {renderTarjetaEstadistica(
                     'Con Discapacidad', 
@@ -151,9 +153,10 @@ const Dashboard = () => {
 
             <Grid container spacing={3} sx={{ mt: 1 }}>
                 {renderTarjetaEstadistica(
-                    'Mayores de 25', 
-                    estadisticas.total_mayores_25, 
-                    <PersonSearchIcon color="secondary" sx={{ fontSize: 50 }} />
+                   
+                    'Mayores de 56', 
+                    estadisticas.total_mayores_60, 
+                    <ElderlyIcon color="secondary" sx={{ fontSize: 50 }} />
                 )}
                 {renderTarjetaEstadistica(
                     'Alfabetizados', 

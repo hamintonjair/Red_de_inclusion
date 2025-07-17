@@ -23,15 +23,43 @@ const DashboardMapa = () => {
     
     setLoading(true);
     try {
-      // Obtener todos los registros sin paginación
-      const data = await beneficiarioService.obtenerBeneficiarios({ 
-        linea_trabajo: user.linea_trabajo
+      // Usar la nueva función que obtiene todos los registros sin paginación
+      const items = await beneficiarioService.obtenerTodosBeneficiarios({ 
+        linea_trabajo: user.linea_trabajo 
       });
       
-      if (data) {
-        // Verificar si la respuesta tiene el formato esperado
-        const items = Array.isArray(data) ? data : 
-                     Array.isArray(data?.beneficiarios) ? data.beneficiarios : [];
+      if (items && items.length > 0) {
+        // Diagnóstico: Mostrar información sobre los registros
+        console.log('=== DIAGNÓSTICO DE REGISTROS ===');
+        console.log('Total de registros recibidos:', items.length);
+        
+        // Contar registros con/sin comuna
+        const conComuna = items.filter(r => r.comuna).length;
+        console.log(`- Con comuna: ${conComuna} (${items.length > 0 ? (conComuna/items.length*100).toFixed(1) : 0}%)`);
+        
+        // Contar registros con coordenadas completas
+        const conCoordenadas = items.filter(r => r.barrio_lat && r.barrio_lng).length;
+        console.log(`- Con coordenadas completas: ${conCoordenadas} (${items.length > 0 ? (conCoordenadas/items.length*100).toFixed(1) : 0}%)`);
+        
+        // Mostrar ejemplos de registros sin coordenadas
+        const sinCoordenadas = items.filter(r => !r.barrio_lat || !r.barrio_lng).slice(0, 3);
+        if (sinCoordenadas.length > 0) {
+          console.log('Ejemplos de registros sin coordenadas completas:', sinCoordenadas);
+        }
+        
+        // Mostrar distribución por comuna
+        const porComuna = {};
+        items.forEach(r => {
+          const comuna = r.comuna || 'Sin comuna';
+          porComuna[comuna] = (porComuna[comuna] || 0) + 1;
+        });
+        console.log('Distribución por comuna:', porComuna);
+        
+        // Mostrar nombres de barrios únicos
+        const barriosUnicos = [...new Set(items.map(r => r.barrio).filter(Boolean))];
+        console.log('Nombres de barrios únicos:', barriosUnicos);
+        
+        console.log('================================');
         
         setRegistros(items);
       }
