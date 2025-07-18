@@ -48,6 +48,9 @@ const AdminRoutes = () => {
                         <Route path="editar/:id" element={<EditarBeneficiario />} />
                     </Route>
                     
+                    {/* Ruta alternativa para edición en nueva pestaña */}
+                    <Route path="editar-beneficiario/:id" element={<EditarBeneficiario />} />
+                    
                     {/* Comunas */}
                     <Route path="comunas" element={<Comunas />} />
                     

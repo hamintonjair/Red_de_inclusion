@@ -1021,12 +1021,22 @@ export default function RegistroBeneficiarios() {
   // Función para formatear texto con primera letra mayúscula
   const formatearNombre = (texto) => {
     if (!texto) return '';
+    // Primero normalizamos espacios múltiples y recortamos espacios al inicio y final
     return texto
+      .toString()
+      .trim()
+      .replace(/\s+/g, ' ') // Reemplaza múltiples espacios por uno solo
       .toLowerCase()
       .split(' ')
-      .map(palabra => palabra.charAt(0).toUpperCase() + palabra.slice(1))
-      .join(' ')
-      .trim();
+      .map(palabra => {
+        // Si la palabra está vacía, la ignoramos
+        if (!palabra) return '';
+        // Si la palabra tiene una sola letra, la devolvemos en mayúscula
+        if (palabra.length === 1) return palabra.toUpperCase();
+        // Para palabras más largas, primera letra mayúscula y el resto minúsculas
+        return palabra.charAt(0).toUpperCase() + palabra.slice(1).toLowerCase();
+      })
+      .join(' ');
   };
 
   // Modificar handleSubmit para incluir validaciones
@@ -1177,7 +1187,7 @@ export default function RegistroBeneficiarios() {
           etnia: formData.etnia === "Otro" ? (formData.etniaPersonalizada || "Otra") : (formData.etnia || "Ninguna"),
           comuna: formData.comuna || "",
           // Asegurar que para Zonas Rurales el barrio sea 'Zona Rural' y coordenadas sean null
-          barrio: formData.comuna === "Zonas Rurales" ? "Zona Rural" : (formData.barrio === "otro" ? (formData.otroBarrio || "No especificado") : (formData.barrio || "No especificado")),
+          barrio: formData.comuna === "Zonas Rurales" ? "Zona Rural" : (formData.barrio === "otro" ? formatearNombre(formData.otroBarrio || "No especificado") : (formData.barrio || "No especificado")),
           // Forzar coordenadas a null para Zonas Rurales
           barrio_lat: formData.comuna === "Zonas Rurales" ? null : (formData.barrio_lat || null),
           barrio_lng: formData.comuna === "Zonas Rurales" ? null : (formData.barrio_lng || null),
@@ -1188,7 +1198,7 @@ export default function RegistroBeneficiarios() {
               ? formData.tiene_discapacidad
               : false,
           tipo_discapacidad: formData.tipo_discapacidad || "",
-          nombre_cuidadora: formData.nombre_cuidadora || "",
+          nombre_cuidadora: formatearNombre(formData.nombre_cuidadora || ""),
           labora_cuidadora:
             formData.labora_cuidadora !== undefined
               ? formData.labora_cuidadora
@@ -1254,15 +1264,7 @@ export default function RegistroBeneficiarios() {
         // Manejar la firma de manera especial - asegurando que siempre se incluya si existe
         // Primero, determinar qué firma usar (nueva o existente)
         const firmaAIncluir = formData.firma || signature || (beneficiarioActual?.firma || null);
-        
-        console.log('Manejando firma en actualización:', {
-          tieneFirmaEnFormData: !!formData.firma,
-          tieneFirmaEnSignature: !!signature,
-          tieneFirmaExistente: !!beneficiarioActual?.firma,
-          firmaAIncluir: !!firmaAIncluir,
-          tipo: typeof firmaAIncluir,
-          longitud: firmaAIncluir ? firmaAIncluir.length : 0
-        });
+      
         
         // Siempre incluir la firma si existe en formData, signature o en el beneficiario actual
         if (firmaAIncluir) {
@@ -1386,7 +1388,7 @@ export default function RegistroBeneficiarios() {
               ? formData.tiene_discapacidad
               : false,
           tipo_discapacidad: formData.tipo_discapacidad || "",
-          nombre_cuidadora: formData.nombre_cuidadora || "",
+          nombre_cuidadora: formatearNombre(formData.nombre_cuidadora || ""),
           labora_cuidadora:
             formData.labora_cuidadora !== undefined
               ? formData.labora_cuidadora

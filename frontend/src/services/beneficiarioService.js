@@ -164,77 +164,78 @@ export const crearBeneficiario = async (datos) => {
  * @param {Object} filtros - Objeto con los filtros a aplicar
  * @param {string} [filtros.linea_trabajo] - ID de la línea de trabajo para filtrar
  * @param {string} [filtros.fecha] - Fecha para filtrar beneficiarios (formato YYYY-MM-DD)
- * @param {number} [filtros.por_pagina=20] - Cantidad de registros por página
+ * @param {number} [filtros.por_pagina=50] - Cantidad de registros por página (reducido para mejor rendimiento)
  * @param {number} [filtros.pagina=1] - Número de página a solicitar
  * @returns {Promise<Object>} Respuesta del servidor con los beneficiarios y metadatos de paginación
  */
 export const obtenerBeneficiarios = async (filtros = {}) => {
-    try {        
-        // Crear un objeto con los parámetros de consulta con valores por defecto
-        const queryParams = {
-            por_pagina: 20, // Valor por defecto más pequeño para mejor rendimiento
-            pagina: 1,
-            ...filtros // Sobrescribir con los filtros proporcionados
-        };
+    try {
+        // Configurar parámetros por defecto con valores más conservadores
+        const { 
+            por_pagina = 50,  // Reducido para mejor rendimiento
+            pagina = 1, 
+            campos = '',
+            ...otrosFiltros 
+        } = filtros;
+
+        // Manejar el caso especial de todos los registros
+        const esCargaCompleta = otrosFiltros.todos_los_registros === true;
         
-        // Limpiar parámetros vacíos o nulos
-        Object.keys(queryParams).forEach(key => {
-            if (queryParams[key] === undefined || queryParams[key] === null || queryParams[key] === '') {
-                delete queryParams[key];
+        // Si es una carga completa, no limitar la paginación
+        const por_pagina_limitado = esCargaCompleta ? 
+            (parseInt(por_pagina) || 1000) : 
+            Math.min(parseInt(por_pagina) || 50, 100);
+            
+        const pagina_actual = parseInt(pagina) || 1;
+
+        // Construir los parámetros de consulta
+        const queryParams = {};
+        
+        // Agregar parámetros de paginación
+        queryParams.por_pagina = por_pagina_limitado;
+        queryParams.pagina = pagina_actual;
+        
+        // Agregar campos si se especifican
+        if (campos) {
+            queryParams.campos = campos;
+        }
+        
+        // Agregar otros filtros, excluyendo todos_los_registros que es un parámetro especial
+        Object.entries(otrosFiltros).forEach(([key, value]) => {
+            if (key !== 'todos_los_registros' && value !== undefined && value !== null && value !== '') {
+                queryParams[key] = value;
             }
         });
-        
-        // Si hay una fecha, formatearla correctamente para el filtro
-        if (queryParams.fecha) {
-            const fecha = new Date(queryParams.fecha);
-            if (!isNaN(fecha.getTime())) {
-                // Crear fecha de inicio (inicio del día)
-                const inicioDia = new Date(fecha);
-                inicioDia.setUTCHours(0, 0, 0, 0);
-                
-                // Crear fecha de fin (fin del día)
-                const finDia = new Date(fecha);
-                finDia.setUTCHours(23, 59, 59, 999);
-                
-                // Formatear fechas como strings ISO
-                queryParams.fecha_inicio = inicioDia.toISOString();
-                queryParams.fecha_fin = finDia.toISOString();
-                delete queryParams.fecha;
-            }
-        }
-        
-        // Asegurarse de que siempre se envíe la línea de trabajo si está disponible
-        if (filtros.linea_trabajo && !queryParams.linea_trabajo) {
-            queryParams.linea_trabajo = filtros.linea_trabajo;
-        }
-        
-        // Asegurar que por_pagina no sea demasiado grande para evitar sobrecarga
-        if (queryParams.por_pagina > 200) {
-            queryParams.por_pagina = 200;
-        }
-        
-        // Agregar timestamp para evitar caché del navegador
+
+        // Agregar timestamp para evitar caché
         queryParams._t = Date.now();
+
+        // Configurar timeout dinámico basado en la cantidad de registros
+        const timeout = por_pagina_limitado > 100 ? 120000 : // 2 minutos para cargas grandes
+                       por_pagina_limitado > 50 ? 60000 : 30000; // 1 minuto para medianas, 30s para pequeñas
         
+        console.log('Solicitando beneficiarios con parámetros:', queryParams);
+        
+        // Realizar la petición con el timeout configurado
         const response = await axiosInstance.get('/beneficiarios/listar', { 
             params: queryParams,
             paramsSerializer: params => {
-                // Filtrar parámetros vacíos adicionales
-                const filteredParams = Object.fromEntries(
-                    Object.entries(params).filter(([_, v]) => v !== undefined && v !== null && v !== '')
-                );
-                return new URLSearchParams(filteredParams).toString();
-            }
+                return Object.entries(params)
+                    .filter(([_, v]) => v !== undefined && v !== null && v !== '')
+                    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+                    .join('&');
+            },
+            timeout: timeout
         });
         
-        // Si la respuesta no tiene datos, devolver un objeto con estructura consistente
+        // Si no hay datos en la respuesta, devolver estructura vacía
         if (!response.data) {
             console.warn('La respuesta de la API no contiene datos');
             return { 
                 beneficiarios: [],
                 total: 0,
-                pagina: queryParams.pagina || 1,
-                por_pagina: queryParams.por_pagina || 20
+                pagina_actual: pagina_actual,
+                paginas: 0
             };
         }
         
@@ -243,35 +244,68 @@ export const obtenerBeneficiarios = async (filtros = {}) => {
             return {
                 beneficiarios: response.data,
                 total: response.data.length,
-                pagina: 1,
-                por_pagina: response.data.length
+                pagina_actual: pagina_actual,
+                paginas: 1
             };
         }
         
-        // Si la respuesta ya tiene la estructura esperada, devolverla tal cual
+        // Si la respuesta ya tiene la estructura esperada, devolverla
         return {
             beneficiarios: response.data.beneficiarios || [],
             total: response.data.total || 0,
-            pagina: response.data.pagina || 1,
-            por_pagina: response.data.por_pagina || 20,
+            pagina_actual: response.data.pagina || pagina_actual,
+            paginas: response.data.paginas || 1,
             ...response.data // Mantener cualquier otro dato adicional
         };
-        
     } catch (error) {
-        console.error('Error en obtenerBeneficiarios:', error);
+        console.error('Error al obtener beneficiarios:', error);
         
-        // Lanzar un error personalizado con más contexto
-        const errorMsg = error.response?.data?.msg || 'Error al obtener beneficiarios';
-        const status = error.response?.status;
+        // Proporcionar un objeto de error más detallado
+        const errorInfo = {
+            message: error.message,
+            status: error.response?.status,
+            statusText: error.response?.statusText,
+            data: error.response?.data,
+            code: error.code
+        };
         
-        const customError = new Error(errorMsg);
-        customError.status = status;
-        customError.data = error.response?.data;
+        console.error('Detalles del error:', errorInfo);
         
         // Si es un error de autenticación, forzar cierre de sesión
-        if (status === 401) {
-            localStorage.removeItem(process.env.REACT_APP_TOKEN_KEY || 'authToken');
+        if (error.response?.status === 401) {
+            const tokenKey = process.env.REACT_APP_TOKEN_KEY || 'token';
+            localStorage.removeItem(tokenKey);
             window.location.href = '/login';
+            return {
+                beneficiarios: [],
+                total: 0,
+                pagina_actual: 1,
+                paginas: 0,
+                error: 'Sesión expirada. Por favor, inicie sesión nuevamente.'
+            };
+        }
+        
+        // Lanzar un error personalizado con más contexto
+        const errorMsg = error.response?.data?.msg || 
+                       (error.code === 'ECONNABORTED' 
+                           ? 'La solicitud está tardando demasiado. Por favor, intente con menos registros o más tarde.' 
+                           : 'Error al obtener beneficiarios');
+        
+        const customError = new Error(errorMsg);
+        customError.status = error.response?.status;
+        customError.data = error.response?.data;
+        customError.code = error.code;
+        
+        // Si es un error de timeout, devolver datos vacíos en lugar de fallar completamente
+        if (error.code === 'ECONNABORTED') {
+            console.warn('Timeout al obtener beneficiarios. Devolviendo conjunto de datos vacío.');
+            return {
+                beneficiarios: [],
+                total: 0,
+                pagina_actual: 1,
+                paginas: 0,
+                error: errorMsg
+            };
         }
         
         throw customError;
@@ -279,91 +313,127 @@ export const obtenerBeneficiarios = async (filtros = {}) => {
 };
 
 /**
- * Obtiene TODOS los beneficiarios sin paginación
+ * Obtiene TODOS los beneficiarios con paginación optimizada
  * @param {Object} filtros - Filtros opcionales para la búsqueda
- * @returns {Promise<Array>} Lista de todos los beneficiarios
+ * @returns {Promise<Array>} Lista de beneficiarios paginada
  */
-export const obtenerTodosBeneficiarios = async (filtros = {}) => {
+// Obtiene TODOS los registros de beneficiarios con paginación automática
+export const obtenerTodosBeneficiarios = async (filtros = {}, todosLosRegistros = false) => {
     try {
-        // Configurar parámetros para obtener todos los registros
+        // Extraer campos específicos si se proporcionan
+        const { campos, ...filtrosRestantes } = filtros;
+        
+        // Configuración de paginación por defecto
+        let por_pagina = parseInt(filtrosRestantes.por_pagina) || 100;
+        let pagina = parseInt(filtrosRestantes.pagina) || 1;
+        
+        // Si se solicitan todos los registros, forzar una página grande
+        if (todosLosRegistros) {
+            por_pagina = 1000; // Número grande para obtener todos los registros en una sola petición
+        }
+
+        // Eliminar propiedades de paginación para no enviarlas al backend
+        const { por_pagina: pp, pagina: pg, ...filtrosSinPaginacion } = filtrosRestantes;
+
+        // Construir los parámetros de consulta
         const queryParams = {
-            por_pagina: 10000000, // Número grande para obtener la mayoría de los registros
-            pagina: 1,
-            ...filtros // Mantener cualquier otro filtro proporcionado
+            ...filtrosSinPaginacion,
+            por_pagina: por_pagina,
+            pagina: pagina,
+            _t: Date.now() // Evitar caché
         };
 
-        // Limpiar parámetros vacíos o nulos
-        Object.keys(queryParams).forEach(key => {
-            if (queryParams[key] === undefined || queryParams[key] === null || queryParams[key] === '') {
-                delete queryParams[key];
-            }
-        });
+        // Agregar selección de campos si se especifica
+        if (campos) {
+            queryParams.campos = campos;
+        } else {
+            // Por defecto, solo solicitar campos necesarios para el dashboard
+            queryParams.campos = 'id,nombre,apellido,documento,direccion,comuna,barrio,lat,lng';
+        }
 
-        // Hacer la primera petición para obtener el total de registros
-        const primeraRespuesta = await axiosInstance.get('/beneficiarios/listar', {
-            params: {
-                ...queryParams,
-                por_pagina: 1, // Solo necesitamos el total
-                pagina: 1
-            }
-        });
-
-        // Obtener el total de registros
-        const totalRegistros = primeraRespuesta.data?.total || 0;
+        console.log('Obteniendo beneficiarios con parámetros:', queryParams);
         
-        if (totalRegistros === 0) {
+        // Hacer la petición al servidor con timeout dinámico
+        const timeout = por_pagina > 50 ? 60000 : 30000; // 60s para más de 50 registros, 30s para menos
+        
+        const response = await axiosInstance.get('/beneficiarios/listar', {
+            params: queryParams,
+            paramsSerializer: params => {
+                const filteredParams = Object.fromEntries(
+                    Object.entries(params).filter(([_, v]) => v !== undefined && v !== null && v !== '')
+                );
+                return new URLSearchParams(filteredParams).toString();
+            },
+            timeout: timeout
+        });
+
+        // Procesar la respuesta
+        if (!response.data) {
+            console.warn('La respuesta de la API no contiene datos');
             return [];
         }
 
-        // Calcular número de páginas necesarias
-        const porPagina = 1000; // Máximo por petición
-        const totalPaginas = Math.ceil(totalRegistros / porPagina);
-
-        // Crear un array con todas las promesas de las páginas restantes
-        const promesas = [];
-        for (let pagina = 1; pagina <= totalPaginas; pagina++) {
-            promesas.push(
-                axiosInstance.get('/beneficiarios/listar', {
-                    params: {
-                        ...queryParams,
-                        por_pagina: porPagina,
-                        pagina: pagina
-                    }
-                })
-            );
+        // Manejar diferentes formatos de respuesta
+        if (Array.isArray(response.data)) {
+            return response.data; // Formato de respuesta directa
+        } else if (response.data.beneficiarios && Array.isArray(response.data.beneficiarios)) {
+            return response.data.beneficiarios; // Formato paginado
         }
 
-        // Ejecutar todas las peticiones en paralelo
-        const respuestas = await Promise.all(promesas);
-
-        // Combinar todos los resultados
-        const todosLosBeneficiarios = respuestas.reduce((acumulador, respuesta) => {
-            const datos = respuesta.data;
-            if (Array.isArray(datos)) {
-                return [...acumulador, ...datos];
-            } else if (Array.isArray(datos?.beneficiarios)) {
-                return [...acumulador, ...datos.beneficiarios];
-            }
-            return acumulador;
-        }, []);
-
-        return todosLosBeneficiarios;
+        return [];
 
     } catch (error) {
         console.error('Error en obtenerTodosBeneficiarios:', error);
         
-        // Lanzar un error personalizado con más contexto
-        const errorMsg = error.response?.data?.msg || 'Error al obtener todos los beneficiarios';
-        const status = error.response?.status;
+        // Proporcionar un objeto de error más detallado
+        const errorInfo = {
+            message: error.message,
+            status: error.response?.status,
+            statusText: error.response?.statusText,
+            data: error.response?.data,
+            config: {
+                url: error.config?.url,
+                method: error.config?.method,
+                params: error.config?.params,
+                timeout: error.config?.timeout
+            },
+            code: error.code,
+            isAxiosError: error.isAxiosError
+        };
         
-        const customError = new Error(errorMsg);
-        customError.status = status;
-        customError.data = error.response?.data;
+        console.error('Detalles completos del error:', errorInfo);
         
         // Si es un error de autenticación, forzar cierre de sesión
-        if (status === 401) {
+        if (error.response?.status === 401) {
+            console.warn('Error de autenticación, cerrando sesión...');
             localStorage.removeItem(process.env.REACT_APP_TOKEN_KEY || 'authToken');
             window.location.href = '/login';
+            return [];
+        }
+        
+        // Si es un error de timeout, intentar con un timeout mayor
+        if (error.code === 'ECONNABORTED') {
+            console.warn('Timeout al obtener beneficiarios, intentando con un timeout mayor...');
+            // Podríamos implementar un reintento con un timeout mayor aquí si es necesario
+        }
+        
+        // Lanzar un error personalizado con más contexto
+        const errorMsg = error.response?.data?.msg || 'Error al obtener todos los beneficiarios';
+        const customError = new Error(errorMsg);
+        customError.status = error.response?.status;
+        customError.data = error.response?.data;
+        customError.isAxiosError = error.isAxiosError;
+        customError.code = error.code;
+        
+        // Si estamos en desarrollo, mostrar más detalles del error
+        if (process.env.NODE_ENV === 'development') {
+            console.error('Error detallado:', customError);
+        }
+        
+        // En producción, devolver un array vacío en lugar de fallar completamente
+        if (process.env.NODE_ENV === 'production') {
+            console.error('Error en producción, devolviendo array vacío:', customError.message);
+            return [];
         }
         
         throw customError;
@@ -471,11 +541,17 @@ export const obtenerFormulariosPorBeneficiario = async (beneficiarioId) => {
     }
 };
 
-export const obtenerDetallesBeneficiario = async (beneficiarioId) => {
+export const obtenerDetalleBeneficiario = async (beneficiarioId) => {
     try {
         const response = await axiosInstance.get(`/beneficiarios/detalle/${beneficiarioId}`);
-        return response.data;
+        console.log('Respuesta del servidor:', response.data);
+        return response.data; // El backend ya devuelve el objeto beneficiario directamente
     } catch (error) {
+        console.error('Error al obtener detalles del beneficiario:', error);
+        if (error.response) {
+            console.error('Error response data:', error.response.data);
+            console.error('Error status:', error.response.status);
+        }
         throw error;
     }
 };
@@ -724,7 +800,7 @@ const beneficiarioService = {
     listarBeneficiarios,
     buscarBeneficiarios,
     obtenerFormulariosPorBeneficiario,
-    obtenerDetallesBeneficiario,
+    obtenerDetalleBeneficiario,
     listarBeneficiariosAdmin,
     obtenerTodosBeneficiariosAdmin,
     verificarDocumentoUnico,

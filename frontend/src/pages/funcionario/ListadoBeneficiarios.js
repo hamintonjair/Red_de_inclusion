@@ -27,7 +27,7 @@ import { useSnackbar } from '../../context/SnackbarContext';
 // Servicios
 import { 
     listarBeneficiarios, 
-    obtenerDetallesBeneficiario
+    obtenerDetalleBeneficiario
 } from '../../services/beneficiarioService';
 
 
@@ -107,7 +107,7 @@ export default function ListadoBeneficiarios() {
     const handleEditar = useCallback(async (beneficiario) => {
         try {
             // Obtener detalles completos del beneficiario
-            const detalles = await obtenerDetallesBeneficiario(beneficiario._id);
+            const detalles = await obtenerDetalleBeneficiario(beneficiario._id);
             
             // Navegar al formulario de registro en modo edición
             navigate('/funcionario/registro-poblacion', { 

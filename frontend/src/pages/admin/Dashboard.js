@@ -54,21 +54,44 @@ const Dashboard = () => {
     const [loadingRegistros, setLoadingRegistros] = useState(true);
     const [errorRegistros, setErrorRegistros] = useState(null);
 
-    // Cargar todos los registros sin paginación
-    const cargarRegistros = useCallback(async () => {
+    // Estado para controlar si se están cargando todos los registros
+    const [cargandoTodos, setCargandoTodos] = useState(false);
+    const [totalRegistros, setTotalRegistros] = useState(0);
+
+    // Cargar registros con opción de cargar todos
+    const cargarRegistros = useCallback(async (cargarTodos = false) => {
         setLoadingRegistros(true);
         try {
-            // Usar la función que obtiene todos los registros sin paginación
-            const items = await beneficiarioService.obtenerTodosBeneficiarios({});
-            console.log(`Total de registros cargados: ${items?.length || 0}`);
-            setRegistros(items || []);
+            // Solo cargar los campos necesarios para el mapa
+            const params = {
+                por_pagina: cargarTodos ? 1000 : 100,  // 100 por defecto, 1000 si se solicitan todos
+                pagina: 1,
+                campos: 'id,direccion,comuna,barrio,lat,lng'  // Solo los campos necesarios
+            };
+            
+            // Solo agregar el parámetro si se están cargando todos los registros
+            if (cargarTodos) {
+                params.todos_los_registros = true;
+            }
+            
+            const response = await beneficiarioService.obtenerBeneficiarios(params);
+            
+            const items = response.beneficiarios || [];
+            const total = response.total || 0;
+            
+            console.log(`Registros cargados para el mapa: ${items.length} de ${total} totales`);
+            
+            setRegistros(items);
+            setTotalRegistros(total);
             setErrorRegistros(null);
         } catch (error) {
             console.error('Error al cargar los registros:', error);
-            setErrorRegistros('Error al cargar los registros. Por favor, intente nuevamente.');
+            setErrorRegistros('Error al cargar los registros. ' + 
+                (error.message || 'Por favor, intente nuevamente.'));
             setRegistros([]);
         } finally {
             setLoadingRegistros(false);
+            setCargandoTodos(false);
         }
     }, []);
 
@@ -1007,9 +1030,41 @@ useEffect(() => {
 
             {mostrarGraficos && (
     <>
-        <Typography variant="h5" gutterBottom sx={{ marginTop: 4 }}>
-            Gráficos Estadísticos
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+          <Typography variant="h5" component="h2" sx={{ mb: 0 }}>
+            Mapa de Beneficiarios
+          </Typography>
+          {registros.length > 0 && (
+            <Typography variant="body2" color="text.secondary">
+              Mostrando {registros.length} de {totalRegistros} registros
+            </Typography>
+          )}
+        </Box>
+        
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Button 
+            variant="outlined" 
+            size="small"
+            onClick={() => cargarRegistros()}
+            disabled={loadingRegistros && !cargandoTodos}
+            startIcon={loadingRegistros && !cargandoTodos ? <CircularProgress size={20} /> : null}
+          >
+            Recargar
+          </Button>
+          
+          {totalRegistros > 100 && registros.length < totalRegistros && (
+            <Button 
+              variant="contained" 
+              color="primary" 
+              size="small"
+              onClick={() => cargarRegistros(true)}
+              disabled={loadingRegistros}
+              startIcon={cargandoTodos ? <CircularProgress size={20} color="inherit" /> : null}
+            >
+              Cargar todos ({totalRegistros} registros)
+            </Button>
+          )}
+        </Box>
         
         <Grid container spacing={3} id="graficos-container">
     {/* Ajuste responsivo: cada gráfica ocupa toda la fila en móvil (xs=12) y media fila en desktop (md=6) */}
@@ -1182,15 +1237,39 @@ useEffect(() => {
 </Dialog>
         {/* --- MAPA DE REGISTROS DE BENEFICIARIOS --- */}
         <Box sx={{ mt: 4, mb: 4 }}>
-            <Typography variant="h6" gutterBottom>
-                Mapa de registros de beneficiarios
-            </Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 2 }}>
+                <Typography variant="h6" gutterBottom sx={{ mb: 0 }}>
+                    Mapa de registros de beneficiarios
+                </Typography>
+                
+                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <Typography variant="body2" color="text.secondary">
+                        {registros.length} de {totalRegistros} registros cargados
+                    </Typography>
+                    
+                    {totalRegistros > 100 && registros.length < totalRegistros && (
+                        <Button 
+                            variant="contained" 
+                            color="primary" 
+                            size="small"
+                            onClick={() => cargarRegistros(true)}
+                            disabled={loadingRegistros}
+                            startIcon={loadingRegistros ? <CircularProgress size={20} color="inherit" /> : null}
+                        >
+                            Cargar todos los registros
+                        </Button>
+                    )}
+                </Box>
+            </Box>
+            
             {loadingRegistros ? (
                 <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 400 }}>
                     <CircularProgress />
                 </Box>
             ) : errorRegistros ? (
-                <Typography color="error">{errorRegistros}</Typography>
+                <Box sx={{ mb: 2 }}>
+                    <Typography color="error">{errorRegistros}</Typography>
+                </Box>
             ) : (
                 <Box
                   sx={{

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
     Table, 
     TableBody, 
@@ -30,15 +30,21 @@ import {
     Delete as DeleteIcon,
     Search as SearchIcon,
     Visibility as VisibilityIcon,
-    FileDownload as ExportIcon
+    FileDownload as ExportIcon,
+    Edit as EditIcon
 } from '@mui/icons-material';
+import { Tooltip } from '@mui/material';
 
 import beneficiarioService from '../../services/beneficiarioService';
 import usuarioService from '../../services/usuarioService';
 import { exportarListadoBeneficiariosAExcel } from './exportUtilsBeneficiarios';
 import { useSnackbar } from 'notistack';
+import { useNavigate } from 'react-router-dom';
+import { obtenerDetalleBeneficiario } from '../../services/beneficiarioService';
 
 const ListadoBeneficiarios = () => {
+    const navigate = useNavigate();
+    const { enqueueSnackbar } = useSnackbar();
     const [beneficiarios, setBeneficiarios] = useState([]);
     const [lineasTrabajo, setLineasTrabajo] = useState({});
     const [lineaTrabajoFiltro, setLineaTrabajoFiltro] = useState('');
@@ -53,8 +59,6 @@ const ListadoBeneficiarios = () => {
     const [tipoExportacion, setTipoExportacion] = useState('todos');
     const [fechaInicio, setFechaInicio] = useState('');
     const [fechaFin, setFechaFin] = useState('');
- 
-    const { enqueueSnackbar } = useSnackbar();
     const [loadingOverlay, setLoadingOverlay] = useState(false);
     const [loadingExport, setLoadingExport] = useState(false);
     const [exportProgress, setExportProgress] = useState(0);
@@ -188,6 +192,21 @@ const ListadoBeneficiarios = () => {
     const handleExportarClick = () => {
         setOpenExportDialog(true);
     };
+
+    const handleEditar = useCallback(async (beneficiario) => {
+        try {
+            // Navegar al formulario de edición usando la ruta definida en AdminRoutes
+            navigate(`/admin/beneficiarios/editar/${beneficiario._id}`, { 
+                state: { 
+                    beneficiario: beneficiario,
+                    modoEdicion: true 
+                } 
+            });
+        } catch (error) {
+            enqueueSnackbar('Error al cargar el formulario de edición', { variant: 'error' });
+            console.error('Error en handleEditar:', error);
+        }
+    }, [navigate, enqueueSnackbar]);
 
     const handleExportarConfirmar = async () => {
         setLoadingExport(true);
@@ -540,29 +559,38 @@ const ListadoBeneficiarios = () => {
                     </TableHead>
                     <TableBody>
                         {beneficiarios.map((beneficiario) => (
-    <TableRow key={beneficiario._id}>
-        <TableCell>{beneficiario.nombre}</TableCell>
-        <TableCell>{beneficiario.identificacion}</TableCell>
-        <TableCell>{lineasTrabajo[beneficiario.lineaTrabajo] || 'Sin línea'}</TableCell>
-        <TableCell>{beneficiario.tipo_discapacidad || ''}</TableCell>
-        <TableCell>{beneficiario.nombre_cuidadora || ''}</TableCell>
-        <TableCell>{beneficiario.labora_cuidadora ? 'Sí' : 'No'}</TableCell>
-        <TableCell>
-            <IconButton 
-                color="primary" 
-                onClick={() => mostrarDetalles(beneficiario)}
-            >
-                <VisibilityIcon />
-            </IconButton>
-            <IconButton 
-                color="error" 
-                onClick={() => confirmarEliminacion(beneficiario)}
-            >
-                <DeleteIcon />
-            </IconButton>
-        </TableCell>
-    </TableRow>
-))}
+                            <TableRow key={beneficiario._id}>
+                                <TableCell>{beneficiario.nombre}</TableCell>
+                                <TableCell>{beneficiario.identificacion}</TableCell>
+                                <TableCell>{lineasTrabajo[beneficiario.lineaTrabajo] || 'Sin línea'}</TableCell>
+                                <TableCell>{beneficiario.tipo_discapacidad || ''}</TableCell>
+                                <TableCell>{beneficiario.nombre_cuidadora || ''}</TableCell>
+                                <TableCell>{beneficiario.labora_cuidadora ? 'Sí' : 'No'}</TableCell>
+                                <TableCell>
+                                    <IconButton 
+                                        color="primary" 
+                                        onClick={() => mostrarDetalles(beneficiario)}
+                                    >
+                                        <VisibilityIcon />
+                                    </IconButton>
+                                    <Tooltip title="Editar">
+                                        <IconButton 
+                                            color="primary" 
+                                            onClick={() => handleEditar(beneficiario)}
+                                        >
+                                            <EditIcon />
+                                        </IconButton>
+                                    </Tooltip>
+                                    <IconButton 
+                                        color="error" 
+                                        onClick={() => confirmarEliminacion(beneficiario)}
+                                        title="Eliminar"
+                                    >
+                                        <DeleteIcon />
+                                    </IconButton>
+                                </TableCell>
+                            </TableRow>
+                        ))}
                     </TableBody>
                 </Table>
                 <TablePagination
