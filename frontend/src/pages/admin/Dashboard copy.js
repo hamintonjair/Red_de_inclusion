@@ -59,7 +59,7 @@ const Dashboard = () => {
         setLoadingRegistros(true);
         try {
             // Usar la función que obtiene todos los registros sin paginación
-            const items = await beneficiarioService.obtenerTodosBeneficiarios({}, true); // true para obtener todos los registros
+            const items = await beneficiarioService.obtenerTodosBeneficiarios({});
             console.log(`Total de registros cargados: ${items?.length || 0}`);
             setRegistros(items || []);
             setErrorRegistros(null);

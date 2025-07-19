@@ -65,15 +65,19 @@ const MapaRegistros = ({ registros }) => {
   // Agrupar registros por barrio y coordenadas
   // Mostrar cada registro individual como un punto, sin agrupar
   const barriosMarcados = useMemo(() => {
+    console.log(`Total de registros recibidos: ${registros?.length || 0}`);
+    
     // Filtrar solo registros con coordenadas válidas
-    return registros
-      .filter(r => r.barrio_lat && r.barrio_lng) // Solo incluir registros con coordenadas
-      .map(r => ({
-        comuna: r.comuna,
-        barrio: r.barrio,
-        lat: r.barrio_lat,
-        lng: r.barrio_lng,
-      }));
+    const registrosFiltrados = registros.filter(r => r.barrio_lat && r.barrio_lng);
+    
+    console.log(`Registros con coordenadas válidas: ${registrosFiltrados.length}`);
+    
+    return registrosFiltrados.map(r => ({
+      comuna: r.comuna,
+      barrio: r.barrio,
+      lat: r.barrio_lat,
+      lng: r.barrio_lng,
+    }));
   }, [registros]);
 
   // Conversión de lat/lng a coordenadas X/Y sobre la imagen SVG
@@ -108,10 +112,11 @@ const MapaRegistros = ({ registros }) => {
               boxShadow: '0 1px 4px #0006',
               zIndex: 2
             }}
-            title={barrio.barrio + ' (' + barrio.comuna + ')'}
+            title={barrio.barrio + ' (' + barrio.comuna + ') - Registros: ' + registros.filter(r => r.barrio === barrio.barrio && r.comuna === barrio.comuna).length}
           />
         );
       })}
+      <p>Registros totales: {registros.length}</p>
     </div>
   );
 };

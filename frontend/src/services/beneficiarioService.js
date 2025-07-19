@@ -324,12 +324,62 @@ export const obtenerTodosBeneficiarios = async (filtros = {}, todosLosRegistros 
         const { campos, ...filtrosRestantes } = filtros;
         
         // Configuración de paginación por defecto
-        let por_pagina = parseInt(filtrosRestantes.por_pagina) || 100;
-        let pagina = parseInt(filtrosRestantes.pagina) || 1;
+        let por_pagina = parseInt(filtrosRestantes.por_pagina) || 50; // Reducir a 50 registros por petición
+        let pagina = 1; // Siempre empezar desde la primera página
         
-        // Si se solicitan todos los registros, forzar una página grande
+        // Si se solicitan todos los registros, usaremos paginación automática
         if (todosLosRegistros) {
-            por_pagina = 1000; // Número grande para obtener todos los registros en una sola petición
+            por_pagina = 50; // Reducir el número de registros por petición
+            let todosLosRegistros = [];
+            let hayMasRegistros = true;
+            let totalPaginas = 1;
+            let intentos = 0;
+            const maxIntentos = 3;
+            
+            // Hacer solicitudes hasta obtener todos los registros
+            while (pagina <= totalPaginas && hayMasRegistros) {
+                try {
+                    console.log(`Obteniendo página ${pagina} de ${totalPaginas}`);
+                    const response = await Promise.race([
+                        obtenerPaginaBeneficiarios({...filtrosRestantes, campos}, pagina, por_pagina),
+                        new Promise((_, reject) => 
+                            setTimeout(() => reject(new Error('timeout')), 60000) // 60 segundos de timeout
+                        )
+                    ]);
+                    
+                    if (response && response.beneficiarios) {
+                        todosLosRegistros = [...todosLosRegistros, ...response.beneficiarios];
+                        totalPaginas = response.paginas || 1;
+                        intentos = 0; // Reiniciar contador de intentos después de una respuesta exitosa
+                        
+                        // Verificar si hay más páginas
+                        if (pagina >= totalPaginas || response.beneficiarios.length < por_pagina) {
+                            hayMasRegistros = false;
+                        } else {
+                            pagina++;
+                            // Pequeña pausa entre solicitudes para no sobrecargar el servidor
+                            await new Promise(resolve => setTimeout(resolve, 500));
+                        }
+                    } else {
+                        hayMasRegistros = false;
+                    }
+                } catch (error) {
+                    console.error(`Error en la página ${pagina}:`, error);
+                    intentos++;
+                    
+                    if (intentos >= maxIntentos) {
+                        console.warn(`Máximo de intentos alcanzado (${maxIntentos}) para la página ${pagina}`);
+                        hayMasRegistros = false;
+                    } else {
+                        // Esperar un momento antes de reintentar
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                        console.log(`Reintentando página ${pagina} (intento ${intentos + 1}/${maxIntentos})`);
+                    }
+                }
+            }
+            
+            console.log(`Total de registros obtenidos: ${todosLosRegistros.length}`);
+            return todosLosRegistros;
         }
 
         // Eliminar propiedades de paginación para no enviarlas al backend
@@ -544,7 +594,6 @@ export const obtenerFormulariosPorBeneficiario = async (beneficiarioId) => {
 export const obtenerDetalleBeneficiario = async (beneficiarioId) => {
     try {
         const response = await axiosInstance.get(`/beneficiarios/detalle/${beneficiarioId}`);
-        console.log('Respuesta del servidor:', response.data);
         return response.data; // El backend ya devuelve el objeto beneficiario directamente
     } catch (error) {
         console.error('Error al obtener detalles del beneficiario:', error);
@@ -560,26 +609,28 @@ export const listarBeneficiariosAdmin = async (
     pagina = 1, 
     porPagina = 10, 
     filtro = '',
-    lineaTrabajo = null
+    lineaTrabajo = null,
+    fechaInicio = null,
+    fechaFin = null
 ) => {
     try {
-       
-        // Convertir lineaTrabajo a string si es un objeto
-        const lineaTrabajoParam = typeof lineaTrabajo === 'object' 
-            ? lineaTrabajo.nombre 
-            : lineaTrabajo;
+        const params = {
+            pagina,
+            por_pagina: porPagina,
+            admin: true
+        };
 
-        const response = await axiosInstance.get('/beneficiarios/listar', {
-            params: {
-                pagina,
-                por_pagina: porPagina,
-                filtro,
-                linea_trabajo: lineaTrabajoParam,
-                admin: true
-            }
-        });
+        if (filtro) params.filtro = filtro;
+        if (lineaTrabajo) params.linea_trabajo = lineaTrabajo;
         
-      
+        // Agregar filtros de fecha si están presentes
+        if (fechaInicio) params.fecha_inicio = new Date(fechaInicio).toISOString();
+        if (fechaFin) params.fecha_fin = new Date(fechaFin).toISOString();
+        
+
+        const response = await axiosInstance.get('/beneficiarios/listar', { params });
+        
+        // Asegurarse de que siempre devolvamos un objeto con data y total
         // Verificar la estructura de los datos
         if (Array.isArray(response.data)) {
             return {
@@ -766,27 +817,210 @@ export async function exportarBeneficiariosAExcel({ filtro, tipo_exportacion, fe
     }
 };
 
-export const listarBeneficiariosPorRango = async ({ fecha_inicio, fecha_fin, filtro }) => {
+// Función auxiliar para obtener una página de resultados
+const obtenerPaginaBeneficiarios = async (params, pagina = 1, porPagina = 1000) => {
+    console.log(`Obteniendo página ${pagina} con ${porPagina} registros`);
+    const response = await axiosInstance.get('/beneficiarios/listar', { 
+        params: {
+            ...params,
+            pagina,
+            por_pagina: porPagina
+        },
+        timeout: 60000
+    });
+    
+    // Manejar diferentes formatos de respuesta
+    let data = [];
+    let total = 0;
+    
+    if (Array.isArray(response.data)) {
+        data = response.data;
+        total = data.length;
+    } else if (response.data && Array.isArray(response.data.beneficiarios)) {
+        data = response.data.beneficiarios;
+        total = response.data.total || data.length;
+    } else if (response.data && response.data.data) {
+        data = Array.isArray(response.data.data) ? response.data.data : [];
+        total = response.data.total || data.length;
+    } else if (response.data && response.data.resultados) {
+        data = Array.isArray(response.data.resultados) ? response.data.resultados : [];
+        total = response.data.total || data.length;
+    }
+    
+    return { data, total };
+};
+
+export const listarBeneficiariosPorRango = async ({ fecha_inicio, fecha_fin, filtro, lineaTrabajo }) => {
     try {
-        const response = await axiosInstance.get('/beneficiarios/listar', {
-            params: {
-                pagina: 1,
-                por_pagina: 10000000,
-                filtro,
-                fecha_inicio,
-                fecha_fin,
-                admin: true
-            }
-        });
-        if (Array.isArray(response.data)) {
-            return { data: response.data };
-        } else if (response.data.beneficiarios) {
-            return { data: response.data.beneficiarios };
-        } else {
+        // Asegurarse de que las fechas sean válidas
+        if (!fecha_inicio || !fecha_fin) {
+            console.error('Fechas de inicio o fin no proporcionadas');
             return { data: [] };
         }
+
+        // Convertir fechas a objetos Date para validación
+        const fechaInicio = new Date(fecha_inicio);
+        const fechaFin = new Date(fecha_fin);
+
+        if (isNaN(fechaInicio.getTime()) || isNaN(fechaFin.getTime())) {
+            console.error('Formato de fecha inválido', { fecha_inicio, fecha_fin });
+            return { data: [] };
+        }
+
+        console.log('Buscando beneficiarios en rango de fechas:', {
+            fecha_inicio: fechaInicio.toISOString(),
+            fecha_fin: fechaFin.toISOString(),
+            diferenciaDias: (fechaFin - fechaInicio) / (1000 * 60 * 60 * 24)
+        });
+
+        // Ajustar fechas para incluir todo el día
+        // Establecer la hora de inicio a las 00:00:00.000
+        fechaInicio.setHours(0, 0, 0, 0);
+        // Establecer la hora de fin a las 23:59:59.999
+        fechaFin.setHours(23, 59, 59, 999);
+        
+        console.log('Fechas ajustadas:', {
+            inicio: fechaInicio.toISOString(),
+            fin: fechaFin.toISOString()
+        });
+
+        // Parámetros base para la consulta
+        const params = {
+            filtro: filtro || '',
+            fecha_inicio: fechaInicio.toISOString(),
+            fecha_fin: fechaFin.toISOString(),
+            admin: true,
+            ordenar_por: 'fecha_registro',
+            orden: 'asc'
+        };
+
+        // Agregar filtro de línea de trabajo si está presente
+        if (lineaTrabajo) {
+            params.linea_trabajo = lineaTrabajo;
+        }
+
+        // Obtener la primera página para determinar el total de registros
+        const primeraPagina = await obtenerPaginaBeneficiarios(params, 1, 10);
+        const totalRegistros = primeraPagina.total || 0;
+        
+        // Verificar si la primera página tiene datos
+        if (primeraPagina.data.length > 0) {
+            console.log('Primeros registros:', {
+                primerRegistro: primeraPagina.data[0].fecha_registro,
+                ultimoRegistro: primeraPagina.data[primeraPagina.data.length - 1].fecha_registro
+            });
+        }
+        
+        console.log(`Total de registros a exportar: ${totalRegistros}`);
+        
+        if (totalRegistros === 0) {
+            return { data: [] };
+        }
+
+        // Si hay pocos registros, devolver los de la primera página
+        if (totalRegistros <= 10) {
+            return { data: primeraPagina.data };
+        }
+
+                // Si hay más registros, obtener todas las páginas
+        const porPagina = 200; // Aumentar el número de registros por página
+        const totalPaginas = Math.ceil(totalRegistros / porPagina);
+        let todosLosBeneficiarios = [...primeraPagina.data];
+
+        console.log(`Total de registros a descargar: ${totalRegistros} en ${totalPaginas} páginas`);
+        
+        // Si ya tenemos todos los registros en la primera página, devolverlos
+        if (totalRegistros <= primeraPagina.data.length) {
+            console.log('Todos los registros obtenidos en la primera página');
+            return { data: todosLosBeneficiarios };
+        }
+        
+        // Verificar si el total de registros es consistente
+        if (totalRegistros > 10000) {
+            console.warn(`ADVERTENCIA: Se intentan descargar ${totalRegistros} registros. Esto puede afectar el rendimiento.`);
+        }
+
+        // Obtener las páginas restantes en paralelo (máximo 5 solicitudes simultáneas)
+        const paginasRestantes = [];
+        for (let pagina = 2; pagina <= totalPaginas; pagina++) {
+            paginasRestantes.push(pagina);
+        }
+
+        // Función para procesar lotes de páginas
+        const procesarLote = async (paginas) => {
+            const promesas = paginas.map(pagina => 
+                obtenerPaginaBeneficiarios(params, pagina, porPagina)
+            );
+            const resultados = await Promise.all(promesas);
+            return resultados.flatMap(r => r.data);
+        };
+
+        // Procesar en lotes de 3 páginas a la vez para evitar sobrecargar el servidor
+        const tamanoLote = 3;
+        let totalProcesados = primeraPagina.data.length;
+        
+        console.log(`Procesando lotes de ${tamanoLote} páginas...`);
+        
+        for (let i = 0; i < paginasRestantes.length; i += tamanoLote) {
+            const lote = paginasRestantes.slice(i, i + tamanoLote);
+            console.log(`Procesando lote ${i/tamanoLote + 1}: páginas ${lote[0]} a ${lote[lote.length - 1]}`);
+            
+            const resultadosLote = await procesarLote(lote);
+            todosLosBeneficiarios = [...todosLosBeneficiarios, ...resultadosLote];
+            totalProcesados += resultadosLote.length;
+            
+            console.log(`  - Páginas ${i + 2}-${Math.min(i + tamanoLote + 1, totalPaginas)}: ` +
+                        `${resultadosLote.length} registros (Total: ${totalProcesados}/${totalRegistros})`);
+            
+            // Pequeña pausa entre lotes para no sobrecargar el servidor
+            await new Promise(resolve => setTimeout(resolve, 500));
+        }
+
+        console.log(`\nResumen de la descarga:`);
+        console.log(`- Total de registros esperados: ${totalRegistros}`);
+        console.log(`- Total de registros obtenidos: ${todosLosBeneficiarios.length}`);
+        
+        if (todosLosBeneficiarios.length > 0) {
+            console.log('\nPrimer registro:', {
+                fecha: todosLosBeneficiarios[0].fecha_registro,
+                id: todosLosBeneficiarios[0]._id,
+                nombre: todosLosBeneficiarios[0].nombre_completo
+            });
+            
+            console.log('Último registro:', {
+                fecha: todosLosBeneficiarios[todosLosBeneficiarios.length - 1].fecha_registro,
+                id: todosLosBeneficiarios[todosLosBeneficiarios.length - 1]._id,
+                nombre: todosLosBeneficiarios[todosLosBeneficiarios.length - 1].nombre_completo
+            });
+            
+            // Verificar duplicados
+            const ids = new Set();
+            const duplicados = todosLosBeneficiarios.filter(b => {
+                const id = b._id || b.id;
+                if (ids.has(id)) return true;
+                ids.add(id);
+                return false;
+            });
+            
+            if (duplicados.length > 0) {
+                console.warn(`ADVERTENCIA: Se encontraron ${duplicados.length} registros duplicados`);
+            }
+        }
+        
+        // Asegurarse de que todos los objetos tengan las propiedades necesarias
+        const beneficiariosProcesados = todosLosBeneficiarios.map(beneficiario => ({
+            ...beneficiario,
+            id: beneficiario._id || beneficiario.id,
+            nombre_completo: beneficiario.nombre_completo || '',
+            numero_documento: beneficiario.numero_documento || '',
+            fecha_registro: beneficiario.fecha_registro || new Date().toISOString()
+        }));
+        
+        return { data: beneficiariosProcesados };
     } catch (error) {
-        throw error;
+        console.error('Error en listarBeneficiariosPorRango:', error);
+        // Si hay un error, devolver un array vacío para evitar romper la UI
+        return { data: [] };
     }
 };
 

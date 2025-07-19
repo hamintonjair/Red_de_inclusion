@@ -599,13 +599,25 @@ export default function RegistroBeneficiarios() {
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     
-    // Validar que el campo de número de documento solo acepte números
-    if (name === 'numero_documento' && value !== '') {
-      // Expresión regular que solo permite números
-      const soloNumeros = /^[0-9\b]+$/;
-      if (!soloNumeros.test(value)) {
-        return; // No actualizar el estado si no es un número
-      }
+    // Si el campo es un checkbox, usamos el valor checked, de lo contrario usamos value
+    let newValue = type === 'checkbox' ? checked : value;
+    
+    // Aplicar formato según el tipo de campo
+    if (name === 'correo_electronico') {
+      newValue = formatearCorreo(newValue);
+    }
+    
+    setFormData(prev => ({
+      ...prev,
+      [name]: newValue
+    }));
+
+    // Limpiar errores cuando el usuario escribe
+    if (errores[name]) {
+      setErrores(prev => ({
+        ...prev,
+        [name]: ""
+      }));
     }
 
     // Manejo especial para el campo de etnia
@@ -1036,7 +1048,13 @@ export default function RegistroBeneficiarios() {
         // Para palabras más largas, primera letra mayúscula y el resto minúsculas
         return palabra.charAt(0).toUpperCase() + palabra.slice(1).toLowerCase();
       })
-      .join(' ');
+      .join(' '); // Unir las palabras con un espacio
+  };
+
+  // Función para formatear correo electrónico a minúsculas
+  const formatearCorreo = (correo) => {
+    if (!correo) return '';
+    return correo.toString().trim().toLowerCase();
   };
 
   // Modificar handleSubmit para incluir validaciones
@@ -1175,7 +1193,7 @@ export default function RegistroBeneficiarios() {
 
           // Contacto
           numero_celular: formData.numero_celular || "",
-          correo_electronico: formData.correo_electronico || "",
+          correo_electronico: formatearCorreo(formData.correo_electronico) || "",
 
           // // Datos socioculturales
           // etnia: formData.etnia === "Otro" ? (formData.etniaPersonalizada || "Otra") : (formData.etnia || "Ninguna"),
@@ -1373,7 +1391,7 @@ export default function RegistroBeneficiarios() {
 
           // Contacto
           numero_celular: formData.numero_celular || "",
-          correo_electronico: formData.correo_electronico || "",
+          correo_electronico: formatearCorreo(formData.correo_electronico) || "",
 
           // Datos socioculturales
           etnia: formData.etnia === "Otro" ? (formData.etniaPersonalizada || "Otra") : (formData.etnia || "Ninguna"),

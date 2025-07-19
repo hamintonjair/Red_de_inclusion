@@ -208,6 +208,40 @@ const ListadoBeneficiarios = () => {
         }
     }, [navigate, enqueueSnackbar]);
 
+  
+    
+// Función para formatear la fecha de inicio (00:00:00.000) en hora local
+const inicioDelDia = (fechaStr) => {
+    // Parsear la fecha en formato AAAA-MM-DD
+    const [año, mes, dia] = fechaStr.split('-').map(Number);
+    // Crear la fecha en la zona horaria local (los meses en JavaScript van de 0 a 11)
+    const fechaAjustada = new Date(año, mes - 1, dia, 0, 0, 0, 0);
+    
+    console.log('Fecha inicio ajustada:', {
+        fechaOriginal: fechaStr,
+        fechaAjustada: fechaAjustada.toString(),
+        isoString: fechaAjustada.toISOString()
+    });
+    
+    return fechaAjustada.toISOString();
+};
+
+// Función para formatear la fecha al final del día (23:59:59.999) en hora local
+const finDelDia = (fechaStr) => {
+    // Parsear la fecha en formato AAAA-MM-DD
+    const [año, mes, dia] = fechaStr.split('-').map(Number);
+    // Crear la fecha en la zona horaria local (los meses en JavaScript van de 0 a 11)
+    const fechaAjustada = new Date(año, mes - 1, dia, 23, 59, 59, 999);
+    
+    console.log('Fecha final ajustada:', {
+        fechaOriginal: fechaStr,
+        fechaAjustada: fechaAjustada.toString(),
+        isoString: fechaAjustada.toISOString()
+    });
+    
+    return fechaAjustada.toISOString();
+};
+
     const handleExportarConfirmar = async () => {
         setLoadingExport(true);
         setExportProgress(0);
@@ -223,66 +257,76 @@ const ListadoBeneficiarios = () => {
 
             // 1. Obtener el total de registros primero
             let total = 0;
+            let todosLosBeneficiarios = [];
+            
             if (tipoExportacion === 'todos') {
                 const response = await beneficiarioService.listarBeneficiariosAdmin(1, 1, filtro, lineaTrabajoFiltro);
                 total = response.total || 0;
             } else {
-                const response = await beneficiarioService.listarBeneficiariosPorRango({
-                    fecha_inicio: fechaInicio,
-                    fecha_fin: fechaFin,
-                    filtro,
-                    lineaTrabajo: lineaTrabajoFiltro,
-                    pagina: 1,
-                    por_pagina: 1
-                });
+                // Usar el mismo método que para "todos" pero con filtro de fechas
+                const response = await beneficiarioService.listarBeneficiariosAdmin(
+                    1, 
+                    1, 
+                    filtro, 
+                    lineaTrabajoFiltro, 
+                    inicioDelDia(fechaInicio),  // Asegurar que empiece a las 00:00:00
+                    finDelDia(fechaFin)         // Asegurar que termine a las 23:59:59.999
+                );
                 total = response.total || 0;
             }
-
-            setExportProgress(10); // 10% - Total obtenido
-
+            
             if (total === 0) {
                 enqueueSnackbar('No hay datos para exportar', { variant: 'info' });
                 setLoadingExport(false);
                 return;
             }
 
-            const porPagina = 100; // Tamaño de página más pequeño para mejor feedback
-            const totalPaginas = Math.ceil(total / porPagina);
-            let todosLosBeneficiarios = [];
+            setExportProgress(10); // 10% - Total obtenido
 
             // Función para actualizar el progreso de manera suave
-            const actualizarProgreso = (progresoActual, progresoMaximo) => {
-                // El 10% al 90% es para la descarga de datos
-                const progreso = 10 + (progresoActual / totalPaginas) * 80;
-                setExportProgress(Math.min(progreso, progresoMaximo || 90));
+            const actualizarProgreso = (progreso) => {
+                setExportProgress(progreso);
             };
-
+            
             // 2. Descargar los datos en lotes
+            const porPagina = 100;
+            const totalPaginas = Math.ceil(total / porPagina);
+            
+            console.log(`Descargando ${total} registros en ${totalPaginas} páginas...`);
+            
             for (let pagina = 1; pagina <= totalPaginas; pagina++) {
-                let data;
+                let response;
                 
                 if (tipoExportacion === 'todos') {
-                    const response = await beneficiarioService.listarBeneficiariosAdmin(
+                    response = await beneficiarioService.listarBeneficiariosAdmin(
                         pagina, 
                         porPagina, 
                         filtro, 
                         lineaTrabajoFiltro
                     );
-                    data = response.data;
                 } else {
-                    const response = await beneficiarioService.listarBeneficiariosPorRango({
-                        fecha_inicio: fechaInicio,
-                        fecha_fin: fechaFin,
-                        filtro,
-                        lineaTrabajo: lineaTrabajoFiltro,
-                        pagina,
-                        por_pagina: porPagina
-                    });
-                    data = response.data;
+                    response = await beneficiarioService.listarBeneficiariosAdmin(
+                        pagina, 
+                        porPagina, 
+                        filtro, 
+                        lineaTrabajoFiltro,
+                        inicioDelDia(fechaInicio),
+                        finDelDia(fechaFin)
+                    );
                 }
-
-                todosLosBeneficiarios = [...todosLosBeneficiarios, ...data];
-                actualizarProgreso(pagina, 90); // Llegamos al 90% al finalizar la descarga
+                
+                todosLosBeneficiarios = [...todosLosBeneficiarios, ...(response.data || [])];
+                
+                // Actualizar progreso (10% a 90%)
+                const progreso = 10 + (pagina / totalPaginas) * 80;
+                actualizarProgreso(progreso);
+                
+                console.log(`Página ${pagina}/${totalPaginas} - ${todosLosBeneficiarios.length} registros descargados`);
+                
+                // Pequeña pausa para no sobrecargar el servidor
+                if (pagina < totalPaginas) {
+                    await new Promise(resolve => setTimeout(resolve, 300));
+                }
             }
 
             // 3. Formatear datos para Excel (10% del progreso)

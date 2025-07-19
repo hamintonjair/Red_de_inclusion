@@ -114,23 +114,56 @@ export async function exportarListadoBeneficiariosAExcel({
     
     ws['!cols'] = colWidths;
     
-    // 7. Ajustar la altura de la fila del encabezado (duplicada)
-    ws['!rows'] = [{ hpx: 70 }]; // 60px de altura (aproximadamente el doble de 30px)
+    // 7. Configurar alturas de fila para asegurar que todas sean visibles
+    const rowCount = datosProcesados.length + 1; // +1 para el encabezado
+    const rowHeights = [];
     
-    // 8. Asegurar que el texto del encabezado se ajuste y se muestre completo
+    // Configurar altura para el encabezado (fila 0)
+    rowHeights[0] = { hpx: 70 };
+    
+    // Configurar altura para las filas de datos
+    for (let i = 1; i < rowCount; i++) {
+        rowHeights[i] = { hpx: 20 }; // Altura estándar para filas de datos
+    }
+    
+    ws['!rows'] = rowHeights;
+    
+    // 8. Asegurar que el texto se ajuste y se muestre completo en todas las celdas
     const columnRange = XLSX.utils.decode_range(ws['!ref']);
-    for (let C = columnRange.s.c; C <= columnRange.e.c; ++C) {
-        const cellAddress = XLSX.utils.encode_cell({ c: C, r: 0 });
-        if (ws[cellAddress] && ws[cellAddress].s) {
-            // Asegurar que el texto se ajuste y se muestre completo
-            ws[cellAddress].s.wrapText = true;
-            // Mantener la alineación existente pero forzar el ajuste de texto
-            ws[cellAddress].s.alignment = { 
-                ...(ws[cellAddress].s.alignment || {}), 
-                wrapText: true,
-                vertical: 'center',
-                horizontal: 'center'
-            };
+    
+    // Aplicar estilos a todas las celdas
+    for (let R = columnRange.s.r; R <= columnRange.e.r; ++R) {
+        for (let C = columnRange.s.c; C <= columnRange.e.c; ++C) {
+            const cellAddress = XLSX.utils.encode_cell({ c: C, r: R });
+            
+            if (!ws[cellAddress]) {
+                ws[cellAddress] = { v: '' };
+            }
+            
+            if (!ws[cellAddress].s) {
+                ws[cellAddress].s = {};
+            }
+            
+            // Estilo para celdas de encabezado (fila 0)
+            if (R === 0) {
+                ws[cellAddress].s = {
+                    font: { bold: true, color: { rgb: 'FFFFFFFF' } },
+                    fill: { fgColor: { rgb: '1976D2' }, patternType: 'solid' },
+                    alignment: { 
+                        vertical: 'center', 
+                        horizontal: 'center',
+                        wrapText: true
+                    }
+                };
+            } else {
+                // Estilo para celdas de datos
+                ws[cellAddress].s = {
+                    alignment: { 
+                        vertical: 'top',
+                        wrapText: true
+                    }
+                };
+            }
         }
     }
     

@@ -187,11 +187,11 @@ export default function RegistroBeneficiarios() {
   
   // Effect to keep signature state in sync with formData
   useEffect(() => {
-    console.log('Signature state updated:', { 
-      hasSignature: !!signature,
-      type: typeof signature,
-      length: signature ? signature.length : 0
-    });
+    // console.log('Signature state updated:', { 
+    //   hasSignature: !!signature,
+    //   type: typeof signature,
+    //   length: signature ? signature.length : 0
+    // });
   }, [signature]);
 
   const [comunas, setComunas] = useState([]);
@@ -433,21 +433,14 @@ export default function RegistroBeneficiarios() {
   useEffect(() => {
     if (location.state?.beneficiario) {
       const beneficiario = location.state.beneficiario;
-      console.log('Cargando beneficiario para edición:', {
-        ...beneficiario,
-        firma: beneficiario.firma ? 'firma presente' : 'sin firma'
-      });
+  
       setModoEdicion(true);
       setBeneficiarioId(beneficiario.id);
 
       // Cargar la firma si existe
       if (beneficiario.firma) {
         const firmaData = beneficiario.firma;
-        console.log('Cargando firma existente:', {
-          longitud: firmaData.length,
-          tipo: typeof firmaData,
-          esValida: firmaData.startsWith('data:image/')
-        });
+     
         
         // Actualizar ambos estados de forma síncrona
         setSignature(firmaData);
@@ -458,11 +451,7 @@ export default function RegistroBeneficiarios() {
             ...prev,
             firma: firmaData
           };
-          console.log('Firma cargada en formData:', { 
-            tieneFirma: !!nuevoEstado.firma,
-            tipo: typeof nuevoEstado.firma,
-            longitud: firmaData.length
-          });
+      
           return nuevoEstado;
         });
       }
@@ -472,12 +461,7 @@ export default function RegistroBeneficiarios() {
         etnia.toLowerCase() === (beneficiario.etnia || '').toLowerCase().trim()
       ) || (ETNIAS.length > 0 ? ETNIAS[0] : '');
       
-      console.log('Cargando etnia:', {
-        original: beneficiario.etnia,
-        seleccionada: etniaEncontrada,
-        etniasDisponibles: ETNIAS,
-        firmaCargada: !!beneficiario.firma
-      }, 'Tipo de etnia:', typeof beneficiario.etnia);
+   
 
       // Si el beneficiario tiene una comuna, cargar sus barrios
       if (beneficiario.comuna) {
@@ -522,11 +506,7 @@ export default function RegistroBeneficiarios() {
           barrioPersonalizado = "";
         }
 
-        console.log('Barrio - Original:', beneficiario.barrio, 
-                   'Seleccionado:', barrioSeleccionado, 
-                   'Personalizado:', barrioPersonalizado,
-                   'Es personalizado:', esBarrioPersonalizado,
-                   'Barrios disponibles:', barriosDeComuna.map(b => b.nombre));
+    
 
         // Crear un nuevo objeto con los valores actualizados
         const datosActualizados = {
@@ -552,7 +532,6 @@ export default function RegistroBeneficiarios() {
           firma: beneficiario.firma || null
         };
 
-        console.log('Datos actualizados para el formulario:', datosActualizados);
         setFormData(datosActualizados);
       } else {
         // Si no hay comuna, actualizar formData con los datos del beneficiario
@@ -574,7 +553,6 @@ export default function RegistroBeneficiarios() {
           firma: beneficiario.firma || null
         };
         
-        console.log('Datos actualizados (sin comuna):', datosActualizados);
         setFormData(datosActualizados);
       }
     }
@@ -601,26 +579,62 @@ export default function RegistroBeneficiarios() {
     correo: null
   });
 
-  // Manejar cambio en campos del formulario con validación en tiempo real
+  // Función para formatear correo electrónico a minúsculas
+  const formatearCorreo = (correo) => {
+    if (!correo) return '';
+    return correo.toString().trim().toLowerCase();
+  };
+
+  // Función para formatear texto con primera letra mayúscula
+  const formatearNombre = (texto) => {
+    if (!texto) return '';
+    // Primero normalizamos espacios múltiples y recortamos espacios al inicio y final
+    return texto
+      .toString()
+      .trim()
+      .replace(/\s+/g, ' ') // Reemplaza múltiples espacios por uno solo
+      .toLowerCase()
+      .split(' ')
+      .map(palabra => {
+        // Si la palabra está vacía, la ignoramos
+        if (!palabra) return '';
+        // Si la palabra tiene una sola letra, la devolvemos en mayúscula
+        if (palabra.length === 1) return palabra.toUpperCase();
+        // Para palabras más largas, primera letra mayúscula y el resto minúsculas
+        return palabra.charAt(0).toUpperCase() + palabra.slice(1).toLowerCase();
+      })
+      .join(' ');
+  };
+
+  // Función para manejar cambios en el formulario
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     
-    // Validar que el campo de número de documento solo acepte números
-    if (name === 'numero_documento' && value !== '') {
-      // Expresión regular que solo permite números
-      const soloNumeros = /^[0-9\b]+$/;
-      if (!soloNumeros.test(value)) {
-        return; // No actualizar el estado si no es un número
-      }
-    }
-
-    // Manejo especial para el campo de etnia
+    // Si es un campo de etnia, manejar el valor de etniaPersonalizada
     if (name === 'etnia') {
       setFormData(prev => ({
         ...prev,
         [name]: value,
         // Si se selecciona 'Otro', limpiamos el valor de etniaPersonalizada
         etniaPersonalizada: value === 'Otro' ? '' : prev.etniaPersonalizada
+      }));
+      return;
+    }
+
+    // Para el campo de correo electrónico, aplicar formato
+    if (name === 'correo_electronico') {
+      setFormData(prevData => ({
+        ...prevData,
+        [name]: formatearCorreo(value)
+      }));
+      return;
+    }
+
+    // Para campos de texto que necesitan formato de nombre
+    if (['nombre_completo', 'nombre_cuidadora', 'otroBarrio'].includes(name)) {
+      setFormData(prevData => ({
+        ...prevData,
+        [name]: formatearNombre(value)
       }));
       return;
     }
@@ -720,9 +734,16 @@ export default function RegistroBeneficiarios() {
     }
 
     // Para el resto de los campos
+    let newValue = value;
+    
+    // Aplicar formato al correo electrónico
+    if (name === 'correo_electronico') {
+      newValue = formatearCorreo(value);
+    }
+    
     setFormData((prevData) => ({
       ...prevData,
-      [name]: value
+      [name]: newValue
     }));
     
     // Validación en tiempo real para campos específicos
@@ -1024,26 +1045,9 @@ export default function RegistroBeneficiarios() {
     return false; // No se necesitó sincronización
   };
 
-  // Función para formatear texto con primera letra mayúscula
-  const formatearNombre = (texto) => {
-    if (!texto) return '';
-    // Primero normalizamos espacios múltiples y recortamos espacios al inicio y final
-    return texto
-      .toString()
-      .trim()
-      .replace(/\s+/g, ' ') // Reemplaza múltiples espacios por uno solo
-      .toLowerCase()
-      .split(' ')
-      .map(palabra => {
-        // Si la palabra está vacía, la ignoramos
-        if (!palabra) return '';
-        // Si la palabra tiene una sola letra, la devolvemos en mayúscula
-        if (palabra.length === 1) return palabra.toUpperCase();
-        // Para palabras más largas, primera letra mayúscula y el resto minúsculas
-        return palabra.charAt(0).toUpperCase() + palabra.slice(1).toLowerCase();
-      })
-      .join(' ');
-  };
+
+
+
 
   // Modificar handleSubmit para incluir validaciones
   const handleSubmit = async (e) => {
@@ -1181,7 +1185,7 @@ export default function RegistroBeneficiarios() {
 
           // Contacto
           numero_celular: formData.numero_celular || "",
-          correo_electronico: formData.correo_electronico || "",
+          correo_electronico: formatearCorreo(formData.correo_electronico) || "",
 
           // // Datos socioculturales
           // etnia: formData.etnia === "Otro" ? (formData.etniaPersonalizada || "Otra") : (formData.etnia || "Ninguna"),
@@ -1387,7 +1391,7 @@ export default function RegistroBeneficiarios() {
 
           // Contacto
           numero_celular: formData.numero_celular || "",
-          correo_electronico: formData.correo_electronico || "",
+          correo_electronico: formatearCorreo(formData.correo_electronico) || "",
 
           // Datos socioculturales
           etnia: formData.etnia === "Otro" ? (formData.etniaPersonalizada || "Otra") : (formData.etnia || "Ninguna"),
@@ -1584,7 +1588,7 @@ export default function RegistroBeneficiarios() {
 
           // Contacto
           numero_celular: beneficiario.numero_celular || "",
-          correo_electronico: beneficiario.correo_electronico || "",
+          correo_electronico: formatearCorreo(beneficiario.correo_electronico) || "",
 
           // Datos socioculturales
           etnia: beneficiario.etnia || "Ninguna",
