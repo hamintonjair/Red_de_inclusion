@@ -54,44 +54,21 @@ const Dashboard = () => {
     const [loadingRegistros, setLoadingRegistros] = useState(true);
     const [errorRegistros, setErrorRegistros] = useState(null);
 
-    // Estado para controlar si se están cargando todos los registros
-    const [cargandoTodos, setCargandoTodos] = useState(false);
-    const [totalRegistros, setTotalRegistros] = useState(0);
-
-    // Cargar registros con opción de cargar todos
-    const cargarRegistros = useCallback(async (cargarTodos = false) => {
+    // Cargar todos los registros sin paginación
+    const cargarRegistros = useCallback(async () => {
         setLoadingRegistros(true);
         try {
-            // Solo cargar los campos necesarios para el mapa
-            const params = {
-                por_pagina: cargarTodos ? 1000 : 100,  // 100 por defecto, 1000 si se solicitan todos
-                pagina: 1,
-                campos: 'id,direccion,comuna,barrio,lat,lng'  // Solo los campos necesarios
-            };
-            
-            // Solo agregar el parámetro si se están cargando todos los registros
-            if (cargarTodos) {
-                params.todos_los_registros = true;
-            }
-            
-            const response = await beneficiarioService.obtenerBeneficiarios(params);
-            
-            const items = response.beneficiarios || [];
-            const total = response.total || 0;
-            
-            console.log(`Registros cargados para el mapa: ${items.length} de ${total} totales`);
-            
-            setRegistros(items);
-            setTotalRegistros(total);
+            // Usar la función que obtiene todos los registros sin paginación
+            const items = await beneficiarioService.obtenerTodosBeneficiarios({});
+            console.log(`Total de registros cargados: ${items?.length || 0}`);
+            setRegistros(items || []);
             setErrorRegistros(null);
         } catch (error) {
             console.error('Error al cargar los registros:', error);
-            setErrorRegistros('Error al cargar los registros. ' + 
-                (error.message || 'Por favor, intente nuevamente.'));
+            setErrorRegistros('Error al cargar los registros. Por favor, intente nuevamente.');
             setRegistros([]);
         } finally {
             setLoadingRegistros(false);
-            setCargandoTodos(false);
         }
     }, []);
 
@@ -305,170 +282,62 @@ const exportarMapaYListadoPDF = async () => {
 
     // Loading and error states are already declared above
 
-//     useEffect(() => {
-//         const fetchStats = async () => {
-//             try {
-//                 setLoading(true); // 3. Activar carga al inicio
-
-//                 const funcionarios = await funcionarioService.obtenerFuncionarios();
-//                 const lineasTrabajoCount = await usuarioService.obtenerLineasTrabajo();
-
-//                 let estadisticasBeneficiarios = {};
-//                 let estadisticasMensuales = [];
-
-//                 try {
-//                     estadisticasBeneficiarios = lineaSeleccionada
-//                         ? await estadisticasService.obtenerEstadisticasPorLinea(lineaSeleccionada)
-//                         : await estadisticasService.obtenerEstadisticasGlobalesAdmin();
-//                 } catch (error) {
-//                     console.error('Error al obtener estadísticas globales admin:', error);
-//                 }
-
-//                 // Obtener datos mensuales
-//                 try {
-//                     estadisticasMensuales = await estadisticasService.obtenerEstadisticasMensuales();
-//                     // CORRECCIÓN: Si la API devuelve null o undefined, usar []
-//                     if (!estadisticasMensuales) estadisticasMensuales = [];
-//                     const datosMensualesTransformados = Array.isArray(estadisticasMensuales)
-//     ? estadisticasMensuales.map(item => ({
-//         name: item.mes || item.nombre || item.label || '',
-//         beneficiarios: item.cantidad ?? item.total ?? item.value ?? 0
-//     }))
-//     : [];
-// setDatosMensuales(datosMensualesTransformados);
-//                 } catch (error) {
-//                     setDatosMensuales([]);
-//                     console.error('Error al obtener estadísticas mensuales:', error);
-//                 }
-
-//                 setStats({
-//                     totalFuncionarios: funcionarios.length,
-//                     totalLineasTrabajo: lineasTrabajoCount.length,
-//                     totalBeneficiarios: estadisticasBeneficiarios.total_beneficiarios
-//                 });
-
-//                 setEstadisticasBeneficiarios(estadisticasBeneficiarios);
-//                 setEstadisticasGlobales(estadisticasBeneficiarios);
-                
-//                 // Procesar datos para gráficos
-//                 procesarDatosGraficos(estadisticasBeneficiarios);
-//             } catch (err) {
-//                 console.error('Error al cargar estadísticas:', err);
-//             }finally {
-//                 setLoading(false); // 4. Desactivar carga al finalizar (éxito o error)
-//             }
-//         };
-//         fetchStats();
-//     }, [lineaSeleccionada]);
-useEffect(() => {
-    const fetchStats = async () => {
-        try {
-            setLoading(true);
-            
-            // 1. Obtener datos básicos en paralelo
-            const [funcionarios, lineasTrabajoCount] = await Promise.all([
-                funcionarioService.obtenerFuncionarios().catch(err => {
-                    console.error('Error al obtener funcionarios:', err);
-                    return [];
-                }),
-                usuarioService.obtenerLineasTrabajo().catch(err => {
-                    console.error('Error al obtener líneas de trabajo:', err);
-                    return [];
-                })
-            ]);
-
-            // 2. Obtener estadísticas de beneficiarios
-            let estadisticasBeneficiarios = {};
+    useEffect(() => {
+        const fetchStats = async () => {
             try {
-                console.log('Solicitando estadísticas...');
-                estadisticasBeneficiarios = lineaSeleccionada
-                    ? await estadisticasService.obtenerEstadisticasPorLinea(lineaSeleccionada)
-                    : await estadisticasService.obtenerEstadisticasGlobalesAdmin();
-                
-                console.log('Estadísticas obtenidas:', estadisticasBeneficiarios);
-                
-                // Actualizar el estado con las estadísticas
+                setLoading(true); // 3. Activar carga al inicio
+
+                const funcionarios = await funcionarioService.obtenerFuncionarios();
+                const lineasTrabajoCount = await usuarioService.obtenerLineasTrabajo();
+
+                let estadisticasBeneficiarios = {};
+                let estadisticasMensuales = [];
+
+                try {
+                    estadisticasBeneficiarios = lineaSeleccionada
+                        ? await estadisticasService.obtenerEstadisticasPorLinea(lineaSeleccionada)
+                        : await estadisticasService.obtenerEstadisticasGlobalesAdmin();
+                } catch (error) {
+                    console.error('Error al obtener estadísticas globales admin:', error);
+                }
+
+                // Obtener datos mensuales
+                try {
+                    estadisticasMensuales = await estadisticasService.obtenerEstadisticasMensuales();
+                    // CORRECCIÓN: Si la API devuelve null o undefined, usar []
+                    if (!estadisticasMensuales) estadisticasMensuales = [];
+                    const datosMensualesTransformados = Array.isArray(estadisticasMensuales)
+    ? estadisticasMensuales.map(item => ({
+        name: item.mes || item.nombre || item.label || '',
+        beneficiarios: item.cantidad ?? item.total ?? item.value ?? 0
+    }))
+    : [];
+setDatosMensuales(datosMensualesTransformados);
+                } catch (error) {
+                    setDatosMensuales([]);
+                    console.error('Error al obtener estadísticas mensuales:', error);
+                }
+
+                setStats({
+                    totalFuncionarios: funcionarios.length,
+                    totalLineasTrabajo: lineasTrabajoCount.length,
+                    totalBeneficiarios: estadisticasBeneficiarios.total_beneficiarios
+                });
+
                 setEstadisticasBeneficiarios(estadisticasBeneficiarios);
                 setEstadisticasGlobales(estadisticasBeneficiarios);
                 
-                // Actualizar estadísticas generales
-                setStats(prev => ({
-                    ...prev,
-                    totalFuncionarios: Array.isArray(funcionarios) ? funcionarios.length : 0,
-                    totalLineasTrabajo: Array.isArray(lineasTrabajoCount) ? lineasTrabajoCount.length : 0,
-                    totalBeneficiarios: estadisticasBeneficiarios.total_beneficiarios || 0
-                }));
-                
-            } catch (error) {
-                console.error('Error al obtener estadísticas:', error);
-                enqueueSnackbar('Error al cargar las estadísticas. Mostrando datos limitados.', { 
-                    variant: 'error',
-                    autoHideDuration: 5000
-                });
-                
-                // Establecer valores por defecto
-                const defaultStats = {
-                    total_beneficiarios: 0,
-                    total_victimas: 0,
-                    total_discapacidad: 0,
-                    total_ayuda_humanitaria: 0,
-                    total_menores_13: 0,
-                    total_13_25: 0,
-                    total_mayores_60: 0,
-                    total_alfabetizados: 0,
-                    total_analfabetas: 0,
-                    total_mujeres_menores_con_hijos: 0
-                };
-                
-                setEstadisticasBeneficiarios(defaultStats);
-                setEstadisticasGlobales(defaultStats);
-                setStats(prev => ({
-                    ...prev,
-                    totalBeneficiarios: 0
-                }));
-            }
-
-            // 3. Obtener datos mensuales
-            try {
-                console.log('Solicitando estadísticas mensuales...');
-                const response = await estadisticasService.obtenerEstadisticasMensuales();
-                const estadisticasMensuales = Array.isArray(response) ? response : [];
-                
                 // Procesar datos para gráficos
-                const datosMensualesTransformados = estadisticasMensuales.map(item => ({
-                    name: item.mes || item.nombre || item.label || '',
-                    beneficiarios: item.cantidad ?? item.total ?? item.value ?? 0
-                }));
-                
-                setDatosMensuales(datosMensualesTransformados);
-                
-            } catch (error) {
-                console.error('Error al obtener estadísticas mensuales:', error);
-                setDatosMensuales([]);
-                enqueueSnackbar('No se pudieron cargar las estadísticas mensuales', { 
-                    variant: 'warning',
-                    autoHideDuration: 3000
-                });
+                procesarDatosGraficos(estadisticasBeneficiarios);
+            } catch (err) {
+                console.error('Error al cargar estadísticas:', err);
+            }finally {
+                setLoading(false); // 4. Desactivar carga al finalizar (éxito o error)
             }
-            
-        } catch (error) {
-            console.error('Error general al cargar datos:', error);
-            enqueueSnackbar('Ocurrió un error al cargar los datos del dashboard', { 
-                variant: 'error',
-                autoHideDuration: 5000
-            });
-        } finally {
-            setLoading(false);
-        }
-    };
+        };
+        fetchStats();
+    }, [lineaSeleccionada]);
 
-    fetchStats();
-    
-    // Limpiar al desmontar
-    return () => {
-        // Cualquier limpieza necesaria
-    };
-}, [lineaSeleccionada, enqueueSnackbar]);
     useEffect(() => {
         const cargarRegistros = async () => {
             try {
@@ -1030,41 +899,9 @@ useEffect(() => {
 
             {mostrarGraficos && (
     <>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-          <Typography variant="h5" component="h2" sx={{ mb: 0 }}>
-            Mapa de Beneficiarios
-          </Typography>
-          {registros.length > 0 && (
-            <Typography variant="body2" color="text.secondary">
-              Mostrando {registros.length} de {totalRegistros} registros
-            </Typography>
-          )}
-        </Box>
-        
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          <Button 
-            variant="outlined" 
-            size="small"
-            onClick={() => cargarRegistros()}
-            disabled={loadingRegistros && !cargandoTodos}
-            startIcon={loadingRegistros && !cargandoTodos ? <CircularProgress size={20} /> : null}
-          >
-            Recargar
-          </Button>
-          
-          {totalRegistros > 100 && registros.length < totalRegistros && (
-            <Button 
-              variant="contained" 
-              color="primary" 
-              size="small"
-              onClick={() => cargarRegistros(true)}
-              disabled={loadingRegistros}
-              startIcon={cargandoTodos ? <CircularProgress size={20} color="inherit" /> : null}
-            >
-              Cargar todos ({totalRegistros} registros)
-            </Button>
-          )}
-        </Box>
+        <Typography variant="h5" gutterBottom sx={{ marginTop: 4 }}>
+            Gráficos Estadísticos
+        </Typography>
         
         <Grid container spacing={3} id="graficos-container">
     {/* Ajuste responsivo: cada gráfica ocupa toda la fila en móvil (xs=12) y media fila en desktop (md=6) */}
@@ -1237,39 +1074,15 @@ useEffect(() => {
 </Dialog>
         {/* --- MAPA DE REGISTROS DE BENEFICIARIOS --- */}
         <Box sx={{ mt: 4, mb: 4 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 2 }}>
-                <Typography variant="h6" gutterBottom sx={{ mb: 0 }}>
-                    Mapa de registros de beneficiarios
-                </Typography>
-                
-                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
-                    <Typography variant="body2" color="text.secondary">
-                        {registros.length} de {totalRegistros} registros cargados
-                    </Typography>
-                    
-                    {totalRegistros > 100 && registros.length < totalRegistros && (
-                        <Button 
-                            variant="contained" 
-                            color="primary" 
-                            size="small"
-                            onClick={() => cargarRegistros(true)}
-                            disabled={loadingRegistros}
-                            startIcon={loadingRegistros ? <CircularProgress size={20} color="inherit" /> : null}
-                        >
-                            Cargar todos los registros
-                        </Button>
-                    )}
-                </Box>
-            </Box>
-            
+            <Typography variant="h6" gutterBottom>
+                Mapa de registros de beneficiarios
+            </Typography>
             {loadingRegistros ? (
                 <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 400 }}>
                     <CircularProgress />
                 </Box>
             ) : errorRegistros ? (
-                <Box sx={{ mb: 2 }}>
-                    <Typography color="error">{errorRegistros}</Typography>
-                </Box>
+                <Typography color="error">{errorRegistros}</Typography>
             ) : (
                 <Box
                   sx={{
