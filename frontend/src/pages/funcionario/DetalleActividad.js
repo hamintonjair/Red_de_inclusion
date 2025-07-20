@@ -117,13 +117,13 @@ const DetalleActividad = ({ esReunion = false }) => {
         { campo: 'grupo_etnico', etiqueta: 'GRUPO ÉTNICO', visiblePorDefecto: false },
         { campo: 'ayuda_humanitaria', etiqueta: 'AYUDA HUMANITARIA', visiblePorDefecto: false },
         { campo: 'tipo_ayuda_humanitaria', etiqueta: 'TIPO DE AYUDA HUMANITARIA', visiblePorDefecto: false },
-        { campo: 'discapacidad', etiqueta: 'DISCAPACIDAD', visiblePorDefecto: false },
-        { campo: 'tiene_certificado_discapacidad', etiqueta: 'TIENE CERTIFICADO DE DISCAPACIDAD', visiblePorDefecto: false },
-        { campo: 'tipo_discapacidad', etiqueta: 'TIPO DE DISCAPACIDAD', visiblePorDefecto: false },
+        { campo: 'discapacidad', etiqueta: 'DISCAPACIDAD', visiblePorDefecto: true },
+        { campo: 'tiene_certificado_discapacidad', etiqueta: 'TIENE CERTIFICADO DE DISCAPACIDAD', visiblePorDefecto: true },
+        { campo: 'tipo_discapacidad', etiqueta: 'TIPO DE DISCAPACIDAD', visiblePorDefecto: true },
         { campo: 'nombre_cuidadora', etiqueta: 'NOMBRE DE LA CUIDADORA', visiblePorDefecto: false },
         { campo: 'labora_actualmente', etiqueta: 'LABORA ACTUALMENTE', visiblePorDefecto: false },
-        { campo: 'victima_conflicto', etiqueta: 'VÍCTIMA DE CONFLICTO', visiblePorDefecto: false },
-        { campo: 'firma', etiqueta: 'FIRMA', visiblePorDefecto: false }
+        { campo: 'victima_conflicto', etiqueta: 'VÍCTIMA DE CONFLICTO', visiblePorDefecto: true },
+        { campo: 'firma', etiqueta: 'FIRMA', visiblePorDefecto: true }
     ];
 
     // Columnas disponibles para exportación de reuniones

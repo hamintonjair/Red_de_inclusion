@@ -681,13 +681,13 @@ def exportar_actividad(actividad_id, columnas=None):
                 logger.warning(f"No se encontró el archivo de logo en: {logo_path}")
             
             # Título principal (D1:K1)
-            ws.merge_cells('D1:K1')
+            ws.merge_cells('D1:N1')
             title_cell = ws['D1']
             title_cell.value = 'FORMATO REGISTRO DE ASISTENCIA'
             title_cell.font = Font(bold=True, size=14, name='Arial')
             title_cell.fill = info_fill
             # title_cell.border = thin_border
-            for row in ws['D1:K1']:
+            for row in ws['D1:N1']:
                 for cell in row:
                     cell.border = Border(
                         left=Side(style='thin', color='000000'),
@@ -698,12 +698,12 @@ def exportar_actividad(actividad_id, columnas=None):
             title_cell.alignment = Alignment(horizontal='left', vertical='center')
             
             # Subtítulo (D2:K2)
-            ws.merge_cells('D2:K2')
+            ws.merge_cells('D2:N2')
             subtitle_cell = ws['D2']
             subtitle_cell.value = 'ALCALDÍA MUNICIPAL DE QUIBDÓ'
             subtitle_cell.font = Font(bold=True, size=12, name='Arial')
             subtitle_cell.fill = info_fill
-            for row in ws['D2:K2']:
+            for row in ws['D2:N2']:
                 for cell in row:
                     cell.border = Border(
                         left=Side(style='thin', color='000000'),
@@ -725,12 +725,12 @@ def exportar_actividad(actividad_id, columnas=None):
             ws['F3'].font = Font(name='Arial', size=10)
             ws['F3'].fill = info_fill
             ws['F3'].border = thin_border
-            ws.merge_cells('F3:K3')  # Fusionar F4:I4
+            ws.merge_cells('F3:N3')  # Fusionar F4:I4
 
                # Fila 4: Dependencia
       
             # Combinar celdas sin texto
-            ws.merge_cells('D4:K4')  # Fusionar D4:K4
+            ws.merge_cells('D4:N4')  # Fusionar D4:K4
             ws['D4'].fill = label_fill
             ws['D4'].border = thin_border
 
@@ -830,7 +830,7 @@ def exportar_actividad(actividad_id, columnas=None):
             ws['I5'].font = Font(name='Arial', size=10)
             ws['I5'].fill = info_fill
             # Aplicar borde completo a la celda de valor
-            for row in ws['I5:K7']:
+            for row in ws['I5:N7']:
                 for cell in row:
                     cell.border = Border(
                         left=Side(style='thin', color='000000'),
@@ -841,7 +841,7 @@ def exportar_actividad(actividad_id, columnas=None):
             ws['I5'].alignment = Alignment(wrap_text=True, vertical='top')
             
             # Fusionar celdas después de establecer valores
-            ws.merge_cells('I5:K7')  # Objetivo ocupa 3 filas y 4 columnas (excluyendo la columna G con la etiqueta)
+            ws.merge_cells('I5:N7')  # Objetivo ocupa 3 filas y 4 columnas (excluyendo la columna G con la etiqueta)
             
             # Ajustar altura de filas para el objetivo (usar auto_size para que se ajuste al contenido)
             ws.row_dimensions[5].auto_size = True
