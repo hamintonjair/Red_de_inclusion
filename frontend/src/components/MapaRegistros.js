@@ -65,12 +65,12 @@ const MapaRegistros = ({ registros }) => {
   // Agrupar registros por barrio y coordenadas
   // Mostrar cada registro individual como un punto, sin agrupar
   const barriosMarcados = useMemo(() => {
-    console.log(`Total de registros recibidos: ${registros?.length || 0}`);
+    // console.log(`Total de registros recibidos: ${registros?.length || 0}`);
     
     // Filtrar solo registros con coordenadas válidas
     const registrosFiltrados = registros.filter(r => r.barrio_lat && r.barrio_lng);
     
-    console.log(`Registros con coordenadas válidas: ${registrosFiltrados.length}`);
+    // console.log(`Registros con coordenadas válidas: ${registrosFiltrados.length}`);
     
     return registrosFiltrados.map(r => ({
       comuna: r.comuna,

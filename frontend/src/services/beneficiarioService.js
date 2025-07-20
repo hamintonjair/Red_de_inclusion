@@ -214,7 +214,7 @@ export const obtenerBeneficiarios = async (filtros = {}) => {
         const timeout = por_pagina_limitado > 100 ? 120000 : // 2 minutos para cargas grandes
                        por_pagina_limitado > 50 ? 60000 : 30000; // 1 minuto para medianas, 30s para pequeñas
         
-        console.log('Solicitando beneficiarios con parámetros:', queryParams);
+        // console.log('Solicitando beneficiarios con parámetros:', queryParams);
         
         // Realizar la petición con el timeout configurado
         const response = await axiosInstance.get('/beneficiarios/listar', { 
@@ -319,67 +319,72 @@ export const obtenerBeneficiarios = async (filtros = {}) => {
  */
 // Obtiene TODOS los registros de beneficiarios con paginación automática
 export const obtenerTodosBeneficiarios = async (filtros = {}, todosLosRegistros = false) => {
+    // Esta versión realiza múltiples peticiones paginadas para evitar timeouts en el backend
+    // y devuelve un único array con todos los beneficiarios.
     try {
-        // Extraer campos específicos si se proporcionan
+        // Tamaño de página razonable para el backend
+        const pageSize = filtros.por_pagina ? parseInt(filtros.por_pagina) : 100;
+        let pagina = filtros.pagina ? parseInt(filtros.pagina) : 1;
+
+        // Eliminamos parámetros de paginación del objeto filtros para que no se acumulen
+        const { por_pagina, pagina: _pg, ...restFiltros } = filtros;
+
+        let todos = [];
+        let continuar = true;
+        let intento = 0;
+        const MAX_INTENTOS = 3; // para reintentos ante timeouts puntuales
+
+        while (continuar) {
+            try {
+                const resp = await obtenerBeneficiarios({
+                    ...restFiltros,
+                    por_pagina: pageSize,
+                    pagina,
+                });
+
+                // `obtenerBeneficiarios` puede devolver dos formatos distintos
+                const lista = Array.isArray(resp)
+                    ? resp
+                    : Array.isArray(resp?.beneficiarios)
+                        ? resp.beneficiarios
+                        : [];
+
+                todos = todos.concat(lista);
+
+                // Si la lista viene incompleta, terminamos el bucle
+                if (lista.length < pageSize) {
+                    continuar = false;
+                } else {
+                    pagina += 1;
+                }
+            } catch (error) {
+                // Si es timeout, reintentar cierto número de veces antes de abortar
+                if (error.code === 'ECONNABORTED' && intento < MAX_INTENTOS) {
+                    intento += 1;
+                    console.warn(`Intento ${intento}/${MAX_INTENTOS} tras timeout en página ${pagina}. Volviendo a intentar...`);
+                    continue;
+                }
+                throw error;
+            }
+        }
+
+        return todos;
+    } catch (error) {
+        console.error('Error en obtenerTodosBeneficiarios (paginado):', error);
+        throw error;
+    }
+};
+/*
+// Bloque duplicado obsoleto eliminado tras refactorización — inicio
         const { campos, ...filtrosRestantes } = filtros;
         
         // Configuración de paginación por defecto
-        let por_pagina = parseInt(filtrosRestantes.por_pagina) || 50; // Reducir a 50 registros por petición
-        let pagina = 1; // Siempre empezar desde la primera página
+        let por_pagina = parseInt(filtrosRestantes.por_pagina) || 100;
+        let pagina = parseInt(filtrosRestantes.pagina) || 1;
         
-        // Si se solicitan todos los registros, usaremos paginación automática
+        // Si se solicitan todos los registros, forzar una página grande
         if (todosLosRegistros) {
-            por_pagina = 50; // Reducir el número de registros por petición
-            let todosLosRegistros = [];
-            let hayMasRegistros = true;
-            let totalPaginas = 1;
-            let intentos = 0;
-            const maxIntentos = 3;
-            
-            // Hacer solicitudes hasta obtener todos los registros
-            while (pagina <= totalPaginas && hayMasRegistros) {
-                try {
-                    console.log(`Obteniendo página ${pagina} de ${totalPaginas}`);
-                    const response = await Promise.race([
-                        obtenerPaginaBeneficiarios({...filtrosRestantes, campos}, pagina, por_pagina),
-                        new Promise((_, reject) => 
-                            setTimeout(() => reject(new Error('timeout')), 60000) // 60 segundos de timeout
-                        )
-                    ]);
-                    
-                    if (response && response.beneficiarios) {
-                        todosLosRegistros = [...todosLosRegistros, ...response.beneficiarios];
-                        totalPaginas = response.paginas || 1;
-                        intentos = 0; // Reiniciar contador de intentos después de una respuesta exitosa
-                        
-                        // Verificar si hay más páginas
-                        if (pagina >= totalPaginas || response.beneficiarios.length < por_pagina) {
-                            hayMasRegistros = false;
-                        } else {
-                            pagina++;
-                            // Pequeña pausa entre solicitudes para no sobrecargar el servidor
-                            await new Promise(resolve => setTimeout(resolve, 500));
-                        }
-                    } else {
-                        hayMasRegistros = false;
-                    }
-                } catch (error) {
-                    console.error(`Error en la página ${pagina}:`, error);
-                    intentos++;
-                    
-                    if (intentos >= maxIntentos) {
-                        console.warn(`Máximo de intentos alcanzado (${maxIntentos}) para la página ${pagina}`);
-                        hayMasRegistros = false;
-                    } else {
-                        // Esperar un momento antes de reintentar
-                        await new Promise(resolve => setTimeout(resolve, 2000));
-                        console.log(`Reintentando página ${pagina} (intento ${intentos + 1}/${maxIntentos})`);
-                    }
-                }
-            }
-            
-            console.log(`Total de registros obtenidos: ${todosLosRegistros.length}`);
-            return todosLosRegistros;
+            por_pagina = 1000; // Número grande para obtener todos los registros en una sola petición
         }
 
         // Eliminar propiedades de paginación para no enviarlas al backend
@@ -488,7 +493,7 @@ export const obtenerTodosBeneficiarios = async (filtros = {}, todosLosRegistros 
         
         throw customError;
     }
-};
+*/
 
 export const obtenerBeneficiarioPorId = async (beneficiarioId) => {
     try {
@@ -818,7 +823,7 @@ export async function exportarBeneficiariosAExcel({ filtro, tipo_exportacion, fe
 };
 
 // Función auxiliar para obtener una página de resultados
-const obtenerPaginaBeneficiarios = async (params, pagina = 1, porPagina = 1000) => {
+const obtenerPaginaBeneficiarios = async (params, pagina = 1, porPagina = 100) => {
     console.log(`Obteniendo página ${pagina} con ${porPagina} registros`);
     const response = await axiosInstance.get('/beneficiarios/listar', { 
         params: {
@@ -826,7 +831,7 @@ const obtenerPaginaBeneficiarios = async (params, pagina = 1, porPagina = 1000) 
             pagina,
             por_pagina: porPagina
         },
-        timeout: 60000
+        timeout: 30000
     });
     
     // Manejar diferentes formatos de respuesta

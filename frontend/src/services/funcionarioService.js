@@ -92,9 +92,9 @@ const funcionarioService = {
      */
     obtenerFuncionarios: async () => {
         try {
-            console.log('Solicitando lista de funcionarios...');
+            // console.log('Solicitando lista de funcionarios...');
             const response = await axiosInstance.get('/funcionarios/funcionarios');
-            console.log('Respuesta de la API:', response);
+            // console.log('Respuesta de la API:', response);
             
             // Validar estructura de respuesta
             if (!response.data || !response.data.funcionarios) {
@@ -126,15 +126,15 @@ const funcionarioService = {
                 };
             });
             
-            console.log('Funcionarios procesados:', funcionariosConId);
+            // console.log('Funcionarios procesados:', funcionariosConId);
             return funcionariosConId || [];
         } catch (error) {
-            console.error('Error al obtener funcionarios:', {
-                fullError: error,
-                responseData: error.response?.data,
-                responseStatus: error.response?.status,
-                errorMessage: error.message
-            });
+            // console.error('Error al obtener funcionarios:', {
+            //     fullError: error,
+            //     responseData: error.response?.data,
+            //     responseStatus: error.response?.status,
+            //     errorMessage: error.message
+            // });
             return [];
         }
     },

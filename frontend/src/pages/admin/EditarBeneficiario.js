@@ -771,12 +771,6 @@ export default function RegistroBeneficiarios() {
                      typeof firmaAValidar === 'string' && 
                      firmaAValidar.startsWith('data:image/');
     
-    console.log('Validando firma:', {
-      tieneFirma,
-      tipo: typeof firmaAValidar,
-      longitud: firmaAValidar ? firmaAValidar.length : 0,
-      fuente: signature ? 'signature' : formData.firma ? 'formData.firma' : 'ninguna'
-    });
     
     // Validar que se haya capturado la firma
     if (!tieneFirma) {

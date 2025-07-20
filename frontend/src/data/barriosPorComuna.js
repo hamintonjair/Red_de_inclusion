@@ -5,7 +5,7 @@ export const barriosPorComuna = [
     barrios: [
       { nombre: "Alamos", lat: 5.6970, lng: -76.6667 },
       { nombre: "Alamos Arrocera", lat: 5.6971, lng: -76.6670 },
-      { nombre: "Buenos Aires parte Alta", lat: 5.6960, lng: -76.6668 },
+      { nombre: "Buenos Aires parte Alta", lat: 5.6960, lng: -76.6660 },
       { nombre: "Buenos Aires parte Baja", lat: 5.6950, lng: -76.6667 },
       { nombre: "Casa Blanca", lat: 5.6955, lng: -76.6673 },
       { nombre: "Centro", lat: 5.6956, lng: -76.6658 },
@@ -14,8 +14,7 @@ export const barriosPorComuna = [
       { nombre: "Jose Asael Palacios", lat: 5.6965, lng: -76.6666 },
       { nombre: "Kennedy", lat: 5.6926, lng: -76.6680 },
       { nombre: "Kennedy Arenal", lat: 5.6929, lng: -76.6683 },
-      { nombre: "Kennedy Cantonera", lat: 5.6928, lng: -76.6682 },
-      { nombre: "Kennedy Central", lat: 5.6925, lng: -76.6678 },
+      { nombre: "Kennedy Cantonera", lat: 5.6928, lng: -76.6682 },      { nombre: "Kennedy Central", lat: 5.6925, lng: -76.6678 },
       { nombre: "Kennedy Venecia", lat: 5.6924, lng: -76.6678 },
       { nombre: "La Esperanza", lat: 5.6959, lng: -76.6657 },
       { nombre: "La Fe", lat: 5.6952, lng: -76.6667 },
@@ -152,6 +151,7 @@ export const barriosPorComuna = [
     // ]
   },
   {
+    // lat arriba y abajo, lng izquierda y derecha
     comuna: "Comuna 3",
     centroide: { lat: 5.6868, lng: -76.6703 },
     barrios: [
@@ -160,13 +160,13 @@ export const barriosPorComuna = [
       { nombre: "Avenida Bahía Solano", lat: 5.6870, lng: -76.6690 },
       { nombre: "Calle de las Águilas", lat: 5.6868, lng: -76.6708 },
       { nombre: "César Conto", lat: 5.6865, lng: -76.6695 },
-      { nombre: "Chambacú", lat: 5.6867, lng: -76.6715 },
+      { nombre: "Chambacú", lat: 5.6868, lng: -76.6700 },
       { nombre: "Chamblun 9na", lat: 5.6869, lng: -76.6712 },
       { nombre: "Chamblun Venecia", lat: 5.6871, lng: -76.6713 },
       { nombre: "Cristo Rey", lat: 5.6872, lng: -76.6702 },
       { nombre: "Garcia Gomez", lat: 5.6873, lng: -76.6695 },
       { nombre: "Garcia Gomez Primavera", lat: 5.6874, lng: -76.6697 },
-      { nombre: "Malecóm", lat: 5.6865, lng: -76.6710 },
+      { nombre: "Malecóm", lat: 5.6885, lng: -76.6690 },
       { nombre: "Pandeyuca", lat: 5.6860, lng: -76.6695 },
       { nombre: "Roma", lat: 5.6870, lng: -76.6700 },
       { nombre: "Silencio", lat: 5.6870, lng: -76.6705 },
@@ -238,7 +238,6 @@ export const barriosPorComuna = [
     barrios: [
       { nombre: "Alfonso López", lat: 5.6833, lng: -76.6648 },
       { nombre: "Cascorba 17 de Octubre", lat: 5.6844, lng: -76.6641 },
-      { nombre: "Cascorva", lat: 5.6842, lng: -76.6657 },
       { nombre: "El Desafío", lat: 5.6824, lng: -76.6642 },
       { nombre: "Flores de Buenaños", lat: 5.6826, lng: -76.6659 },
       { nombre: "Horizonte Parte Alta", lat: 5.6831, lng: -76.6654 },
@@ -255,7 +254,6 @@ export const barriosPorComuna = [
       { nombre: "Nicolás de Medrano", lat: 5.6837, lng: -76.6652 },
       { nombre: "Nicolás Medrano Central", lat: 5.6836, lng: -76.6651 },
       { nombre: "Nicolás Medrano Santo Eccehomo", lat: 5.6838, lng: -76.6653 },
-      { nombre: "Piñal", lat: 5.6840, lng: -76.6655 },
       { nombre: "Playita", lat: 5.6839, lng: -76.6646 },
       { nombre: "Puente de Cabí", lat: 5.6840, lng: -76.6643 },
       { nombre: "San Francisco", lat: 5.6841, lng: -76.6656 },

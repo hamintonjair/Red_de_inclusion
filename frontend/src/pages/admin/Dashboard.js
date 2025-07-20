@@ -16,7 +16,8 @@ import {
     DialogTitle,
     DialogContent,
     DialogActions,
-    CircularProgress,   
+    CircularProgress,
+    LinearProgress,   
 } from '@mui/material';
 
 // Importaciones de iconos
@@ -53,29 +54,9 @@ const Dashboard = () => {
     const [registros, setRegistros] = useState([]);
     const [loadingRegistros, setLoadingRegistros] = useState(true);
     const [errorRegistros, setErrorRegistros] = useState(null);
+    const [progressRegistros, setProgressRegistros] = useState({ loaded: 0, total: 0 });
 
-    // Cargar todos los registros sin paginación
-    const cargarRegistros = useCallback(async () => {
-        setLoadingRegistros(true);
-        try {
-            // Usar la función que obtiene todos los registros sin paginación
-            const items = await beneficiarioService.obtenerTodosBeneficiarios({}, true); // true para obtener todos los registros
-            console.log(`Total de registros cargados: ${items?.length || 0}`);
-            setRegistros(items || []);
-            setErrorRegistros(null);
-        } catch (error) {
-            console.error('Error al cargar los registros:', error);
-            setErrorRegistros('Error al cargar los registros. Por favor, intente nuevamente.');
-            setRegistros([]);
-        } finally {
-            setLoadingRegistros(false);
-        }
-    }, []);
 
-    // Cargar registros al montar el componente
-    useEffect(() => {
-        cargarRegistros();
-    }, [cargarRegistros]);
 
 const exportarMapaYListadoPDF = async () => {
   // Tamaño oficio: 8.5 x 13 pulgadas = 612 x 936 pt
@@ -346,16 +327,56 @@ setDatosMensuales(datosMensualesTransformados);
                 if (lineaSeleccionada) {
                     filtros.linea_trabajo = lineaSeleccionada;
                 }
-                filtros.por_pagina = 10000;
-                const data = await beneficiarioService.obtenerBeneficiarios(filtros);
-                let registros = [];
-                if (Array.isArray(data)) {
-                    registros = data;
-                } else if (Array.isArray(data?.beneficiarios)) {
-                    registros = data.beneficiarios;
-                } else {
-                    registros = [];
+                // Sólo solicitamos los campos necesarios para el mapa
+                filtros.campos = 'id,comuna,barrio,barrio_lat,barrio_lng';
+                // Carga paginada para evitar timeouts y mostrar progreso
+                const pageSize = 100;
+                let pagina = 1;
+                let mas = true;
+                const registros = [];
+                let cargados = 0;
+                let total = 0;
+
+                // Reiniciar barra de progreso
+                setProgressRegistros({ loaded: 0, total: 0 });
+
+                while (mas) {
+                    const resp = await beneficiarioService.obtenerBeneficiarios({
+                        ...filtros,
+                        por_pagina: pageSize,
+                        pagina
+                    });
+                    const lista = Array.isArray(resp)
+                        ? resp
+                        : Array.isArray(resp?.beneficiarios)
+                            ? resp.beneficiarios
+                            : [];
+                    registros.push(...lista);
+                    cargados += lista.length;
+
+                    // Si la API devuelve total, usarlo
+                    if (!total && resp && resp.total) {
+                        total = resp.total;
+                    }
+
+                    // Actualizar estado de progreso
+                    setProgressRegistros({ loaded: cargados, total });
+
+                    // Mostrar datos parciales tras la primera página
+                    if (pagina === 1) {
+                        setRegistros([...registros]);
+                        setLoadingRegistros(false);
+                    } else {
+                        setRegistros([...registros]);
+                    }
+
+                    mas = lista.length === pageSize; // si no llena la página, no hay más
+                    pagina += 1;
                 }
+
+                // Asegurar progreso completo
+                setProgressRegistros({ loaded: cargados, total: total || cargados });
+
                 setRegistros(registros);
             } catch (err) {
                 console.error('Error al cargar registros para el mapa:', err);
@@ -1097,8 +1118,8 @@ setDatosMensuales(datosMensualesTransformados);
                     {/* Sidebar de comunas */}
                     <ComunasSidebar agrupadoPorComuna={require('../../components/MapaRegistros').agruparPorComunaYBarrio(registros)} />
                   </Box>
-                  <Box id="mapa-svg" sx={{ flex: 1, mt: { xs: 2, md: 0 } }}>
-                    {console.log('Registros para el mapa:', registros)}
+                  <Box id="mapa-svg" sx={{ flex: 1, mt: { xs: 2, md: 0 }, position: 'relative' }}>
+                    {/* {console.log('Registros para el mapa:', registros)} */}
                     {registros && registros.length > 0 && registros.some(r => r.barrio_lat && r.barrio_lng) ? (
                       <MapaRegistros registros={registros} />
                     ) : (
@@ -1106,6 +1127,23 @@ setDatosMensuales(datosMensualesTransformados);
                         No hay datos georreferenciados para mostrar en el mapa.
                       </Typography>
                     )}
+                    {progressRegistros.total > 0 && progressRegistros.loaded < progressRegistros.total && (
+                       <Box sx={{
+                         position: 'absolute',
+                         inset: 0,
+                         bgcolor: 'rgba(255,255,255,0.7)',
+                         display: 'flex',
+                         flexDirection: 'column',
+                         alignItems: 'center',
+                         justifyContent: 'center',
+                         zIndex: 1300,
+                       }}>
+                         <Typography variant="body2" sx={{ mb: 2 }}>
+                           Cargando registros {progressRegistros.loaded} de {progressRegistros.total}...
+                         </Typography>
+                         <LinearProgress variant="determinate" value={(progressRegistros.loaded / progressRegistros.total) * 100} sx={{ width: '80%' }} />
+                       </Box>
+                     )}
                   </Box>
                 </Box>
             )}

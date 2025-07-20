@@ -4,6 +4,7 @@ import {
   Typography, 
   CircularProgress, 
   Button,
+  LinearProgress,
   Grid
 } from '@mui/material';
 import beneficiarioService from '../../services/beneficiarioService';
@@ -14,55 +15,54 @@ import { useAuth } from '../../context/AuthContext';
 const DashboardMapa = () => {
   const [registros, setRegistros] = useState([]);
   const { user } = useAuth();
-  const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [progressRegistros, setProgressRegistros] = useState({ loaded: 0, total: 0 });
 
-  // Cargar todos los registros sin paginación
+  // Cargar registros con paginación incremental
   const cargarRegistros = useCallback(async () => {
     if (!user?.linea_trabajo) return;
-    
+
     setLoading(true);
+    setProgressRegistros({ loaded: 0, total: 0 });
     try {
-      // Usar la nueva función que obtiene todos los registros sin paginación
-      const items = await beneficiarioService.obtenerTodosBeneficiarios({ 
-        linea_trabajo: user.linea_trabajo 
-      });
-      
-      if (items && items.length > 0) {
-        // Diagnóstico: Mostrar información sobre los registros
-        console.log('=== DIAGNÓSTICO DE REGISTROS ===');
-        console.log('Total de registros recibidos:', items.length);
-        
-        // Contar registros con/sin comuna
-        const conComuna = items.filter(r => r.comuna).length;
-        console.log(`- Con comuna: ${conComuna} (${items.length > 0 ? (conComuna/items.length*100).toFixed(1) : 0}%)`);
-        
-        // Contar registros con coordenadas completas
-        const conCoordenadas = items.filter(r => r.barrio_lat && r.barrio_lng).length;
-        console.log(`- Con coordenadas completas: ${conCoordenadas} (${items.length > 0 ? (conCoordenadas/items.length*100).toFixed(1) : 0}%)`);
-        
-        // Mostrar ejemplos de registros sin coordenadas
-        const sinCoordenadas = items.filter(r => !r.barrio_lat || !r.barrio_lng).slice(0, 3);
-        if (sinCoordenadas.length > 0) {
-          console.log('Ejemplos de registros sin coordenadas completas:', sinCoordenadas);
-        }
-        
-        // Mostrar distribución por comuna
-        const porComuna = {};
-        items.forEach(r => {
-          const comuna = r.comuna || 'Sin comuna';
-          porComuna[comuna] = (porComuna[comuna] || 0) + 1;
+      const pageSize = 100;
+      let pagina = 1;
+      let registrosAcumulados = [];
+      let totalRegistros = 0;
+      let continuar = true;
+
+      while (continuar) {
+        const resp = await beneficiarioService.obtenerBeneficiarios({
+          linea_trabajo: user.linea_trabajo,
+          por_pagina: pageSize,
+          pagina,
         });
-        console.log('Distribución por comuna:', porComuna);
-        
-        // Mostrar nombres de barrios únicos
-        const barriosUnicos = [...new Set(items.map(r => r.barrio).filter(Boolean))];
-        console.log('Nombres de barrios únicos:', barriosUnicos);
-        
-        console.log('================================');
-        
-        setRegistros(items);
+
+        // Normalizar respuesta
+        const lista = Array.isArray(resp)
+          ? resp
+          : Array.isArray(resp?.beneficiarios)
+            ? resp.beneficiarios
+            : [];
+        const total = resp?.total ?? lista.length + (pagina - 1) * pageSize;
+
+        // Acumular y actualizar estados
+        registrosAcumulados = registrosAcumulados.concat(lista);
+        totalRegistros = total;
+        setRegistros(pagina === 1 ? lista : [...registrosAcumulados]);
+        setProgressRegistros({ loaded: registrosAcumulados.length, total: totalRegistros });
+
+        // Salir si se acabaron los registros
+        if (lista.length < pageSize) {
+          continuar = false;
+        } else {
+          pagina += 1;
+        }
       }
+
+      // Limpieza final
+      setError(null);
     } catch (err) {
       console.error('Error al cargar registros:', err);
       setError('Error al cargar registros. Intente de nuevo más tarde.');
@@ -71,6 +71,7 @@ const DashboardMapa = () => {
       setLoading(false);
     }
   }, [user]);
+
 
   // Cargar datos al montar el componente
   useEffect(() => {
@@ -115,11 +116,40 @@ const DashboardMapa = () => {
                 loading={loading && registros.length > 0}
               />
             </Grid>
-            <Grid item xs={12} md={8} lg={9}>
-              <Box sx={{ height: '70vh', minHeight: 500, position: 'relative' }}>
-                <MapaRegistros registros={registros} loading={loading} />
-              </Box>
-            </Grid>
+            <Grid item xs={12} md={8} lg={9} sx={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: '70vh' }}>
+  <Box sx={{ flex: 1, position: 'relative', minHeight: 500 }}>
+    <MapaRegistros registros={registros} loading={loading} />
+
+    {/* Overlay de progreso */}
+    {progressRegistros.total > 0 && progressRegistros.loaded < progressRegistros.total && (
+      <Box
+        sx={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          bgcolor: 'rgba(255,255,255,0.75)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1300,
+        }}
+      >
+        <Typography sx={{ mb: 1 }}>
+          Cargando registros {progressRegistros.loaded} de {progressRegistros.total}...
+        </Typography>
+        <Box sx={{ width: '80%', maxWidth: 400 }}>
+          <LinearProgress
+            variant="determinate"
+            value={(progressRegistros.loaded / progressRegistros.total) * 100}
+          />
+        </Box>
+      </Box>
+    )}
+  </Box>
+</Grid>
           </Grid>
         </>
       )}
