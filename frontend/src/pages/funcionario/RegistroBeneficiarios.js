@@ -60,6 +60,8 @@ const TIPOS_DOCUMENTO = [
   "Tarjeta de Identidad",
   "Pasaporte",
   "Registro Civil",
+  'PPT - Permiso por Protección Temporal',
+  'PEP - Permiso Especial de Permanencia',
 ];
 const GENEROS = ["Masculino", "Femenino", "Otro", "Prefiero no decir"];
 const RANGOS_EDAD = [
