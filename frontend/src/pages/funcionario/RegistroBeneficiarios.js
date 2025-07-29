@@ -726,13 +726,7 @@ export default function RegistroBeneficiarios() {
                      typeof firmaAValidar === 'string' && 
                      firmaAValidar.startsWith('data:image/');
     
-    console.log('Validando firma:', {
-      tieneFirma,
-      tipo: typeof firmaAValidar,
-      longitud: firmaAValidar ? firmaAValidar.length : 0,
-      fuente: signature ? 'signature' : formData.firma ? 'formData.firma' : 'ninguna'
-    });
-    
+
     // Validar que se haya capturado la firma
     if (!tieneFirma) {
       console.error('Error de validación: No se encontró firma válida', {
@@ -883,8 +877,6 @@ export default function RegistroBeneficiarios() {
         }
       }
       
-
-      
       if (esInvalido) {
         nuevosErrores[campo] = mensaje;
         camposIncompletos.push(etiqueta);
@@ -984,11 +976,6 @@ export default function RegistroBeneficiarios() {
       // Pequeña pausa para permitir la actualización
       await new Promise(resolve => setTimeout(resolve, 100));
       
-      console.log('Firma sincronizada:', {
-        enFormData: !!nuevoFormData.firma,
-        enEstado: !!signature,
-        sonIguales: signature === nuevoFormData.firma
-      });
       
       enqueueSnackbar('Firma actualizada correctamente', { 
         variant: 'info',
