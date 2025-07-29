@@ -1,4 +1,4 @@
-import { createContext, useState, useEffect, useContext, useCallback } from 'react';
+import { createContext, useState, useEffect, useContext, useCallback, useRef } from 'react';
 import usuarioService from '../services/usuarioService';
 import { jwtDecode } from 'jwt-decode';
 
@@ -10,18 +10,60 @@ const AuthContext = createContext(null);
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
+    const inactivityTimerRef = useRef(null);
 
     const logout = useCallback(() => {
         localStorage.removeItem(process.env.REACT_APP_TOKEN_KEY);
         localStorage.removeItem('user');
         setUser(null);
-        // Limpiar cualquier temporizador de inactividad existente
-        const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
-        events.forEach(event => {
-            window.removeEventListener(event, window.resetInactivityTimer);
-        });
-        clearTimeout(window.inactivityTimer);
+        
+        // Limpiar temporizador
+        if (inactivityTimerRef.current) {
+            clearTimeout(inactivityTimerRef.current);
+            inactivityTimerRef.current = null;
+        }
     }, []);
+
+    const resetInactivityTimer = useCallback(() => {
+        // Limpiar el temporizador existente
+        if (inactivityTimerRef.current) {
+            clearTimeout(inactivityTimerRef.current);
+        }
+
+        // Configurar nuevo temporizador
+        inactivityTimerRef.current = setTimeout(() => {
+            logout();
+        }, INACTIVITY_TIMEOUT);
+    }, [logout]);
+
+    const setupInactivityTimer = useCallback(() => {
+        // Limpiar cualquier listener existente
+        const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+        
+        // Función manejadora para los eventos
+        const handleActivity = () => {
+            resetInactivityTimer();
+        };
+        
+        // Agregar nuevos listeners
+        events.forEach(event => {
+            window.addEventListener(event, handleActivity);
+        });
+
+        // Iniciar el temporizador
+        resetInactivityTimer();
+
+        // Función de limpieza
+        return () => {
+            events.forEach(event => {
+                window.removeEventListener(event, handleActivity);
+            });
+            if (inactivityTimerRef.current) {
+                clearTimeout(inactivityTimerRef.current);
+                inactivityTimerRef.current = null;
+            }
+        };
+    }, [resetInactivityTimer]);
 
     const checkAuth = useCallback(async () => {
         const token = localStorage.getItem(process.env.REACT_APP_TOKEN_KEY);
@@ -59,16 +101,28 @@ export const AuthProvider = ({ children }) => {
                 const userData = await checkAuth();
                 if (userData) {
                     setUser(userData);
+                    // Configurar temporizador de inactividad solo si el usuario está autenticado
+                    return setupInactivityTimer();
                 }
             } catch (error) {
                 console.error('Error al verificar autenticación:', error);
             } finally {
                 setLoading(false);
             }
+            return () => {}; // No-op cleanup si no hay usuario
         };
 
-        verifyAuth();
-    }, [checkAuth]);
+        const cleanup = verifyAuth();
+        
+        // Limpieza al desmontar
+        return () => {
+            if (cleanup && typeof cleanup.then === 'function') {
+                cleanup.then(cleanupFn => cleanupFn && cleanupFn());
+            } else if (typeof cleanup === 'function') {
+                cleanup();
+            }
+        };
+    }, [checkAuth, setupInactivityTimer]);
 
     const login = async (email, password) => {
         try {

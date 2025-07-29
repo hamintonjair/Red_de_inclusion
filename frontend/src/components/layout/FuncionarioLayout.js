@@ -46,27 +46,27 @@ const menuItems = [
         icon: <PeopleIcon />, 
         path: '/funcionario/asistentes'
     },
-    { 
-        text: 'Migrantes', 
-        icon: <PeopleIcon />, 
-        path: '/funcionario/poblacion-migrante',
-        // disabled: true,
-        hideForLineaTrabajoNombre: [
-            'Adulto mayor',
-            'Población Religiosa',
-            'Enlace Religioso',
-            'Poblacion Religiosa', 
-            'Colombia Mayor', 
-            'Coordinación de Juventud',
-            'Coordinacion de Juventud',
-            'Renta Ciudadana', 
-            'Enlace de Niñas, Niños y Adolecentes',
-            'Habitantes Calles',
-            'Poblacion con Discapacidad',
-            'Población con Discapacidad',
-            'Coordinación de Víctimas',
-            'Coordinacion de Victimas'       ] 
-    },
+    // { 
+    //     text: 'Migrantes', 
+    //     icon: <PeopleIcon />, 
+    //     path: '/funcionario/poblacion-migrante',
+    //     // disabled: true,
+    //     hideForLineaTrabajoNombre: [
+    //         'Adulto mayor',
+    //         'Población Religiosa',
+    //         'Enlace Religioso',
+    //         'Poblacion Religiosa', 
+    //         'Colombia Mayor', 
+    //         'Coordinación de Juventud',
+    //         'Coordinacion de Juventud',
+    //         'Renta Ciudadana', 
+    //         'Enlace de Niñas, Niños y Adolecentes',
+    //         'Habitantes Calles',
+    //         'Poblacion con Discapacidad',
+    //         'Población con Discapacidad',
+    //         'Coordinación de Víctimas',
+    //         'Coordinacion de Victimas'       ] 
+    // },
     { 
         text: 'Actividades', 
         icon: <EventIcon />, 

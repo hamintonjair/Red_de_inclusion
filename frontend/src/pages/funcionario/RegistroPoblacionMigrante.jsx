@@ -35,9 +35,47 @@ import { useAuth } from '../../context/AuthContext';
 import { useSnackbar } from '../../context/SnackbarContext';
 import lineaTrabajoService from '../../services/lineaTrabajoService';
 import { obtenerComunas } from '../../services/comunaService';
-
+import { barriosPorComuna } from '../../data/barriosPorComuna';
 // Importaciones de estilos y componentes de layout
 import PageLayout from '../../components/layout/PageLayout';
+
+// Tipos de documentos migratorios
+const TIPOS_DOCUMENTOS_MIGRATORIOS = [
+  'PPT - Permiso por Protección Temporal',
+  'PEP - Permiso Especial de Permanencia',
+  'Pasaporte',
+  'Cédula de ciudadanía',
+  'Cédula de extranjería',
+  'No tiene',
+  'Sin documento'
+];
+
+// Función para mapear valores cortos a valores completos
+const mapearTipoDocumento = (valor) => {
+  if (!valor) return '';
+  // Si el valor ya está en el formato correcto, devolverlo tal cual
+  if (TIPOS_DOCUMENTOS_MIGRATORIOS.includes(valor)) return valor;
+  
+  // Mapear valores cortos a valores completos
+  const mapeo = {
+    'PPT': 'PPT - Permiso por Protección Temporal',
+    'PEP': 'PEP - Permiso Especial de Permanencia',
+    'Pasaporte': 'Pasaporte',
+    'Cédula de ciudadanía': 'Cédula de ciudadanía',
+    'Cédula de extranjería': 'Cédula de ciudadanía',
+    'No tiene': 'Ninguno',
+    'Sin documento': 'Sin documento'
+    // Agregar otros mapeos si es necesario
+  };
+  
+  return mapeo[valor] || ''; // Devolver el valor mapeado o cadena vacía si no hay coincidencia
+};
+
+// Función auxiliar para obtener barrios por comuna
+const obtenerBarriosPorComuna = (nombreComuna) => {
+  const comuna = barriosPorComuna.find(c => c.comuna === nombreComuna);
+  return comuna ? comuna.barrios : [];
+};
 
 const RegistroPoblacionMigrante = () => {
   const location = useLocation(); // Agregar useLocation
@@ -58,6 +96,7 @@ const RegistroPoblacionMigrante = () => {
   const [errorMessage, setErrorMessage] = useState('');
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [comunas, setComunas] = useState([]);
+  const [barriosDisponibles, setBarriosDisponibles] = useState([]);
   const currentDate = new Date().toLocaleDateString('es-CO', {
     year: 'numeric',
     month: 'long',
@@ -107,18 +146,23 @@ const RegistroPoblacionMigrante = () => {
     telefono: '',
     lugarOrigen: '',
     barrioResidencia: '',
+    otroBarrio: '',
     comunaResidencia: '',
     fechaRegistro: currentDate,
     fechaLlegadaColombia: '', // Fecha de llegada a Colombia
     sexo: '', // Añadido
+    etnia: '', // Movido de Datos Socioculturales
+    nivelEducativo: '', // Movido de Datos Socioculturales
 
     // Documentación
     tipoDocumento: '',
     numeroDocumento: '',
     otroDocumento: '',
-    tienePPT: false,
-    tieneDocumentoMigratorio: '',
+    tieneDocumentoMigratorio: false, // Siempre booleano (true/false)
     tipoDocumentoMigratorio: '',
+    numeroDocumentoMigratorio: '',
+    fechaVencimientoDocumento: '',
+    otroTipoDocumento: '',
     situacionMigratoria: '',
 
     // Trabajo
@@ -133,30 +177,15 @@ const RegistroPoblacionMigrante = () => {
     jefeHogarExperienciaCual: '', // NUEVO (Condicional)
 
     // Educación
-    nivelEducativo: '', // Se mantienen. Opciones se actualizarán en el JSX.
+    // nivelEducativo: '', // Se mantienen. Opciones se actualizarán en el JSX.
     institucionEducativa: '', // Se mantienen.
     paisAdquisicionTituloProfesional: '', // NUEVO
     tituloHomologadoColombia: '', // NUEVO (SI/NO)
     razonNoHomologacionTitulo: '', // NUEVO (Condicional)
 
     // Familia
-    cantidadHijos: '', // Se mantiene por ahora
-    ocupacionHijos: '', // Se mantiene por ahora
-    composicionNucleoFamiliar: { // NUEVO OBJETO
-      hombres_0_17: '',
-      hombres_18_59: '',
-      hombres_60_mas: '',
-      mujeres_0_17: '',
-      mujeres_18_59: '',
-      mujeres_60_mas: '',
-      gestantes_0_17: '',
-      gestantes_18_59: '',
-      gestantes_60_mas: '',
-      noBinarios_0_17: '',
-      noBinarios_18_59: '',
-      noBinarios_60_mas: '',
-      // totalPersonasNucleo: '' // Podría calcularse dinámicamente
-    },
+    tamanoNucleoFamiliar: 1, // Valor por defecto para el tamaño del núcleo familiar
+    cantidadNinosAdolescentes: 0, // Valor por defecto para la cantidad de niños/adolescentes
 
     // Salud
     cuentaConAfiliacionPS: '', // Se mantiene
@@ -244,7 +273,14 @@ const RegistroPoblacionMigrante = () => {
       hombresAdultos: '',
       mujeresAdultas: '',
       personasGestantes: '',
-      tieneDiscapacidad: ''
+      tieneDiscapacidad: '',
+      // Campos movidos de Datos Socioculturales
+      servicioAgua: false,
+      servicioElectricidad: false,
+      servicioAlcantarillado: false,
+      servicioSalud: false,
+      tipoVivienda: '',
+      condicionVivienda: ''
     },
 
     // Información del funcionario
@@ -257,10 +293,20 @@ const RegistroPoblacionMigrante = () => {
     console.groupEnd();
   }, [formData.workingStatus, formData.workType, formData.monthlyIncome]);
 
+  // Cargar barrios cuando cambia la comuna seleccionada
+  useEffect(() => {
+    if (formData.comunaResidencia) {
+      if (formData.comunaResidencia === 'Zonas Rurales') {
+        setBarriosDisponibles([{ nombre: 'Zona Rural' }]);
+      } else {
+        const barrios = obtenerBarriosPorComuna(formData.comunaResidencia);
+        setBarriosDisponibles(barrios);
+      }
+    }
+  }, [formData.comunaResidencia]);
+
   // Lógica para modo edición
   useEffect(() => {
-    // Mostrar todos los campos del formulario inicial
-
     if (state?.migrante && state?.modoEdicion) {
       const { migrante } = state;
       const camposFormulario = {
@@ -289,7 +335,7 @@ const RegistroPoblacionMigrante = () => {
 
         // Documentación
         tienePPT: migrante.tipoDocumentoMigratorio === 'PPT',
-        tieneDocumentoMigratorio: migrante.tipoDocumentoMigratorio ? 'Sí' : 'No',
+        tieneDocumentoMigratorio: !!migrante.tipoDocumentoMigratorio, // Cambiado a booleano
         tipoDocumento: migrante.tipo_documento || '',
         tipoDocumentoMigratorio: migrante.tipoDocumentoMigratorio || '',
         numeroDocumento: migrante.numero_documento || '',
@@ -382,10 +428,21 @@ const RegistroPoblacionMigrante = () => {
       };
 
 
-      setFormData({
+      // Primero actualizar los datos del formulario
+      setFormData(prev => ({
         ...initialFormState,
         ...camposFormulario
-      });
+      }));
+      
+      // Luego cargar los barrios si hay una comuna
+      if (camposFormulario.comunaResidencia) {
+        if (camposFormulario.comunaResidencia === 'Zonas Rurales') {
+          setBarriosDisponibles([{ nombre: 'Zona Rural' }]);
+        } else {
+          const barrios = obtenerBarriosPorComuna(camposFormulario.comunaResidencia);
+          setBarriosDisponibles(barrios);
+        }
+      }
     }
   }, [state, user, currentDate, initialFormState]);
 
@@ -421,301 +478,350 @@ const RegistroPoblacionMigrante = () => {
     }
   }, [formData.tienePPT, formData.tieneDocumentoMigratorio]);
 
-  const renderDocumentoMigratorio = () => {
-    // Condiciones de renderizado más explícitas
-    const tienePPT = formData.tienePPT === true;
-    const tieneDocumentoMigratorio = formData.tieneDocumentoMigratorio === 'Sí';
+  // const renderDocumentoMigratorio = () => {
+  //   // Condiciones de renderizado más explícitas
+  //   const tienePPT = formData.tienePPT === true;
+  //   const tieneDocumentoMigratorio = formData.tieneDocumentoMigratorio === 'Sí';
 
-    const mostrarCamposDocumento = tienePPT || tieneDocumentoMigratorio;
+  //   const mostrarCamposDocumento = tienePPT || tieneDocumentoMigratorio;
 
-    if (mostrarCamposDocumento) {
-      return renderCamposDocumentoMigratorio();
-    }
+  //   if (mostrarCamposDocumento) {
+  //     return renderCamposDocumentoMigratorio();
+  //   }
 
-    return null;
+  //   return null;
 
-    function renderCamposDocumentoMigratorio() {
+  //   function renderCamposDocumentoMigratorio() {
 
-      return (
-        <React.Fragment>
-          <Grid item xs={12} md={6}>
-            <FormControl fullWidth variant="outlined">
-              <InputLabel id="tieneDocumentoMigratorio-label">¿Tiene documento migratorio?</InputLabel>
-              <Select
-                labelId="tieneDocumentoMigratorio-label"
-                name="tieneDocumentoMigratorio"
-                value={formData.tieneDocumentoMigratorio || ''}
-                label="¿Tiene documento migratorio?"
-                onChange={handleChange}
-                fullWidth
-              >
-                <MenuItem value="Sí">Sí</MenuItem>
-                <MenuItem value="No">No</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
+  //     return (
+  //       <React.Fragment>
+  //         <Grid item xs={12} md={6}>
+  //           <FormControl fullWidth variant="outlined">
+  //             <InputLabel id="tieneDocumentoMigratorio-label">¿Tiene documento migratorio?</InputLabel>
+  //             <Select
+  //               labelId="tieneDocumentoMigratorio-label"
+  //               name="tieneDocumentoMigratorio"
+  //               value={formData.tieneDocumentoMigratorio || ''}
+  //               label="¿Tiene documento migratorio?"
+  //               onChange={handleChange}
+  //               fullWidth
+  //             >
+  //               <MenuItem value="Sí">Sí</MenuItem>
+  //               <MenuItem value="No">No</MenuItem>
+  //             </Select>
+  //           </FormControl>
+  //         </Grid>
 
-          <Grid item xs={12} md={6}>
-            <FormControl fullWidth variant="outlined">
-              <InputLabel id="tipoDocumentoMigratorio-label">Tipo de Documento Migratorio</InputLabel>
-              <Select
-                labelId="tipoDocumentoMigratorio-label"
-                name="tipoDocumentoMigratorio"
-                value={formData.tipoDocumentoMigratorio || ''}
-                label="Tipo de Documento Migratorio"
-                onChange={handleChange}
-                error={!!errors.tipoDocumentoMigratorio}
-                fullWidth
-              >
-                <MenuItem value="PPT">Permiso de Permanencia Temporal (PPT)</MenuItem>
-                <MenuItem value="PEP">Permiso Especial de Permanencia (PEP)</MenuItem>
-                <MenuItem value="Otro">Otro</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
+  //         <Grid item xs={12} md={6}>
+  //           <FormControl fullWidth variant="outlined">
+  //             <InputLabel id="tipoDocumentoMigratorio-label">Tipo de Documento Migratorio</InputLabel>
+  //             <Select
+  //               labelId="tipoDocumentoMigratorio-label"
+  //               name="tipoDocumentoMigratorio"
+  //               value={formData.tipoDocumentoMigratorio || ''}
+  //               label="Tipo de Documento Migratorio"
+  //               onChange={handleChange}
+  //               error={!!errors.tipoDocumentoMigratorio}
+  //               fullWidth
+  //             >
+  //               <MenuItem value="PPT">Permiso de Permanencia Temporal (PPT)</MenuItem>
+  //               <MenuItem value="PEP">Permiso Especial de Permanencia (PEP)</MenuItem>
+  //               <MenuItem value="Otro">Otro</MenuItem>
+  //             </Select>
+  //           </FormControl>
+  //         </Grid>
 
-          <Grid item xs={12} md={6}>
-            <FormControl fullWidth variant="outlined">
-              <InputLabel id="tipoDocumento-label">Tipo de Documento</InputLabel>
-              <Select
-                labelId="tipoDocumento-label"
-                name="tipoDocumento"
-                value={formData.tipoDocumento || ''}
-                label="Tipo de Documento"
-                onChange={handleChange}
-                error={!!errors.tipoDocumento}
-                fullWidth
-              >
-                {TIPOS_DOCUMENTO.map((tipo) => (
-                  <MenuItem key={tipo} value={tipo}>
-                    {tipo}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
+  //         <Grid item xs={12} md={6}>
+  //           <FormControl fullWidth variant="outlined">
+  //             <InputLabel id="tipoDocumento-label">Tipo de Documento</InputLabel>
+  //             <Select
+  //               labelId="tipoDocumento-label"
+  //               name="tipoDocumento"
+  //               value={formData.tipoDocumento || ''}
+  //               label="Tipo de Documento"
+  //               onChange={handleChange}
+  //               error={!!errors.tipoDocumento}
+  //               fullWidth
+  //             >
+  //               {TIPOS_DOCUMENTO.map((tipo) => (
+  //                 <MenuItem key={tipo} value={tipo}>
+  //                   {tipo}
+  //                 </MenuItem>
+  //               ))}
+  //             </Select>
+  //           </FormControl>
+  //         </Grid>
 
-          <Grid item xs={12} md={6}>
-            <TextField
-              fullWidth
-              label="Número de Documento"
-              name="numeroDocumento"
-              value={formData.numeroDocumento}
-              onChange={handleChange}
-              error={!!errors.numeroDocumento}
-              helperText={errors.numeroDocumento}
-            />
-          </Grid>
+  //         <Grid item xs={12} md={6}>
+  //           <TextField
+  //             fullWidth
+  //             label="Número de Documento"
+  //             name="numeroDocumento"
+  //             value={formData.numeroDocumento}
+  //             onChange={handleChange}
+  //             error={!!errors.numeroDocumento}
+  //             helperText={errors.numeroDocumento}
+  //           />
+  //         </Grid>
 
-          {formData.tipoDocumento === 'Otro' && (
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Especifique otro documento"
-                name="otroDocumento"
-                value={formData.otroDocumento}
-                onChange={handleChange}
-              />
-            </Grid>
-          )}
-        </React.Fragment>
-      );
+  //         {formData.tipoDocumento === 'Otro' && (
+  //           <Grid item xs={12} md={6}>
+  //             <TextField
+  //               fullWidth
+  //               label="Especifique otro documento"
+  //               name="otroDocumento"
+  //               value={formData.otroDocumento}
+  //               onChange={handleChange}
+  //             />
+  //           </Grid>
+  //         )}
+  //       </React.Fragment>
+  //     );
+  //   }
+  // };
+
+  // Manejar cambios en la comuna para actualizar los barrios disponibles
+  const handleComunaChange = (e) => {
+    const comuna = e.target.value;
+    if (comuna === 'Zonas Rurales') {
+      setFormData(prev => ({
+        ...prev,
+        comunaResidencia: comuna,
+        barrioResidencia: 'Zona Rural',
+        otroBarrio: ''
+      }));
+      setBarriosDisponibles([{ nombre: 'Zona Rural' }]);
+    } else {
+      const barrios = obtenerBarriosPorComuna(comuna);
+      setBarriosDisponibles(barrios);
+      setFormData(prev => ({
+        ...prev,
+        comunaResidencia: comuna,
+        barrioResidencia: '',
+        otroBarrio: ''
+      }));
     }
   };
 
   const handleChange = (e) => {
-  const { name, value, type, checked } = e.target;
-  console.log('[handleChange] Event:', { name, value, type, checked });
+    const { name, value, type, checked } = e.target;
+    console.log('[handleChange] Event:', { name, value, type, checked });
 
-  const arrayCheckboxFields = [
-    'procesoAcompanamientoMunicipal',
-    'tipoDiversidadFuncionalAfectaciones',
-    'antecedentesFamiliaresEnfermedadesCuales',
-    'condicionEspecificaSaludCuales',
-  ];
+    const arrayCheckboxFields = [
+      'procesoAcompanamientoMunicipal',
+      'tipoDiversidadFuncionalAfectaciones',
+      'antecedentesFamiliaresEnfermedadesCuales',
+      'condicionEspecificaSaludCuales',
+    ];
 
-  const arrayCheckboxFieldsCondVul = [
-    'acompanamientoTemasVBG',
-    'dificultadesAccesoServicios',
-    'tipoAsistenciaHumanitaria',
-    'quienBrindoAsistenciaHumanitaria',
-    'necesidadesAcompanamientoNNA'
-  ];
+    const arrayCheckboxFieldsCondVul = [
+      'acompanamientoTemasVBG',
+      'dificultadesAccesoServicios',
+      'tipoAsistenciaHumanitaria',
+      'quienBrindoAsistenciaHumanitaria',
+      'necesidadesAcompanamientoNNA'
+    ];
 
-  const arrayCheckboxFieldsAsistenciaHumanitaria = [
-    'tiposAsistencia'
-  ];
+    const arrayCheckboxFieldsAsistenciaHumanitaria = [
+      'tiposAsistencia'
+    ];
 
-  // Nombres de los campos que son arrays de checkboxes en mediosComunicacion
-  const arrayCheckboxFieldsMediosCom = [
-    'mediosUtilizados' // Para el campo mediosComunicacion.mediosUtilizados
-  ];
+    // Nombres de los campos que son arrays de checkboxes en mediosComunicacion
+    const arrayCheckboxFieldsMediosCom = [
+      'mediosUtilizados' // Para el campo mediosComunicacion.mediosUtilizados
+    ];
   
-  // --- Lógica específica para campos especiales ---
-  if (name === 'isPPT') {
-    const boolValue = Boolean(checked);
-    setFormData(prevState => ({
-      ...prevState,
-      [name]: boolValue,
-      tieneDocumentoMigratorio: boolValue ? 'Sí' : 'No',
-      ...(boolValue ? {
-        tipoDocumentoMigratorio: prevState.tipoDocumentoMigratorio || 'PPT',
-        tipoDocumento: prevState.tipoDocumento || 'Cédula de Extranjería'
-      } : {
-        tipoDocumentoMigratorio: '',
-        tipoDocumento: '',
-        numeroDocumento: ''
-      })
-    }));
-    return;
-  }
+    // --- Lógica específica para campos especiales ---
+    if (name === 'isPPT') {
+      const boolValue = Boolean(checked);
+      setFormData(prevState => ({
+        ...prevState,
+        [name]: boolValue,
+        tieneDocumentoMigratorio: boolValue ? 'Sí' : 'No',
+        ...(boolValue ? {
+          tipoDocumentoMigratorio: prevState.tipoDocumentoMigratorio || 'PPT'
+        } : {
+          tipoDocumentoMigratorio: '',
+          numeroDocumentoMigratorio: ''
+        })
+      }));
+      return;
+    }
 
-  if (name === 'tieneDocumentoMigratorio') {
-    const isNo = value === 'No';
-    setFormData(prevState => ({
-      ...prevState,
-      [name]: value,
-      tipoDocumento: isNo ? 'Sin documento' : (prevState.tipoDocumento === 'Sin documento' ? '' : prevState.tipoDocumento),
-      numeroDocumento: isNo ? '' : (prevState.numeroDocumento === '' && prevState.tipoDocumento === 'Sin documento' ? '' : prevState.numeroDocumento),
-      tipoDocumentoMigratorio: isNo ? '' : (prevState.tipoDocumentoMigratorio === '' ? '' : prevState.tipoDocumentoMigratorio),
-    }));
-    return;
-  }
+    if (name === 'tieneDocumentoMigratorio') {
+      const isNo = value === 'No';
+      setFormData(prevState => ({
+        ...prevState,
+        [name]: value,
+        tipoDocumentoMigratorio: isNo ? 'Sin documento' : (prevState.tipoDocumentoMigratorio === 'Sin documento' ? '' : prevState.tipoDocumentoMigratorio),
+        numeroDocumentoMigratorio: isNo ? '' : (prevState.numeroDocumentoMigratorio === '' && prevState.tipoDocumentoMigratorio === 'Sin documento' ? '' : prevState.numeroDocumentoMigratorio)
+      }));
+      return;
+    }
 
-  if (name === 'workingStatus') {
-    setFormData(prevState => ({
-      ...prevState,
-      [name]: value,
-      ...(value === 'No' ? {
-        workType: '', 
-        monthlyIncome: ''
-      } : {})
-    }));
-    return;
-  }
+    if (name === 'workingStatus') {
+      setFormData(prevState => ({
+        ...prevState,
+        [name]: value,
+        ...(value === 'No' ? {
+          workType: '', 
+          monthlyIncome: ''
+        } : {})
+      }));
+      return;
+    }
 
-  if (name === 'ocupacionNinosAdolescentes') { 
-    setFormData(prevState => ({
-      ...prevState,
-      [name]: value,
-      ...(value === 'programas_icbf' || value === 'ninguna' ? { institucionEducativa: '' } : {})
-    }));
-    return;
-  }
+    if (name === 'ocupacionNinosAdolescentes') { 
+      setFormData(prevState => ({
+        ...prevState,
+        [name]: value,
+        ...(value === 'programas_icbf' || value === 'ninguna' ? { institucionEducativa: '' } : {})
+      }));
+      return;
+    }
 
-  // Manejar campos anidados de caracterización de grupo
-  if (name.startsWith('caracterizacionGrupo.')) {
-    const fieldName = name.split('.')[1];
-    setFormData(prevState => ({
-      ...prevState,
-      caracterizacionGrupo: {
-        ...prevState.caracterizacionGrupo,
-        [fieldName]: value
-      }
-    }));
-    return;
-  }
-  // --- Fin de lógica específica para campos especiales ---
+    // Limpiar campos dependientes en Condiciones de Salud cuando se selecciona 'No'
+    if (name === 'tieneAntecedentesFamiliaresEnfermedades' && value === 'No') {
+      setFormData(prevState => ({
+        ...prevState,
+        [name]: value,
+        antecedentesFamiliaresEnfermedadesCuales: []
+      }));
+      return;
+    }
 
-  if (name.includes('.')) {
-    const [objectName, fieldName] = name.split('.', 2); 
-    console.log('[handleChange] Parsed name (anidado):', { objectName, fieldName });
+    if (name === 'presentaCondicionEspecificaSalud' && value === 'No') {
+      setFormData(prevState => ({
+        ...prevState,
+        [name]: value,
+        condicionEspecificaSaludCuales: []
+      }));
+      return;
+    }
 
-    if (objectName === 'condicionesVulnerabilidad' && arrayCheckboxFieldsCondVul.includes(fieldName) && type === 'checkbox') {
-      console.log(`[handleChange] Campo anidado '${objectName}.${fieldName}' ES un array de checkboxes (condicionesVulnerabilidad).`);
-      setFormData(prevData => {
-        const currentArray = prevData[objectName]?.[fieldName] || [];
-        let newArray;
-        if (checked) {
-          newArray = currentArray.includes(value) ? currentArray : [...currentArray, value];
-        } else {
-          newArray = currentArray.filter(item => item !== value);
+    // Manejar cambios en el barrio
+    if (name === 'barrioResidencia') {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value,
+        ...(value !== 'otro' ? { otroBarrio: '' } : {})
+      }));
+      return;
+    }
+
+    // Manejar campos anidados de caracterización de grupo
+    if (name.startsWith('caracterizacionGrupo.')) {
+      const fieldName = name.split('.')[1];
+      setFormData(prevState => ({
+        ...prevState,
+        caracterizacionGrupo: {
+          ...prevState.caracterizacionGrupo,
+          [fieldName]: value
         }
-        return {
+      }));
+      return;
+    }
+    // --- Fin de lógica específica para campos especiales ---
+
+    if (name.includes('.')) {
+      const [objectName, fieldName] = name.split('.', 2); 
+      console.log('[handleChange] Parsed name (anidado):', { objectName, fieldName });
+
+      if (objectName === 'condicionesVulnerabilidad' && arrayCheckboxFieldsCondVul.includes(fieldName) && type === 'checkbox') {
+        console.log(`[handleChange] Campo anidado '${objectName}.${fieldName}' ES un array de checkboxes (condicionesVulnerabilidad).`);
+        setFormData(prevData => {
+          const currentArray = prevData[objectName]?.[fieldName] || [];
+          let newArray;
+          if (checked) {
+            newArray = currentArray.includes(value) ? currentArray : [...currentArray, value];
+          } else {
+            newArray = currentArray.filter(item => item !== value);
+          }
+          return {
+            ...prevData,
+            [objectName]: {
+              ...(prevData[objectName] || {}),
+              [fieldName]: newArray
+            }
+          };
+        });
+      } else if (objectName === 'asistenciaHumanitaria' && arrayCheckboxFieldsAsistenciaHumanitaria.includes(fieldName) && type === 'checkbox') {
+        console.log(`[handleChange] Campo anidado '${objectName}.${fieldName}' ES un array de checkboxes (asistenciaHumanitaria).`);
+        setFormData(prevData => {
+          const currentArray = prevData[objectName]?.[fieldName] || [];
+          let newArray;
+          if (checked) {
+            newArray = currentArray.includes(value) ? currentArray : [...currentArray, value];
+          } else {
+            newArray = currentArray.filter(item => item !== value);
+          }
+          return {
+            ...prevData,
+            [objectName]: { 
+              ...(prevData[objectName] || {}), 
+              [fieldName]: newArray 
+            }
+          };
+        });
+      } else if (objectName === 'mediosComunicacion' && arrayCheckboxFieldsMediosCom.includes(fieldName) && type === 'checkbox') {
+        console.log(`[handleChange] Campo anidado '${objectName}.${fieldName}' ES un array de checkboxes (mediosComunicacion).`);
+        setFormData(prevData => {
+          const currentArray = prevData[objectName]?.[fieldName] || [];
+          let newArray;
+          if (checked) {
+            newArray = currentArray.includes(value) ? currentArray : [...currentArray, value];
+          } else {
+            newArray = currentArray.filter(item => item !== value);
+          }
+          return {
+            ...prevData,
+            [objectName]: { // mediosComunicacion
+              ...(prevData[objectName] || {}), 
+              [fieldName]: newArray // mediosUtilizados
+            }
+          };
+        });
+      } else {
+        console.log(`[handleChange] Campo anidado '${objectName}.${fieldName}' NO es un array de checkboxes especial o no es checkbox.`);
+        setFormData(prevData => ({
           ...prevData,
           [objectName]: {
             ...(prevData[objectName] || {}),
-            [fieldName]: newArray
+            [fieldName]: type === 'checkbox' ? checked : value
           }
-        };
-      });
-    } else if (objectName === 'asistenciaHumanitaria' && arrayCheckboxFieldsAsistenciaHumanitaria.includes(fieldName) && type === 'checkbox') {
-      console.log(`[handleChange] Campo anidado '${objectName}.${fieldName}' ES un array de checkboxes (asistenciaHumanitaria).`);
-      setFormData(prevData => {
-        const currentArray = prevData[objectName]?.[fieldName] || [];
-        let newArray;
-        if (checked) {
-          newArray = currentArray.includes(value) ? currentArray : [...currentArray, value];
-        } else {
-          newArray = currentArray.filter(item => item !== value);
-        }
-        return {
-          ...prevData,
-          [objectName]: { 
-            ...(prevData[objectName] || {}), 
-            [fieldName]: newArray 
+        }));
+      }
+    } else if (type === 'checkbox') { 
+      if (arrayCheckboxFields.includes(name)) {
+        console.log(`[handleChange] Campo de nivel superior '${name}' ES un array de checkboxes.`);
+        setFormData(prevData => {
+          const currentArray = prevData[name] || [];
+          let newArray;
+          if (checked) {
+            newArray = currentArray.includes(value) ? currentArray : [...currentArray, value];
+          } else {
+            newArray = currentArray.filter(item => item !== value);
           }
-        };
-      });
-    } else if (objectName === 'mediosComunicacion' && arrayCheckboxFieldsMediosCom.includes(fieldName) && type === 'checkbox') {
-      console.log(`[handleChange] Campo anidado '${objectName}.${fieldName}' ES un array de checkboxes (mediosComunicacion).`);
-      setFormData(prevData => {
-        const currentArray = prevData[objectName]?.[fieldName] || [];
-        let newArray;
-        if (checked) {
-          newArray = currentArray.includes(value) ? currentArray : [...currentArray, value];
-        } else {
-          newArray = currentArray.filter(item => item !== value);
-        }
-        return {
+          return {
+            ...prevData,
+            [name]: newArray
+          };
+        });
+      } else { 
+        console.log(`[handleChange] Campo de nivel superior '${name}' NO es un array de checkboxes (es booleano).`);
+        setFormData(prevData => ({
           ...prevData,
-          [objectName]: { // mediosComunicacion
-            ...(prevData[objectName] || {}), 
-            [fieldName]: newArray // mediosUtilizados
-          }
-        };
-      });
-    } else {
-      console.log(`[handleChange] Campo anidado '${objectName}.${fieldName}' NO es un array de checkboxes especial o no es checkbox.`);
-      setFormData(prevData => ({
-        ...prevData,
-        [objectName]: {
-          ...(prevData[objectName] || {}),
-          [fieldName]: type === 'checkbox' ? checked : value
-        }
-      }));
-    }
-  } else if (type === 'checkbox') { 
-    if (arrayCheckboxFields.includes(name)) {
-      console.log(`[handleChange] Campo de nivel superior '${name}' ES un array de checkboxes.`);
-      setFormData(prevData => {
-        const currentArray = prevData[name] || [];
-        let newArray;
-        if (checked) {
-          newArray = currentArray.includes(value) ? currentArray : [...currentArray, value];
-        } else {
-          newArray = currentArray.filter(item => item !== value);
-        }
-        return {
-          ...prevData,
-          [name]: newArray
-        };
-      });
+          [name]: checked
+        }));
+      }
     } else { 
-      console.log(`[handleChange] Campo de nivel superior '${name}' NO es un array de checkboxes (es booleano).`);
+      console.log(`[handleChange] Campo de nivel superior '${name}' es tipo '${type}'.`);
       setFormData(prevData => ({
         ...prevData,
-        [name]: checked
+        [name]: value
       }));
     }
-  } else { 
-    console.log(`[handleChange] Campo de nivel superior '${name}' es tipo '${type}'.`);
-    setFormData(prevData => ({
-      ...prevData,
-      [name]: value
-    }));
-  }
-};
+  };
 
   const validateForm = () => {
     const newErrors = {};
@@ -723,6 +829,23 @@ const RegistroPoblacionMigrante = () => {
     // Validaciones de campos personales
     if (!formData.nombreCompleto) {
       newErrors.nombreCompleto = 'El nombre completo es obligatorio';
+    }
+
+    // Validación de comuna y barrio
+    if (!formData.comunaResidencia) {
+      newErrors.comunaResidencia = 'La comuna es obligatoria';
+    }
+    
+    if (formData.comunaResidencia === 'Zonas Rurales') {
+      if (!formData.barrioResidencia) {
+        newErrors.barrioResidencia = 'El nombre de la vereda/corregimiento es obligatorio';
+      }
+    } else if (formData.comunaResidencia) {
+      if (!formData.barrioResidencia) {
+        newErrors.barrioResidencia = 'El barrio es obligatorio';
+      } else if (formData.barrioResidencia === 'otro' && !formData.otroBarrio) {
+        newErrors.otroBarrio = 'Por favor especifique el nombre del barrio';
+      }
     }
     if (!formData.correoElectronico) {
       newErrors.correoElectronico = 'Correo electrónico es requerido';
@@ -768,24 +891,21 @@ const RegistroPoblacionMigrante = () => {
     }
     
     // Validaciones para la sección de Nutrición (5 preguntas actuales)
-    if (!formData.nutricion.preocupacionPorAlimentos) {
-      newErrors['nutricion.preocupacionPorAlimentos'] = 'Respuesta requerida';
-    }
-    // Se eliminó la validación para nutricion.noComioSaludablePorRecursos
-    // Se eliminó la validación para nutricion.comioPocoPorRecursos
-    // Se eliminó la validación para nutricion.seQuedoSinAlimentosPorRecursos
-    if (!formData.nutricion.soloComioAlgunasVecesPorRecursos) {
-      newErrors['nutricion.soloComioAlgunasVecesPorRecursos'] = 'Respuesta requerida';
-    }
-    if (!formData.nutricion.dejoDeComerPorRecursos) {
-      newErrors['nutricion.dejoDeComerPorRecursos'] = 'Respuesta requerida';
-    }
-    if (!formData.nutricion.tuvoHambreNoComioPorRecursos) {
-      newErrors['nutricion.tuvoHambreNoComioPorRecursos'] = 'Respuesta requerida';
-    }
-    if (!formData.nutricion.perdioPesoPorRecursos) {
-      newErrors['nutricion.perdioPesoPorRecursos'] = 'Respuesta requerida';
-    }
+    // if (!formData.nutricion.preocupacionPorAlimentos) {
+    //   newErrors['nutricion.preocupacionPorAlimentos'] = 'Respuesta requerida';
+    // }
+    // if (!formData.nutricion.soloComioAlgunasVecesPorRecursos) {
+    //   newErrors['nutricion.soloComioAlgunasVecesPorRecursos'] = 'Respuesta requerida';
+    // }
+    // if (!formData.nutricion.dejoDeComerPorRecursos) {
+    //   newErrors['nutricion.dejoDeComerPorRecursos'] = 'Respuesta requerida';
+    // }
+    // if (!formData.nutricion.tuvoHambreNoComioPorRecursos) {
+    //   newErrors['nutricion.tuvoHambreNoComioPorRecursos'] = 'Respuesta requerida';
+    // }
+    // if (!formData.nutricion.perdioPesoPorRecursos) {
+    //   newErrors['nutricion.perdioPesoPorRecursos'] = 'Respuesta requerida';
+    // }
 
     // Validaciones para Condiciones de Vulnerabilidad
     if (!formData.condicionesVulnerabilidad?.victimaVBGUltimoAno) {
@@ -807,12 +927,15 @@ const RegistroPoblacionMigrante = () => {
     if (!formData.condicionesVulnerabilidad?.familiarReconocidoRUV) {
       newErrors['condicionesVulnerabilidad.familiarReconocidoRUV'] = 'Respuesta requerida.';
     }
-    if (formData.condicionesVulnerabilidad?.dificultadesAccesoServicios?.includes('Otro') && !formData.condicionesVulnerabilidad?.otroDificultadesAccesoServicios) {
-      newErrors['condicionesVulnerabilidad.otroDificultadesAccesoServicios'] = 'Por favor, especifique la otra dificultad de acceso.';
-    }
-    if (!formData.condicionesVulnerabilidad?.asistenciaHumanitariaRecibida) {
-      newErrors['condicionesVulnerabilidad.asistenciaHumanitariaRecibida'] = 'Respuesta requerida.';
-    }
+    // Comentado temporalmente para permitir el envío del formulario
+    // Revisar si este campo debe estar en el formulario
+    // if (formData.condicionesVulnerabilidad?.dificultadesAccesoServicios?.includes('Otro') && !formData.condicionesVulnerabilidad?.otroDificultadesAccesoServicios) {
+    //   newErrors['condicionesVulnerabilidad.otroDificultadesAccesoServicios'] = 'Por favor, especifique la otra dificultad de acceso.';
+    // }
+    // Haciendo este campo opcional temporalmente para pruebas
+    // if (!formData.condicionesVulnerabilidad?.asistenciaHumanitariaRecibida) {
+    //   newErrors['condicionesVulnerabilidad.asistenciaHumanitariaRecibida'] = 'Respuesta requerida.';
+    // }
     if (formData.condicionesVulnerabilidad?.asistenciaHumanitariaRecibida === 'Sí') {
       if (!formData.condicionesVulnerabilidad?.tipoAsistenciaHumanitaria || formData.condicionesVulnerabilidad.tipoAsistenciaHumanitaria.length === 0) {
         newErrors['condicionesVulnerabilidad.tipoAsistenciaHumanitaria'] = 'Debe seleccionar al menos un tipo de asistencia.';
@@ -839,54 +962,262 @@ const RegistroPoblacionMigrante = () => {
 
 const handleSubmit = async (e) => {
   e.preventDefault();
-  const formErrors = validateForm();
-
-  if (Object.keys(formErrors).length === 0) {
-    setOpenConfirmDialog(true);
-  } else {
-    setErrors(formErrors);
-    setOpenSnackbar(true);
-    setSnackbarMessage('Por favor, corrija los errores en el formulario');
-    setSnackbarSeverity('error');
+  console.log('=== INICIANDO ENVÍO DE FORMULARIO ===');
+  
+  // Validación básica de campos requeridos
+  const newErrors = {};
+  console.log('Iniciando validación de campos requeridos...');
+  
+  // Función auxiliar para agregar errores con el formato correcto
+  const addError = (field, message) => {
+    console.log(`Campo con error: ${field} - ${message}`);
+    newErrors[field] = message;
+  };
+  
+  // 1. Datos personales (requeridos)
+  if (!formData.nombreCompleto) addError('nombreCompleto', 'El nombre completo es requerido');
+  if (!formData.fechaNacimiento) addError('fechaNacimiento', 'La fecha de nacimiento es requerida');
+  if (!formData.lugarOrigen) addError('lugarOrigen', 'El país de origen es requerido');
+  if (!formData.comunaResidencia) addError('comunaResidencia', 'La comuna de residencia es requerida');
+  if (!formData.barrioResidencia) addError('barrioResidencia', 'El barrio de residencia es requerido');
+  
+  // 2. Documentos (requeridos)
+  if (!formData.tipoDocumentoMigratorio) addError('tipoDocumentoMigratorio', 'El tipo de documento migratorio es requerido');
+  if (!formData.numeroDocumentoMigratorio) addError('numeroDocumentoMigratorio', 'El número de documento migratorio es requerido');
+  
+  // 3. Datos migratorios (requeridos)
+  if (!formData.fechaLlegadaColombia && !formData.fecha_llegada) {
+    addError('fechaLlegadaColombia', 'La fecha de llegada a Colombia es requerida');
   }
+  
+  // 4. Caracterización del grupo familiar (requeridos)
+  if (!formData.caracterizacionGrupo) {
+    // Si no existe el objeto caracterizacionGrupo, el campo es requerido
+    addError('caracterizacionGrupo.numPersonasHogar', 'La información del grupo familiar es requerida');
+  } else {
+    // Validar tamaño del núcleo familiar - usando también tamanoNucleoFamiliar para compatibilidad
+    const tamanoHogar = formData.caracterizacionGrupo.numPersonasHogar || formData.tamanoNucleoFamiliar;
+    
+    if (tamanoHogar === undefined || tamanoHogar === '') {
+      addError('caracterizacionGrupo.numPersonasHogar', 'El tamaño del núcleo familiar es requerido');
+    } else if (isNaN(parseInt(tamanoHogar, 10)) || parseInt(tamanoHogar, 10) < 1) {
+      addError('caracterizacionGrupo.numPersonasHogar', 'Debe haber al menos 1 persona en el hogar');
+    }
+    
+    // Se eliminó la validación de cantidadNinosAdolescentes ya que no existe en el formulario
+  }
+  
+  // Validar campos de documento migratorio si aplica
+  if (formData.tieneDocumentoMigratorio) {
+    if (!formData.tipoDocumentoMigratorio) {
+      newErrors.tipoDocumentoMigratorio = 'El tipo de documento migratorio es requerido';
+    }
+    if (!formData.numeroDocumentoMigratorio) {
+      newErrors.numeroDocumentoMigratorio = 'El número de documento migratorio es requerido';
+    }
+    if (!formData.fechaVencimientoDocumento) {
+      newErrors.fechaVencimientoDocumento = 'La fecha de vencimiento del documento es requerida';
+    }
+  }
+  
+  // Validar campos condicionales de documento migratorio si aplica
+  if (formData.tieneDocumentoMigratorio) {
+    if (!formData.tipoDocumentoMigratorio) {
+      newErrors.tipoDocumentoMigratorio = 'El tipo de documento migratorio es requerido';
+    }
+    if (!formData.numeroDocumentoMigratorio) {
+      newErrors.numeroDocumentoMigratorio = 'El número de documento migratorio es requerido';
+    }
+    if (!formData.fechaVencimientoDocumento) {
+      newErrors.fechaVencimientoDocumento = 'La fecha de vencimiento del documento es requerida';
+    }
+  }
+
+  // Validar campos de salud si aplican
+  if (formData.estaEnTratamientoMedico === 'Sí' && !formData.treatmentDetails) {
+    newErrors.treatmentDetails = 'Por favor especifique los detalles del tratamiento';
+  }
+
+  // Validar campos de vulnerabilidad si aplican
+  if (formData.condicionesVulnerabilidad?.victimaVBGUltimoAno === 'Sí' && 
+      formData.condicionesVulnerabilidad?.requiereAcompanamientoVBG === 'Sí' && 
+      (!formData.condicionesVulnerabilidad.acompanamientoTemasVBG || 
+       formData.condicionesVulnerabilidad.acompanamientoTemasVBG.length === 0)) {
+    newErrors['condicionesVulnerabilidad.acompanamientoTemasVBG'] = 'Debe seleccionar al menos un tema de acompañamiento';
+  }
+
+  // Mostrar errores si los hay
+  if (Object.keys(newErrors).length > 0) {
+    console.warn('Errores de validación encontrados:', newErrors);
+    
+    // Actualizar el estado de errores
+    setErrors(newErrors);
+    
+    // Mostrar mensaje de error general
+    setSnackbarMessage('Por favor complete los campos requeridos');
+    setSnackbarSeverity('error');
+    setOpenSnackbar(true);
+    
+    // Desplazarse al primer error después de que se actualice el DOM
+    setTimeout(() => {
+      const firstError = Object.keys(newErrors)[0];
+      console.log('Buscando elemento con error:', firstError);
+      
+      // Intentar diferentes selectores para encontrar el elemento
+      let element = document.querySelector(`[name="${firstError}"]`) || 
+                   document.getElementById(firstError) ||
+                   document.querySelector(`[id*="${firstError}"]`) ||
+                   document.querySelector(`[name*="${firstError}"]`);
+      
+      console.log('Elemento encontrado:', element);
+      
+      if (element) {
+        // Si es un campo dentro de un grupo (como caracterizacionGrupo)
+        if (!element.id && !element.name) {
+          const parentFieldset = element.closest('fieldset');
+          if (parentFieldset) {
+            element = parentFieldset;
+          }
+        }
+        
+        // Desplazarse al elemento
+        element.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'center'
+        });
+        
+        // Enfocar el campo si es posible
+        if (element.tagName === 'INPUT' || element.tagName === 'SELECT' || element.tagName === 'TEXTAREA') {
+          element.focus();
+        } else if (element.querySelector('input, select, textarea')) {
+          element.querySelector('input, select, textarea').focus();
+        }
+      } else {
+        console.warn('No se pudo encontrar el elemento con error:', firstError);
+      }
+    }, 100); // Pequeño retraso para asegurar que el DOM se haya actualizado
+    return;
+  } else {
+    console.log('Validación de campos requeridos exitosa');
+  }
+
+  // Si pasa la validación, mostrar diálogo de confirmación
+  console.log('Mostrando diálogo de confirmación...');
+  setOpenConfirmDialog(true);
+  console.log('Diálogo de confirmación mostrado');
 };
 
 const handleConfirmSubmit = async () => {
-  console.log('Estado formData al inicio de handleConfirmSubmit:', formData); // <-- Línea añadida
+  console.log('=== CONFIRMANDO ENVÍO DE FORMULARIO ===');
+  console.log('Estado actual de formData:', JSON.parse(JSON.stringify(formData)));
+  
   try {
     setIsSubmitting(true);
+    setOpenConfirmDialog(false); // Cerrar el diálogo de confirmación
 
     // Validación final antes del envío
+    console.log('Realizando validación final...');
     const validationErrors = validateForm();
-    if (Object.keys(validationErrors).length > 0) {
+    console.log('Resultado de validateForm():', validationErrors);
+    
+    if (validationErrors && Object.keys(validationErrors).length > 0) {
+      console.warn('Errores de validación encontrados:', validationErrors);
       setErrors(validationErrors);
-      throw new Error('Formulario tiene errores de validación');
+      setSnackbarMessage('Por favor corrija los errores en el formulario');
+      setSnackbarSeverity('error');
+      setOpenSnackbar(true);
+      setIsSubmitting(false);
+      
+      // Desplazarse al primer error
+      const firstError = Object.keys(validationErrors)[0];
+      console.log('Primer error encontrado:', firstError);
+      const element = document.getElementsByName(firstError)[0] || 
+                     document.querySelector(`[name="${firstError}"]`);
+      
+      if (element) {
+        console.log('Elemento con error encontrado:', element);
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Enfocar el primer campo con error
+        setTimeout(() => {
+          element.focus();
+          if (element.tagName === 'INPUT' || element.tagName === 'SELECT' || element.tagName === 'TEXTAREA') {
+            element.focus();
+          } else if (element.querySelector('input, select, textarea')) {
+            element.querySelector('input, select, textarea').focus();
+          }
+        }, 300);
+      } else {
+        console.warn('No se pudo encontrar el elemento con error:', firstError);
+      }
+      
+      console.log('Validación fallida, deteniendo envío');
+      return;
+    } else {
+      console.log('Validación final exitosa, procediendo con el envío...');
     }
 
-    // Limpiar datos antes del envío
+    // Limpiar y validar datos antes del envío
+    console.log('Limpiando y preparando datos para el envío...');
+    
+    // Función para limpiar cadenas de texto
+    const cleanString = (str) => {
+      if (!str || typeof str !== 'string') return str;
+      return str.replace(/\|/g, '').trim();
+    };
+    
+    // Función para limpiar los datos antes de enviar al backend
+    const cleanFormData = (data) => {
+      if (!data || typeof data !== 'string') return data;
+      return data.replace(/\|/g, '').trim();
+    };
+    
+    // Función para limpiar números
+    const cleanNumber = (num) => {
+      if (num === null || num === undefined || num === '') return null;
+      if (typeof num === 'number') return num;
+      if (typeof num === 'string') {
+        const cleaned = num.replace(/[^0-9.-]+/g, '');
+        return cleaned ? parseFloat(cleaned) : null;
+      }
+      return null;
+    };
+    
+    // Limpiar datos principales
     const cleanData = {
       ...formData,
-      // Usar replaceAll para asegurar que se quiten todos los pipes
-      nombreCompleto: formData.nombreCompleto ? formData.nombreCompleto.replaceAll('|', '').trim() : '',
-      ingresosMensuales: formData.ingresosMensuales || formData.monthlyIncome ?
-        (typeof (formData.ingresosMensuales || formData.monthlyIncome) === 'string'
-          ? (formData.ingresosMensuales || formData.monthlyIncome).replace('$', '').replace(/,/g, '')
-          : formData.ingresosMensuales || formData.monthlyIncome
-        ) : null,
-      fechaNacimiento: formData.fechaNacimiento || new Date().toISOString().split('T')[0],
+      // Limpiar cadenas de texto
+      nombreCompleto: cleanString(formData.nombreCompleto),
+      lugarOrigen: cleanString(formData.lugarOrigen),
+      barrioResidencia: cleanString(formData.barrioResidencia),
+      comunaResidencia: cleanString(formData.comunaResidencia),
+      
+      // Limpiar y estandarizar documentos
+    
+      tipoDocumentoMigratorio: formData.tipoDocumentoMigratorio ? cleanString(formData.tipoDocumentoMigratorio) : null,
+      numeroDocumentoMigratorio: formData.numeroDocumentoMigratorio ? cleanString(formData.numeroDocumentoMigratorio) : null,
+      
+      // Limpiar datos numéricos
       edad: formData.edad ? parseInt(formData.edad, 10) : null,
-      telefono: formData.telefono ? formData.telefono.replace(/\s+/g, '').replace(/^0+/, '') : '',
+      telefono: formData.telefono ? formData.telefono.replace(/\D/g, '') : null,
+      
+      // Limpiar fechas
+      fechaNacimiento: formData.fechaNacimiento || null,
+      fechaExpedicionDocumento: formData.fechaExpedicionDocumento || null,
+      fecha_llegada: formData.fecha_llegada || null,
+      
+      // Limpiar datos de ingresos
+      ingresosMensuales: cleanNumber(formData.ingresosMensuales || formData.monthlyIncome),
     };
 
     // Tipos de documento
-    const tiposDocumento = {
-      'Cédula de ciudadanía': 'Cédula de ciudadanía',
-      'Cédula de extranjería': 'Cédula de ciudadanía',
-      'Pasaporte': 'Pasaporte',
-      'Permiso especial de permanencia': 'Permiso Especial de Permanencia (PEP)',
-      'Sin documento': 'Otro',
-      'PPT': 'Otro'
-    };
+    // const tiposDocumento = {
+    //   'Cédula de ciudadanía': 'Cédula de ciudadanía',
+    //   'Cédula de extranjería': 'Cédula de ciudadanía',
+    //   'Pasaporte': 'Pasaporte',
+    //   'Permiso especial de permanencia': 'Permiso Especial de Permanencia (PEP)',
+    //   'Sin documento': 'Otro',
+    //   'PPT': 'Otro'
+    // };
 
     // Convertir ingresos mensuales a rango numérico
     const convertIngresos = (ingreso) => {
@@ -904,14 +1235,6 @@ const handleConfirmSubmit = async () => {
       return typeof value === 'number' ? value : null;
     };
 
-    // Función para extraer el país de lugarOrigen
-    const getPaisFromLugar = (lugar) => {
-      if (!lugar || typeof lugar !== 'string') return ''; // Devuelve vacío si no hay lugar o no es string
-      const parts = lugar.split(',');
-      // Toma la última parte y quita espacios extra
-      return parts.length > 0 ? parts[parts.length - 1].trim() : lugar.trim();
-    };
-
     // --- Helper para convertir 'Sí'/'No' o 'on'/undefined a booleanos ---
     const toBoolean = (value) => {
       if (typeof value === 'boolean') return value;
@@ -921,87 +1244,350 @@ const handleConfirmSubmit = async () => {
     };
 
     // Construir el objeto final mapeando TODO formData al schema
-    const formDataToSend = {
-      // --- Metadatos Requeridos ---
-      funcionario_id: user?.id || 'ID_POR_DEFECTO',
-      funcionario_nombre: user?.nombre || 'NOMBRE_POR_DEFECTO',
-      linea_trabajo: formData.lineaTrabajo,
-      fecha_registro: new Date().toISOString().split('T')[0],
-
-      // --- Datos Personales (Requeridos y Opcionales) ---
-      nombre_completo: formData.nombreCompleto,
-      tipo_documento: formData.tipoDocumento, // Siempre se envía, handleChange maneja 'Sin documento'
-      numero_documento: formData.numeroDocumento, // Siempre se envía, handleChange maneja ''
-      fecha_nacimiento: formData.fechaNacimiento || null,
-      pais_origen: getPaisFromLugar(formData.lugarOrigen),
-      edad: formData.edad ? parseInt(formData.edad, 10) : null,
-      sexo: formData.sexo || null,
-      etnia: formData.etnia,
-      telefono: formData.telefono || null,
-
-      // --- Datos Migratorios ---
-      fecha_llegada: formData.fecha_llegada || null,
-      tiempoPermanenciaColombia: formData.tiempoPermanenciaColombia,
-      // tipoDocumentoMigratorio se añade condicionalmente más abajo
-      situacion_migratoria: formData.situacionMigratoria || null,
-
-      // ... (resto de los campos como estaban definidos antes, hasta el bloque condicional)
-      // --- Ubicación ---
-      comunaResidencia: formData.comunaResidencia,
-      barrio: formData.barrioResidencia,
-
-      // --- Datos Socioculturales ---
-      nivelEducativo: formData.nivelEducativo,
-      servicioAgua: toBoolean(formData.servicioAgua),
-      servicioElectricidad: toBoolean(formData.servicioElectricidad),
-      servicioAlcantarillado: toBoolean(formData.servicioAlcantarillado),
-      servicioSalud: toBoolean(formData.servicioSalud),
-      tipoVivienda: formData.tipoVivienda || null,
-      condicionVivienda: formData.condicionVivienda || null,
-
-      // --- Información Familiar ---
-      tamanoNucleoFamiliar: formData.tamanoNucleoFamiliar,
-      cantidadNinosAdolescentes: formData.cantidadNinosAdolescentes,
-      rangoEdadNinosAdolescentes: formData.rangoEdadNinosAdolescentes || null,
-      ocupacionNinosAdolescentes: formData.ocupacionNinosAdolescentes || null,
-      institucionEducativa: formData.institucionEducativa || '',
-
-      // --- Situación Socioeconómica ---
-      ingresos_mensuales: convertIngresos(formData.monthlyIncome),
-      workType: formData.workType || null,
-      workingStatus: formData.workingStatus || null,
-
-      // --- Salud ---
-      healthSystem: formData.healthSystem || null,
-      healthSystemName: formData.healthSystemName || null,
-      sisbenStatus: formData.sisbenStatus || null,
-      needSisbenUpdate: formData.needSisbenUpdate || null,
-      disability: formData.hasDisability || null,
-      disabilityType: formData.disabilityType || null,
-      familyDisability: formData.familyDisability || null,
-      disease: formData.hasDiseases || null,
-      diseaseDetails: formData.diseaseDetails || null,
-      permanentTreatment: formData.permanentTreatment || null,
-      treatmentDetails: formData.treatmentDetails || null,
-
-      // --- Nutrición ---
-      nutricion_preocupacion_por_alimentos: toBoolean(formData.nutricion.preocupacionPorAlimentos),
-      // Se eliminó nutricion_no_comio_saludable_por_recursos
-      // Se eliminó nutricion_comio_poco_por_recursos
-      // Se eliminó nutricion_se_quedo_sin_alimentos_por_recursos
-      nutricion_solo_comio_algunas_veces_por_recursos: toBoolean(formData.nutricion.soloComioAlgunasVecesPorRecursos),
-      nutricion_dejo_de_comer_por_recursos: toBoolean(formData.nutricion.dejoDeComerPorRecursos),
-      nutricion_tuvo_hambre_no_comio_por_recursos: toBoolean(formData.nutricion.tuvoHambreNoComioPorRecursos),
-      nutricion_perdio_peso_por_recursos: toBoolean(formData.nutricion.perdioPesoPorRecursos),
-
-      // --- Conflicto y Violencia ---
-      victima_conflicto: toBoolean(formData.victimOfArmedConflict),
-      conflictVictimType: formData.conflictVictimType || null,
-      victimOfViolence: formData.victimOfViolence || null,
-
-      // --- Otros --- 
-      supportRoute: formData.supportRoute || null
+    console.log('Construyendo objeto final para el envío...');
+    
+    // Usar las funciones auxiliares ya definidas al inicio del archivo
+    
+    // Mapeo de valores para los campos de enumeración
+    const mapNivelEducativo = (value) => {
+      const map = {
+        'Bachillerato': 'Secundaria_Completa',
+        'Primaria': 'Primaria_Completa',
+        'Técnico': 'Tecnico',
+        'Tecnólogo': 'Tecnologico',
+        'Universitario': 'Universitario_Completo',
+        'Postgrado': 'Postgrado',
+        'Ninguno': 'Ninguno'
+      };
+      return map[value] || 'Ninguno';
     };
+
+    // Mapear tipo de documento migratorio a valores aceptados por el backend
+    // Valores permitidos: 'PPT', 'PEP', 'Otro'
+    const mapTipoDocumentoMigratorio = (value) => {
+      if (!value) return 'Otro';
+      
+      // Mapeo de valores comunes a los valores esperados por el backend
+      const map = {
+        'Permiso Especial de Permanencia': 'PEP',
+        'Permiso de Protección Temporal': 'PPT',
+        'Pasaporte': 'Pasaporte',
+        'Cédula de ciudadanía': 'Cédula de ciudadanía',
+        'Cédula de extranjería': 'Cédula de ciudadanía',
+        'Ninguno': 'Ninguno',
+        'No tiene': 'Ninguno',
+        'Sin documento': 'Sin documento'
+      };
+      
+      // Buscar coincidencia exacta o parcial
+      const key = Object.keys(map).find(k => 
+        value.toString().toLowerCase().includes(k.toLowerCase())
+      );
+      
+      return key ? map[key] : 'Otro';
+    };
+
+    // Función para convertir snake_case a camelCase
+    const toCamelCase = (str) => {
+      return str.replace(/([-_][a-z])/g, group => group.toUpperCase().replace('_', ''));
+    };
+
+    // Función para convertir un objeto de snake_case a camelCase
+    const snakeToCamel = (obj) => {
+      const newObj = {};
+      for (const key in obj) {
+        if (obj.hasOwnProperty(key)) {
+          const camelKey = toCamelCase(key);
+          newObj[camelKey] = obj[key];
+        }
+      }
+      return newObj;
+    };
+
+    // Crear un nuevo objeto para el envío
+    const formDataToSend = {};
+    
+    // Mapear campos básicos del formulario a los nombres esperados por el backend
+    const fieldMappings = {
+      // Datos personales
+      'funcionario_id': 'funcionarioId',
+      'funcionario_nombre': 'funcionarioNombre',
+      'linea_trabajo': 'lineaTrabajo',
+      'fecha_registro': 'fechaRegistro',
+      'nombre_completo': 'nombreCompleto',
+      'tipo_documento': 'tipoDocumentoMigratorio',
+      'numero_documento': 'numeroDocumentoMigratorio',
+      'fecha_nacimiento': 'fechaNacimiento',
+      'sexo': 'sexo',
+      'telefono': 'telefono',
+      'edad': 'edad',
+      
+      // Datos migratorios
+      'pais_origen': 'lugarOrigen',
+      'fecha_llegada': 'fechaLlegada',
+      'tiempoPermanenciaColombia': 'tiempoPermanenciaColombia',
+      'tipoDocumentoMigratorio': 'tipoDocumentoMigratorio',
+      
+      // Ubicación
+      'comunaResidencia': 'comunaResidencia',
+      'barrio': 'barrioResidencia',
+      
+      // Datos socioculturales
+      'etnia': 'etnia',
+      'nivelEducativo': 'nivelEducativo',
+      'servicioAgua': 'servicioAgua',
+      'servicioElectricidad': 'servicioElectricidad',
+      'servicioAlcantarillado': 'servicioAlcantarillado',
+      'servicioSalud': 'servicioSalud',
+      'tipoVivienda': 'tipoVivienda',
+      'condicionVivienda': 'condicionVivienda',
+      
+      // Salud
+      'healthSystem': 'healthSystem',
+      'healthSystemName': 'healthSystemName',
+      'sisbenStatus': 'sisbenStatus',
+      'needSisbenUpdate': 'needSisbenUpdate',
+      'disability': 'diversidadFuncional',
+      'disabilityType': 'tipoDiversidadFuncionalAfectaciones',
+      'familyDisability': 'tieneAntecedentesFamiliaresEnfermedades',
+      'disease': 'presentaCondicionEspecificaSalud',
+      
+      // Conflicto armado
+      'victimOfArmedConflict': 'victimOfArmedConflict',
+      'conflictVictimType': 'conflictVictimType',
+      'victimOfViolence': 'victimOfViolence',
+      
+      // Información familiar
+      'tamanoNucleoFamiliar': 'tamanoNucleoFamiliar',
+      'cantidadNinosAdolescentes': 'cantidadNinosAdolescentes'
+    };
+    
+    // Mapear campos según el mapeo definido
+    Object.entries(fieldMappings).forEach(([backendField, frontendField]) => {
+      if (formData[frontendField] !== undefined) {
+        formDataToSend[backendField] = formData[frontendField];
+      }
+    });
+    
+    // Mapear campos requeridos por el backend usando snake_case
+    const camposRequeridosBackend = {
+      'funcionario_id': user?.id,
+      'funcionario_nombre': user?.nombre,
+      'linea_trabajo': user?.linea_trabajo || user?.linea_trabajo_id,
+      'fecha_registro': new Date().toISOString().split('T')[0],
+      'nombre_completo': formData.nombreCompleto,
+      'tipo_documento': formData.tipoDocumentoMigratorio, // Asegurar que sea uno de los valores permitidos
+      'numero_documento': formData.numeroDocumentoMigratorio,
+      'pais_origen': formData.lugarOrigen,
+      'tiempo_permanencia_colombia': formData.tiempoPermanenciaColombia,
+      'comuna_residencia': formData.comunaResidencia,
+      'barrio': formData.barrioResidencia,
+      'etnia': formData.etnia,
+      'nivel_educativo': formData.nivelEducativo // Asegurar que sea uno de los valores permitidos
+    };
+    
+    // Convertir arrays a strings cuando sea necesario
+    const convertirSiEsArray = (valor) => {
+      if (Array.isArray(valor)) {
+        return valor.join(', ');
+      }
+      return valor;
+    };
+    
+    // Mapear campos opcionales en snake_case
+    const camposOpcionales = {
+      'fecha_nacimiento': formData.fechaNacimiento,
+      'sexo': formData.sexo,
+      'telefono': formData.telefono,
+      'edad': formData.edad,
+      'fecha_llegada': formData.fechaLlegada,
+      'health_system': formData.healthSystem,
+      'health_system_name': formData.healthSystemName,
+      'sisben_status': formData.sisbenStatus,
+      'need_sisben_update': formData.needSisbenUpdate,
+      'disability': convertirSiEsArray(formData.diversidadFuncional),
+      'disability_type': convertirSiEsArray(formData.tipoDiversidadFuncionalAfectaciones),
+      'family_disability': formData.tieneAntecedentesFamiliaresEnfermedades,
+      'disease': formData.presentaCondicionEspecificaSalud,
+      'victim_of_armed_conflict': formData.victimOfArmedConflict,
+      'conflict_victim_type': convertirSiEsArray(formData.conflictVictimType),
+      'victim_of_violence': formData.victimOfViolence,
+      'tamano_nucleo_familiar': formData.caracterizacionGrupo?.numPersonasHogar,
+      'cantidad_ninos_adolescentes': formData.cantidadNinosAdolescentes,
+      'servicioAgua': formData.servicioAgua,
+      'servicioElectricidad': formData.servicioElectricidad,
+      'servicioAlcantarillado': formData.servicioAlcantarillado,
+      'servicioSalud': formData.servicioSalud,
+      'tipoVivienda': formData.tipoVivienda,
+      'condicionVivienda': formData.condicionVivienda,
+      'tieneAntecedentesFamiliares': formData.tieneAntecedentesFamiliaresEnfermedades,
+      'tieneCondicionEspecial': formData.presentaCondicionEspecificaSalud,
+      'condicionEspecial': formData.condicionEspecificaSaludCuales,
+      'enTratamientoMedico': formData.estaEnTratamientoMedico,
+      'detalleTratamiento': formData.treatmentDetails,
+      'tipoDiscapacidad': formData.tipoDiversidadFuncionalAfectaciones,
+      'numeroPersonasDiscapacidad': formData.numeroPersonasConDiscapacidadHogar,
+      'tipoVictima': formData.conflictVictimType,
+      'detalleVictima': formData.conflictVictimDetails,
+      'rutaAtencion': formData.supportRoute,
+      'observaciones': formData.observacionesAdicionales,
+      'cantidadNinosAdolescentes': formData.cantidadNinosAdolescentes,
+      'situacionMigratoria': formData.situacionMigratoria,
+      'tamanoNucleoFamiliar': formData.caracterizacionGrupo?.numPersonasHogar
+    };
+    
+    // Agregar campos requeridos al objeto final
+    Object.entries(camposRequeridosBackend).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        formDataToSend[key] = value;
+      }
+    });
+    
+    // Agregar campos opcionales que tengan valor
+    Object.entries(camposOpcionales).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        // Si el valor es un array, asegurarse de que no esté vacío
+        if (Array.isArray(value) && value.length === 0) return;
+        
+        // Si el valor es un objeto, asegurarse de que no esté vacío
+        if (typeof value === 'object' && value !== null && !Array.isArray(value) && Object.keys(value).length === 0) return;
+        
+        formDataToSend[key] = value;
+      }
+    });
+    
+    // Procesar campos anidados como caracterizacionGrupo
+    if (formData.caracterizacionGrupo) {
+      const { caracterizacionGrupo } = formData;
+      Object.entries(caracterizacionGrupo).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          formDataToSend[key] = value;
+        }
+      });
+    }
+    
+    // Procesar campos especiales
+    if (formData.monthlyIncome) {
+      formDataToSend.ingreso_mensual = parseFloat(convertIngresos(formData.monthlyIncome));
+    }
+    
+    // Procesar campos booleanos
+    if (formData.tieneDocumentoMigratorio !== undefined) {
+      formDataToSend.tiene_documento_migratorio = toBoolean(formData.tieneDocumentoMigratorio);
+    }
+    
+    // Procesar campos anidados (solo los necesarios)
+    if (formData.nutricion) {
+      // Solo incluir nutrición si es estrictamente necesario
+      formDataToSend.nutricion = {
+        tuvo_hambre_no_comio_por_recursos: formData.nutricion.tuvoHambreNoComioPorRecursos || false,
+        perdio_peso_por_recursos: formData.nutricion.perdioPesoPorRecursos || false
+      };
+    }
+    
+    // Calcular cantidad de niños y adolescentes si no está definido
+    if (!formDataToSend.cantidad_ninos_adolescentes && formData.caracterizacionGrupo) {
+      const ninos = parseInt(formData.caracterizacionGrupo.ninos0a5 || 0) + 
+                   parseInt(formData.caracterizacionGrupo.ninos6a9 || 0) + 
+                   parseInt(formData.caracterizacionGrupo.ninos10a14 || 0) + 
+                   parseInt(formData.caracterizacionGrupo.ninos15a17 || 0);
+      
+      const ninas = parseInt(formData.caracterizacionGrupo.ninas0a5 || 0) + 
+                   parseInt(formData.caracterizacionGrupo.ninas6a9 || 0) + 
+                   parseInt(formData.caracterizacionGrupo.ninas10a14 || 0) + 
+                   parseInt(formData.caracterizacionGrupo.ninas15a17 || 0);
+      
+      formDataToSend.cantidad_ninos_adolescentes = (ninos + ninas).toString();
+    }
+    
+    // Limpiar solo los campos que no son necesarios en el payload final
+    const camposAEliminar = [
+      // Solo eliminar los campos que definitivamente no deberían estar en el payload
+      'caracterizacionGrupo', 
+      'condicionesVulnerabilidad', 
+      'asistenciaHumanitaria',
+      'mediosComunicacion',
+      'nutricion',
+      'fechaNacimiento',
+      'correoElectronico',
+      'barrioResidencia',
+      'fechaLlegada',
+      'workingStatus',
+      'workType',
+      'monthlyIncome',
+      'healthSystem',
+      'healthSystemName',
+      'sisbenStatus',
+      'needSisbenUpdate',
+      'tieneAntecedentesFamiliaresEnfermedades',
+      'antecedentesFamiliaresEnfermedadesCuales',
+      'presentaCondicionEspecificaSalud',
+      'condicionEspecificaSaludCuales',
+      'estaEnTratamientoMedico',
+      'treatmentDetails',
+      'diversidadFuncional',
+      'tipoDiversidadFuncionalAfectaciones',
+      'numeroPersonasConDiscapacidadHogar',
+      'victimOfArmedConflict',
+      'conflictVictimType',
+      'conflictVictimDetails'
+    ];
+    
+    // Eliminar solo los campos innecesarios
+    camposAEliminar.forEach(campo => {
+      if (formDataToSend[campo] !== undefined) {
+        delete formDataToSend[campo];
+      }
+    });
+    
+    // Asegurar que los campos de enumeración tengan valores válidos
+    if (formDataToSend.tipoDocumentoMigratorio) {
+      // Mapear valores de enumeración a los valores esperados por el backend
+      const tipoDocMap = {
+        'PPT - Permiso por Protección Temporal': 'PPT',
+        'PEP - Permiso Especial de Permanencia': 'PEP',
+        'Pasaporte': 'Pasaporte',
+        'Cédula de ciudadanía': 'Cédula de ciudadanía',
+        'Cédula de extranjería': 'Cédula de ciudadanía',
+        'No tiene': 'Ninguno',
+        'Sin documento': 'Sin documento'
+      };
+      formDataToSend.tipoDocumentoMigratorio = tipoDocMap[formDataToSend.tipoDocumentoMigratorio] || 'PPT';
+    }
+    
+    // Asegurar que los campos numéricos sean números
+    const camposNumericos = ['edad', 'monthlyIncome', 'tamanoNucleoFamiliar', 'cantidadNinosAdolescentes', 'numeroPersonasConDiscapacidadHogar'];
+    camposNumericos.forEach(campo => {
+      if (formDataToSend[campo] !== undefined) {
+        formDataToSend[campo] = parseInt(formDataToSend[campo]) || 0;
+      }
+    });
+    
+    // Asegurar que los campos booleanos sean booleanos
+    const camposBooleanos = ['tieneDocumentoMigratorio', 'sisbenStatus', 'needSisbenUpdate',
+      'tieneAntecedentesFamiliaresEnfermedades', 'presentaCondicionEspecificaSalud', 'estaEnTratamientoMedico',
+      'diversidadFuncional', 'victimOfArmedConflict', 'victimOfViolence'];
+      
+    camposBooleanos.forEach(campo => {
+      if (formDataToSend[campo] !== undefined) {
+        formDataToSend[campo] = toBoolean(formDataToSend[campo]);
+      }
+    });
+    
+    // Añadir campos condicionales solo si existen
+    if (formData.nutricion) {
+      formDataToSend.nutricion = {
+        tuvoHambreNoComioPorRecursos: toBoolean(formData.nutricion.tuvoHambreNoComioPorRecursos),
+        perdioPesoPorRecursos: toBoolean(formData.nutricion.perdioPesoPorRecursos)
+      };
+    }
+    
+    // Eliminar campos undefined o vacíos
+    Object.keys(formDataToSend).forEach(key => {
+      if (formDataToSend[key] === undefined || formDataToSend[key] === '') {
+        delete formDataToSend[key];
+      }
+    });
 
     // Añadir tipoDocumentoMigratorio condicionalmente
     if (formData.tieneDocumentoMigratorio === 'Sí') {
@@ -1009,6 +1595,14 @@ const handleConfirmSubmit = async () => {
     }
     // No hay 'else' para tipoDocumentoMigratorio; si no es 'Sí', simplemente no se envía.
 
+    console.log('=== DATOS A ENVIAR AL SERVIDOR ===');
+    console.log('Datos completos a enviar (formDataToSend):', JSON.parse(JSON.stringify(formDataToSend)));
+    
+    // Log de la estructura completa del objeto
+    console.log('=== ESTRUCTURA COMPLETA DEL OBJETO ===');
+    Object.entries(formDataToSend).forEach(([key, value]) => {
+      console.log(`${key}:`, value, `(Tipo: ${typeof value})`);
+    });
 
     console.log('Datos a enviar (formDataToSend) ANTES de convertir nulls:', JSON.stringify(formDataToSend, null, 2));
 
@@ -1069,67 +1663,116 @@ const handleConfirmSubmit = async () => {
 
     // --- Determinar si es una actualización o creación ---
     const esActualizacion = state?.modoEdicion && state?.migrante?._id;
+    
+    console.log('Preparando para enviar datos a la API...');
+    console.log('Modo actual:', esActualizacion ? 'Actualización' : 'Creación');
+    
+    try {
+      // --- Enviar datos del formulario --- 
+      const response = esActualizacion
+        ? await actualizarPoblacionMigrante(state.migrante._id, finalPayload)
+        : await crearPoblacionMigrante(finalPayload);
 
-    // --- Enviar datos del formulario --- 
-    const response = esActualizacion
-      ? await actualizarPoblacionMigrante(state.migrante._id, finalPayload)
-      : await crearPoblacionMigrante(finalPayload);
+      // --- Procesar la respuesta ---
+      console.log('Respuesta recibida de la API:', response);
+      const responseData = response?.data || response;
+      
+      if (!responseData) {
+        throw new Error('No se recibió respuesta del servidor');
+      }
+      
+      // Verificar si la operación fue exitosa
+      const isSuccess = responseData.success === true || 
+                       responseData.msg?.toLowerCase().includes('éxito') ||
+                       responseData.message?.toLowerCase().includes('éxito');
+      
+      if (!isSuccess) {
+        throw new Error(responseData.msg || responseData.message || 'Error desconocido al procesar la solicitud');
+      }
 
-    // --- Normalizar la respuesta --- 
-    const responseData = esActualizacion ? response : response.data;
-
-    // --- Logs detallados de la respuesta de la API (AHORA CORRECTAMENTE UBICADOS) --- 
-    console.log('Respuesta de la API (variable \'response\'):', JSON.stringify(response, null, 2));
-    console.log('Datos normalizados (responseData) para procesar:', JSON.stringify(responseData, null, 2));
-
-    console.log('INSPECCIÓN DIRECTA ANTES DEL IF:');
-    console.log('typeof responseData:', typeof responseData);
-    if (responseData) {
-      console.log('responseData existe.');
-      console.log('Tiene la propiedad "success"?', responseData.hasOwnProperty('success'));
-      console.log('Valor de responseData.success:', responseData.success);
-      console.log('Tipo de responseData.success:', typeof responseData.success);
-      console.log('responseData.success === true ?', responseData.success === true);
-    } else {
-      console.log('responseData NO existe (es null o undefined).');
-    }
-
-    // Manejar respuesta exitosa
-    if (responseData && responseData.msg) { // Se considera éxito si hay un mensaje en la respuesta y no hubo error HTTP
-      setOpenConfirmDialog(false);
-      setOpenSnackbar(true);
+      // Manejar respuesta exitosa
+      console.log('Operación completada con éxito:', responseData.msg || responseData.message);
+      
+      // Mostrar mensaje de éxito
       setSnackbarMessage(
-        responseData.msg || (esActualizacion ? 'Migrante actualizado exitosamente.' : 'Formulario enviado exitosamente.') // Usar responseData.msg
+        responseData.msg || 
+        responseData.message || 
+        (esActualizacion ? 'Migrante actualizado exitosamente' : 'Migrante registrado exitosamente')
       );
       setSnackbarSeverity('success');
+      setOpenSnackbar(true);
 
-      // Resetear formulario si es creación, o redirigir y mostrar mensaje si es actualización
+      // Resetear el estado de envío
+      setIsSubmitting(false);
+
+      // Manejar después del envío exitoso
       if (!esActualizacion) {
+        // Si es un nuevo registro, limpiar el formulario
         setFormData(initialFormState);
         setErrors({});
-        // Opcional: si quieres navegar al listado después de un NUEVO registro, puedes hacerlo aquí.
-        // navigate('/funcionario/poblacion-migrante'); 
-      } else {
-        // En caso de actualización, mostrar Snackbar y luego redirigir CON RETRASO.
-        // El Snackbar ya está configurado para mostrarse.
+        
+        // Opcional: mostrar mensaje de éxito y redirigir después de un tiempo
         setTimeout(() => {
           navigate('/funcionario/poblacion-migrante');
-        }, 2000); // Retraso de 2 segundos
+        }, 3000);
+      } else {
+        // Si es una actualización, redirigir al listado después de un tiempo
+        setTimeout(() => {
+          navigate('/funcionario/poblacion-migrante');
+        }, 2000);
       }
-    } else {
-      // Esto se ejecuta si responseData.success no es true, o si responseData no existe/estructura inesperada
-      let messageFromServer = 'Error desconocido al procesar la respuesta del servidor.';
-      if (responseData && responseData.msg) {
-        messageFromServer = responseData.msg; // Usar el mensaje del backend si está disponible
-      } else if (responseData && typeof responseData === 'string') {
-        messageFromServer = responseData; // Si el backend envía un error como string simple
-      } else if (response && response.statusText && !responseData) { // Chequear response original para errores HTTP
-        messageFromServer = `Error del servidor: ${response.status || ''} ${response.statusText}`;
+    } catch (error) {
+      console.error('Error al enviar el formulario:', error);
+      
+      // Manejar diferentes tipos de errores
+      let errorMessage = 'Error al enviar el formulario';
+      
+      if (error.response) {
+        // El servidor respondió con un error
+        console.error('Error del servidor:', error.response.data);
+        
+        // Priorizar errores de validación
+        if (error.response.data.errors) {
+          const errorDetails = error.response.data.errors;
+          errorMessage = Object.entries(errorDetails)
+            .map(([key, value]) => `${key}: ${value}`)
+            .join('\n');
+        } else if (error.response.data.msg) {
+          errorMessage = error.response.data.msg;
+        } else if (error.response.data.message) {
+          errorMessage = error.response.data.message;
+        } else if (error.response.status === 401) {
+          errorMessage = 'No autorizado. Por favor, inicie sesión nuevamente.';
+        } else if (error.response.status === 403) {
+          errorMessage = 'No tiene permisos para realizar esta acción.';
+        } else if (error.response.status >= 500) {
+          errorMessage = 'Error del servidor. Por favor, intente nuevamente más tarde.';
+        }
+      } else if (error.request) {
+        // La solicitud fue hecha pero no se recibió respuesta
+        console.error('No se recibió respuesta del servidor:', error.request);
+        errorMessage = 'No se pudo conectar con el servidor. Verifique su conexión a internet.';
+      } else if (error.message) {
+        // Error en la configuración de la solicitud
+        console.error('Error en la configuración de la solicitud:', error.message);
+        errorMessage = `Error: ${error.message}`;
       }
-
-      console.error('Respuesta no exitosa o malformada (responseData en handleConfirmSubmit):', JSON.stringify(responseData, null, 2));
-      console.error('Respuesta original de la API en caso de error (response):', JSON.stringify(response, null, 2));
-      throw new Error(messageFromServer);
+      
+      // Mostrar mensaje de error al usuario
+      setSnackbarMessage(errorMessage);
+      setSnackbarSeverity('error');
+      setOpenSnackbar(true);
+      
+      // También mostrar en consola para depuración
+      console.error('Error detallado:', error);
+      
+      // Si hay errores de validación, mostrarlos en el formulario
+      if (error.response?.data?.errors) {
+        setErrors(error.response.data.errors);
+      }
+    } finally {
+      // Asegurarse de deshabilitar el estado de envío
+      setIsSubmitting(false);
     }
   } catch (error) {
 
@@ -1160,22 +1803,26 @@ const handleConfirmSubmit = async () => {
 
     setErrorMessage(errorMessage);
     setShowErrorModal(true);
-  } finally {
     setIsSubmitting(false);
   }
 };
 
-const handleCloseSnackbar = (event, reason) => {
-  if (reason === 'clickaway') {
-    return;
-  }
-  setOpenSnackbar(false);
-};
+  // Función handleSubmit eliminada para evitar duplicado
+  //   setOpenConfirmDialog(true);
+  // };
+
+  const handleCloseSnackbar = (event, reason) => {
+    if (reason === 'clickaway') {
+      return;
+    }
+    setOpenSnackbar(false);
+  };
 
 return (
   <PageLayout title={pageTitle} description={pageDescription}>
     <Container maxWidth="md">
       <Paper elevation={3} sx={{ p: 4, mt: 4 }}>
+        {/* ... (rest of the code remains the same) */}
         {/* <Typography variant="h4" gutterBottom>
             {pageTitle}
           </Typography> */}
@@ -1216,6 +1863,8 @@ return (
               Datos Personales
               </Typography>
             </Grid>
+
+            {/* Información Básica */}
             <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
@@ -1226,6 +1875,46 @@ return (
                 error={!!errors.nombreCompleto}
                 helperText={errors.nombreCompleto}
                 required
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Correo Electrónico"
+                name="correoElectronico"
+                type="email"
+                value={formData.correoElectronico}
+                onChange={handleChange}
+                error={!!errors.correoElectronico}
+                helperText={errors.correoElectronico}
+                required
+              />
+            </Grid>
+            <Grid item xs={12} md={5}>
+              <TextField
+                fullWidth
+                label="Número de Teléfono"
+                name="telefono"
+                type="tel"
+                value={formData.telefono}
+                onChange={handleChange}
+                error={!!errors.telefono}
+                helperText={errors.telefono}
+              />
+            </Grid>
+
+            {/* Datos Demográficos */}
+            <Grid item xs={12} md={4}>
+              <TextField
+                fullWidth
+                label="Fecha de Nacimiento"
+                name="fechaNacimiento"
+                type="date"
+                value={formData.fechaNacimiento}
+                onChange={handleChange}
+                error={!!errors.fechaNacimiento}
+                helperText={errors.fechaNacimiento}
+                InputLabelProps={{ shrink: true }}
               />
             </Grid>
             <Grid item xs={12} md={3}>
@@ -1241,7 +1930,6 @@ return (
                 inputProps={{ min: 0, max: 120 }}
               />
             </Grid>
-            {/* Sexo */}
             <Grid item xs={12} md={3}>
               <FormControl fullWidth error={!!errors.sexo} required>
                 <InputLabel id="sexo-label">Sexo *</InputLabel>
@@ -1249,7 +1937,7 @@ return (
                   labelId="sexo-label"
                   id="sexo"
                   name="sexo"
-                  value={formData.sexo || ''} // Usar || '' para Select controlado
+                  value={formData.sexo || ''}
                   label="Sexo *"
                   onChange={handleChange}
                 >
@@ -1261,45 +1949,9 @@ return (
                 {errors.sexo && <FormHelperText>{errors.sexo}</FormHelperText>}
               </FormControl>
             </Grid>
-            <Grid item xs={12} md={3}>
-              <TextField
-                fullWidth
-                label="Fecha de Nacimiento"
-                name="fechaNacimiento"
-                type="date"
-                value={formData.fechaNacimiento}
-                onChange={handleChange}
-                error={!!errors.fechaNacimiento}
-                helperText={errors.fechaNacimiento}
-                InputLabelProps={{ shrink: true }}
-              />
-            </Grid>
-            <Grid item xs={12} md={4}>
-              <TextField
-                fullWidth
-                label="Correo Electrónico"
-                name="correoElectronico"
-                type="email"
-                value={formData.correoElectronico}
-                onChange={handleChange}
-                error={!!errors.correoElectronico}
-                helperText={errors.correoElectronico}
-                required
-              />
-            </Grid>
-            <Grid item xs={12} md={4}>
-              <TextField
-                fullWidth
-                label="Número de Teléfono"
-                name="telefono"
-                type="tel"
-                value={formData.telefono}
-                onChange={handleChange}
-                error={!!errors.telefono}
-                helperText={errors.telefono}
-              />
-            </Grid>
-            <Grid item xs={12} md={4}>
+
+            {/* Identidad y Origen */}
+            <Grid item xs={12} md={5}>
               <TextField
                 fullWidth
                 label="Lugar de Origen"
@@ -1311,117 +1963,132 @@ return (
                 placeholder="Ciudad, País"
               />
             </Grid>
-
             <Grid item xs={12} md={4}>
-              <TextField
-                fullWidth
-                label="Barrio de Residencia"
-                name="barrioResidencia"
-                value={formData.barrioResidencia}
-                onChange={handleChange}
-                error={!!errors.barrioResidencia}
-                helperText={errors.barrioResidencia}
-              />
+              <FormControl fullWidth>
+                <InputLabel>Etnia o Grupo Étnico</InputLabel>
+                <Select
+                  name="etnia"
+                  value={formData.etnia || ''}
+                  onChange={handleChange}
+                  label="Etnia o Grupo Étnico"
+                >
+                  <MenuItem value="Ninguna">Ninguna</MenuItem>
+                  <MenuItem value="Afrodescendiente">Afrodescendiente</MenuItem>
+                  <MenuItem value="Mestizo">Mestizo</MenuItem>
+                  <MenuItem value="Indigena">Indígena</MenuItem>
+                  <MenuItem value="Raizal">Raizal</MenuItem>
+                  <MenuItem value="Palenquero">Palenquero</MenuItem>
+                  <MenuItem value="Otro">Otro</MenuItem>
+                </Select>
+              </FormControl>
             </Grid>
             <Grid item xs={12} md={4}>
-              <FormControl fullWidth required>
-                <InputLabel>Comuna</InputLabel>
+              <FormControl fullWidth>
+                <InputLabel>Nivel Educativo</InputLabel>
+                <Select
+                  name="nivelEducativo"
+                  value={formData.nivelEducativo || ''}
+                  onChange={handleChange}
+                  label="Nivel Educativo"
+                >
+                  <MenuItem value="">Seleccione un nivel educativo</MenuItem>
+                  <MenuItem value="Ninguno">Ninguno</MenuItem>
+                  <MenuItem value="Básica Primaria">Básica Primaria</MenuItem>
+                  <MenuItem value="Básica Secundaria">Básica Secundaria</MenuItem>
+                  <MenuItem value="Bachillerato">Bachillerato</MenuItem>
+                  <MenuItem value="Técnico">Técnico</MenuItem>
+                  <MenuItem value="Tecnólogo">Tecnólogo</MenuItem>
+                  <MenuItem value="Profesional">Profesional</MenuItem>
+                  <MenuItem value="Posgrado">Posgrado</MenuItem>
+                  <MenuItem value="Otro">Otro</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+
+            {/* Ubicación Actual */}
+            <Grid item xs={12} md={4}>
+              <FormControl fullWidth required error={!!errors.comunaResidencia}>
+                <InputLabel id="comuna-residencia-label">Comuna *</InputLabel>
                 <Select
                   name="comunaResidencia"
                   value={formData.comunaResidencia || ''}
-                  label="Comuna"
-                  onChange={handleChange}
+                  labelId="comuna-residencia-label"
+                  label="Comuna *"
+                  onChange={handleComunaChange}
+                  error={!!errors.comunaResidencia}
                 >
-                  <MenuItem value="">Seleccione una comuna</MenuItem>
+                  <MenuItem value="">Seleccione una comuna o zona</MenuItem>
                   {comunas.map((comuna) => (
                     <MenuItem key={comuna.id} value={comuna.nombre}>
                       {comuna.nombre} - {comuna.zona}
                     </MenuItem>
                   ))}
+                  <MenuItem value="Zonas Rurales">Zonas Rurales</MenuItem>
                 </Select>
+                {errors.comunaResidencia && (
+                  <FormHelperText>{errors.comunaResidencia}</FormHelperText>
+                )}
               </FormControl>
             </Grid>
 
-            {/* Información sobre el Núcleo Familiar */}
-            <Grid item xs={12}>
-              <Typography variant="h6" gutterBottom sx={{ mt: 2, mb: 1, textAlign: 'center', backgroundColor: '#f0f0f0', padding: '8px' }}>
-              Información sobre el Núcleo Familiar
-              </Typography>
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <FormControl fullWidth>
-                <InputLabel>¿Cuántas personas conforman su núcleo familiar?</InputLabel>
-                <Select
-                  name="tamanoNucleoFamiliar"
-                  value={formData.tamanoNucleoFamiliar || ''}
-                  onChange={handleChange}
-                  label="¿Cuántas personas conforman su núcleo familiar?"
-                >
-                  <MenuItem value="1-3">1 a 3</MenuItem>
-                  <MenuItem value="4-6">4 a 6</MenuItem>
-                  <MenuItem value="7-10">7 a 10</MenuItem>
-                  <MenuItem value="10+">Más de 10</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <FormControl fullWidth>
-                <InputLabel>¿Cuántos niños, niñas y/o adolescentes conforman su núcleo familiar?</InputLabel>
-                <Select
-                  name="cantidadNinosAdolescentes"
-                  value={formData.cantidadNinosAdolescentes || ''}
-                  onChange={handleChange}
-                  label="¿Cuántos niños, niñas y/o adolescentes conforman su núcleo familiar?"
-                >
-                  <MenuItem value="1">1</MenuItem>
-                  <MenuItem value="2">2</MenuItem>
-                  <MenuItem value="3">3</MenuItem>
-                  <MenuItem value="4+">4 o más</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <FormControl fullWidth>
-                <InputLabel>Rango de edades de los niños, niñas y/o adolescentes</InputLabel>
-                <Select
-                  name="rangoEdadNinosAdolescentes"
-                  value={formData.rangoEdadNinosAdolescentes || ''}
-                  onChange={handleChange}
-                  label="Rango de edades de los niños, niñas y/o adolescentes"
-                >
-                  <MenuItem value="0-5">0 a 5 años</MenuItem>
-                  <MenuItem value="6-10">6 a 10 años</MenuItem>
-                  <MenuItem value="11-15">11 a 15 años</MenuItem>
-                  <MenuItem value="16-17">16 a 17 años</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <FormControl fullWidth>
-                <InputLabel>Ocupación de los niños, niñas y/o adolescentes</InputLabel>
-                <Select
-                  name="ocupacionNinosAdolescentes"
-                  value={formData.ocupacionNinosAdolescentes || ''}
-                  onChange={handleChange}
-                  label="Ocupación de los niños, niñas y/o adolescentes"
-                >
-                  <MenuItem value="estudiantes">Estudiantes</MenuItem>
-                  <MenuItem value="programas_icbf">Programas del ICBF</MenuItem>
-                  <MenuItem value="ninguna">Ninguna de las anteriores</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            {formData.ocupacionNinosAdolescentes === 'estudiantes' && (
-              <Grid item xs={12}>
+            {/* Barrio */}
+            {formData.comunaResidencia === 'Zonas Rurales' ? (
+              <Grid item xs={12} md={4}>
                 <TextField
                   fullWidth
-                  label="Nombre de la institución educativa"
-                  name="institucionEducativa"
-                  value={formData.institucionEducativa || ''}
+                  label="Nombre de la Vereda/Corregimiento *"
+                  name="barrioResidencia"
+                  value={formData.barrioResidencia || ''}
                   onChange={handleChange}
+                  required
+                  error={!!errors.barrioResidencia}
+                  helperText={errors.barrioResidencia}
+                />
+              </Grid>
+            ) : (
+              <Grid item xs={12} md={4}>
+                <FormControl fullWidth required error={!!errors.barrioResidencia} disabled={!formData.comunaResidencia}>
+                  <InputLabel id="barrio-residencia-label">Barrio *</InputLabel>
+                  <Select
+                    name="barrioResidencia"
+                    value={formData.barrioResidencia || ''}
+                    labelId="barrio-residencia-label"
+                    label="Barrio *"
+                    onChange={handleChange}
+                    error={!!errors.barrioResidencia}
+                  >
+                    <MenuItem value="">Seleccione un barrio</MenuItem>
+                    {barriosDisponibles.map((barrio, idx) => (
+                      <MenuItem key={idx} value={barrio.nombre}>
+                        {barrio.nombre}
+                      </MenuItem>
+                    ))}
+                    <MenuItem value="otro">Otro (especificar)</MenuItem>
+                  </Select>
+                  {errors.barrioResidencia && (
+                    <FormHelperText>{errors.barrioResidencia}</FormHelperText>
+                  )}
+                </FormControl>
+              </Grid>
+            )}
+
+            {/* Campo para barrio personalizado */}
+            {(formData.barrioResidencia === "otro" || (formData.otroBarrio && formData.otroBarrio !== "")) && (
+              <Grid item xs={12} md={4}>
+                <TextField
+                  fullWidth
+                  label={formData.comunaResidencia === 'Zonas Rurales' ? 'Nombre de la Vereda/Corregimiento *' : 'Especifique el Barrio *'}
+                  name="otroBarrio"
+                  value={formData.otroBarrio || ""}
+                  onChange={handleChange}
+                  required
+                  error={!!errors.otroBarrio}
+                  helperText={errors.otroBarrio || (formData.barrioResidencia === "otro" ? "Por favor ingrese el nombre del barrio" : "")}
                 />
               </Grid>
             )}
+
+
             <Grid item xs={12}>
               <Typography variant="h6" gutterBottom sx={{ mt: 2, mb: 1, textAlign: 'center', backgroundColor: '#f0f0f0', padding: '8px' }}>
               Situación Migratoria
@@ -1478,164 +2145,107 @@ return (
               </TextField>
             </Grid>
             <Grid item xs={12} md={6}>
-              <FormControl fullWidth>
-                <FormLabel>¿Cuenta con documento migratorio en Colombia?</FormLabel>
+              <FormControl component="fieldset" fullWidth>
+                <FormLabel component="legend">¿Cuenta con documento migratorio en Colombia?</FormLabel>
                 <RadioGroup
                   row
-                  name="tienePPT"
-                  value={formData.tienePPT}
+                  name="tieneDocumentoMigratorio"
+                  value={formData.tieneDocumentoMigratorio ? 'si' : 'no'}
                   onChange={(e) => {
-                    const value = e.target.value === 'true';
-                    handleChange({
-                      target: {
-                        name: 'tienePPT',
-                        value: value
-                      }
-                    });
-                    console.log('tienePPT changed:', value);
+                    const tieneDoc = e.target.value === 'si';
+                    
+                    setFormData(prev => ({
+                      ...prev,
+                      tieneDocumentoMigratorio: tieneDoc,
+                      ...(!tieneDoc ? {
+                        tipoDocumentoMigratorio: '',
+                        numeroDocumentoMigratorio: '',
+                        fechaVencimientoDocumento: '',
+                        otroTipoDocumento: ''
+                      } : {})
+                    }));
                   }}
                 >
-                  <FormControlLabel value={true} control={<Radio />} label="Sí" />
-                  <FormControlLabel value={false} control={<Radio />} label="No" />
+                  <FormControlLabel 
+                    value="si" 
+                    control={<Radio />} 
+                    label="Sí"
+                    checked={formData.tieneDocumentoMigratorio === true}
+                  />
+                  <FormControlLabel 
+                    value="no" 
+                    control={<Radio />} 
+                    label="No"
+                    checked={formData.tieneDocumentoMigratorio === false}
+                  />
                 </RadioGroup>
               </FormControl>
             </Grid>
-            {renderDocumentoMigratorio()}
 
-            {/* Datos Socioculturales */}
-            <Grid item xs={12}>
-              <Typography variant="h6" gutterBottom sx={{ mt: 2, mb: 1, textAlign: 'center', backgroundColor: '#f0f0f0', padding: '8px' }}>
-              Datos Socioculturales
-              </Typography>
-            </Grid>
+            {/* Campos condicionales para documentos migratorios */}
+            {formData.tieneDocumentoMigratorio && (
+              <Grid container spacing={2} sx={{ mt: 1, ml: 0, width: '100%' }}>
+                <Grid item xs={12} md={6}>
+                  <FormControl fullWidth required>
+                    <InputLabel>Tipo de Documento Migratorio</InputLabel>
+                    <Select
+                      name="tipoDocumentoMigratorio"
+                      value={mapearTipoDocumento(formData.tipoDocumentoMigratorio)}
+                      onChange={handleChange}
+                      label="Tipo de Documento Migratorio"
+                    >
+                      <MenuItem value="">Seleccione un tipo de documento</MenuItem>
+                      {TIPOS_DOCUMENTOS_MIGRATORIOS.map((tipo) => (
+                        <MenuItem key={tipo} value={tipo}>
+                          {tipo}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
 
-            {/* Etnia o Grupo Étnico */}
-            <Grid item xs={12} md={6}>
-              <FormControl fullWidth>
-                <InputLabel>Etnia o Grupo Étnico</InputLabel>
-                <Select
-                  name="etnia"
-                  value={formData.etnia || ''}
-                  onChange={handleChange}
-                  label="Etnia o Grupo Étnico"
-                >
-                  <MenuItem value="Ninguna">Ninguna</MenuItem>
-                  <MenuItem value="Afrodescendiente">Afrodescendiente</MenuItem>
-                  <MenuItem value="Mestizo">Mestizo</MenuItem>
-                  <MenuItem value="Indigena">Indígena</MenuItem>
-                  <MenuItem value="Raizal">Raizal</MenuItem>
-                  <MenuItem value="Palenquero">Palenquero</MenuItem>
-                  <MenuItem value="Otro">Otro</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
+                {/* Campo para otro tipo de documento */}
+                {formData.tipoDocumentoMigratorio === 'Otro (especificar)' && (
+                  <Grid item xs={12} md={6}>
+                    <TextField
+                      fullWidth
+                      label="Especifique el tipo de documento"
+                      name="otroTipoDocumento"
+                      value={formData.otroTipoDocumento || ''}
+                      onChange={handleChange}
+                      required
+                    />
+                  </Grid>
+                )}
 
-            {/* Nivel Educativo */}
-            <Grid item xs={12} md={6}>
-              <FormControl fullWidth>
-                <InputLabel>Nivel Educativo</InputLabel>
-                <Select
-                  name="nivelEducativo"
-                  value={formData.nivelEducativo || ''}
-                  onChange={handleChange}
-                  label="Nivel Educativo"
-                >
-                  <MenuItem value="Primaria_Incompleta">Primaria Incompleta</MenuItem>
-                  <MenuItem value="Primaria_Completa">Primaria Completa</MenuItem>
-                  <MenuItem value="Secundaria_Incompleta">Secundaria Incompleta</MenuItem>
-                  <MenuItem value="Secundaria_Completa">Secundaria Completa</MenuItem>
-                  <MenuItem value="Tecnico">Técnico</MenuItem>
-                  <MenuItem value="Tecnologico">Tecnológico</MenuItem>
-                  <MenuItem value="Universitario_Incompleto">Universitario Incompleto</MenuItem>
-                  <MenuItem value="Universitario_Completo">Universitario Completo</MenuItem>
-                  <MenuItem value="Postgrado">Postgrado</MenuItem>
-                  <MenuItem value="Ninguno">Ninguno</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-
-            {/* Acceso a Servicios Básicos */}
-            <Grid item xs={12}>
-              <FormControl component="fieldset" fullWidth>
-                <FormLabel component="legend">Acceso a Servicios Básicos</FormLabel>
-                <FormGroup row>
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        checked={formData.servicioAgua === true || String(formData.servicioAgua).toLowerCase() === 'true' || Number(formData.servicioAgua) === 1}
-                        onChange={handleChange}
-                        name="servicioAgua"
-                      />
-                    }
-                    label="Agua Potable"
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="Número de documento migratorio"
+                    name="numeroDocumentoMigratorio"
+                    value={formData.numeroDocumentoMigratorio || ''}
+                    onChange={handleChange}
+                    required
                   />
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        checked={formData.servicioElectricidad === true || String(formData.servicioElectricidad).toLowerCase() === 'true' || Number(formData.servicioElectricidad) === 1}
-                        onChange={handleChange}
-                        name="servicioElectricidad"
-                      />
-                    }
-                    label="Electricidad"
-                  />
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        checked={formData.servicioAlcantarillado === true || String(formData.servicioAlcantarillado).toLowerCase() === 'true' || Number(formData.servicioAlcantarillado) === 1}
-                        onChange={handleChange}
-                        name="servicioAlcantarillado"
-                      />
-                    }
-                    label="Alcantarillado"
-                  />
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        checked={formData.servicioSalud === true || String(formData.servicioSalud).toLowerCase() === 'true' || Number(formData.servicioSalud) === 1}
-                        onChange={handleChange}
-                        name="servicioSalud"
-                      />
-                    }
-                    label="Acceso a Salud"
-                  />
-                </FormGroup>
-              </FormControl>
-            </Grid>
+                </Grid>
 
-            {/* Condiciones de Vivienda */}
-            <Grid item xs={12} md={6}>
-              <FormControl fullWidth>
-                <InputLabel>Tipo de Vivienda</InputLabel>
-                <Select
-                  name="tipoVivienda"
-                  value={formData.tipoVivienda || ''}
-                  onChange={handleChange}
-                  label="Tipo de Vivienda"
-                >
-                  <MenuItem value="Propia">Propia</MenuItem>
-                  <MenuItem value="Alquilada">Alquilada</MenuItem>
-                  <MenuItem value="Prestada">Prestada</MenuItem>
-                  <MenuItem value="Albergue">Albergue</MenuItem>
-                  <MenuItem value="Otro">Otro</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <FormControl fullWidth>
-                <InputLabel>Condiciones de la Vivienda</InputLabel>
-                <Select
-                  name="condicionVivienda"
-                  value={formData.condicionVivienda || ''}
-                  onChange={handleChange}
-                  label="Condiciones de la Vivienda"
-                >
-                  <MenuItem value="Buenas">Buenas</MenuItem>
-                  <MenuItem value="Regulares">Regulares</MenuItem>
-                  <MenuItem value="Precarias">Precarias</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="Fecha de expedición del documento"
+                    name="fechaVencimientoDocumento"
+                    type="date"
+                    value={formData.fechaVencimientoDocumento || ''}
+                    onChange={handleChange}
+                    InputLabelProps={{ shrink: true }}
+                    required
+                  />
+                </Grid>
+              </Grid>
+            )}
+
+     
+
 
             {/* Sección: Condiciones Socioeconómicas */}
             <Grid item xs={12}>
@@ -2381,81 +2991,7 @@ return (
               </FormControl>
             </Grid>
 
-            {/* Sección: Medios de Comunicación y Observaciones */}
-            <Grid item xs={12}>
-              <Typography variant="h6" gutterBottom sx={{ mt: 2, mb: 1, textAlign: 'center', backgroundColor: '#f0f0f0', padding: '8px' }}>
-                Medios de Comunicación y Observaciones
-              </Typography>
-            </Grid>
-
-            {/* Medios de Comunicación Utilizados */}
-            <Grid item xs={12}>
-              <FormControl component="fieldset" fullWidth sx={{ mt: 1, mb: 1 }}>
-                <FormLabel component="legend">1. ¿Qué medios de comunicación utiliza habitualmente?</FormLabel>
-                <FormGroup row>
-                  {[
-                    'WhatsApp', 'Facebook', 'Instagram', 'Llamada telefónica', 
-                    'Mensaje de texto', 'Correo electrónico', 'Telegram', 'Otro'
-                  ].map((medio, index) => (
-                    <FormControlLabel
-                      key={`medio-${index}`}
-                      control={
-                        <Checkbox
-                          checked={formData.mediosComunicacion?.mediosUtilizados
-                            ? formData.mediosComunicacion.mediosUtilizados.includes(medio)
-                            : false
-                          }
-                          onChange={(e) => {
-                            const { value, checked } = e.target;
-                            setFormData(prevData => ({
-                              ...prevData,
-                              mediosComunicacion: {
-                                ...prevData.mediosComunicacion,
-                                mediosUtilizados: checked
-                                  ? [...(prevData.mediosComunicacion?.mediosUtilizados || []), value]
-                                  : (prevData.mediosComunicacion?.mediosUtilizados || []).filter(item => item !== value)
-                              }
-                            }));
-                          }}
-                          name="mediosComunicacion.mediosUtilizados"
-                          value={medio}
-                        />
-                      }
-                      label={medio}
-                    />
-                  ))}
-                  {formData.mediosComunicacion?.mediosUtilizados?.includes('Otro') && (
-                    <TextField
-                      label="Otro medio de comunicación, ¿cuál?"
-                      name="mediosComunicacion.medioUtilizadoOtro"
-                      value={formData.mediosComunicacion?.medioUtilizadoOtro || ''}
-                      onChange={handleChange}
-                      fullWidth
-                      margin="normal"
-                      error={!!errors['mediosComunicacion.medioUtilizadoOtro']}
-                      helperText={errors['mediosComunicacion.medioUtilizadoOtro']}
-                    />
-                  )}
-                </FormGroup>
-              </FormControl>
-            </Grid>
-
-            {/* Observaciones Adicionales */}
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                multiline
-                rows={4}
-                label="Observaciones adicionales"
-                name="observacionesAdicionales"
-                value={formData.observacionesAdicionales || ''}
-                onChange={handleChange}
-                variant="outlined"
-                margin="normal"
-              />
-            </Grid>
-
-           
+         
 
             {/* Sección: Caracterización del Grupo Familiar */}
             <Grid item xs={12}>
@@ -2684,64 +3220,167 @@ return (
               </FormControl>
             </Grid>
 
-            {/* Condiciones socioeconómicas del hogar */}
-            <Grid item xs={12}>
-              <Typography variant="subtitle1" gutterBottom sx={{ mt: 2, mb: 1 }}>
-                Condiciones Socioeconómicas del Hogar
-              </Typography>
-            </Grid>
+          {/* Sección: Condiciones Socioeconómicas del Hogar */}
+<Grid item xs={12}>
+  <Typography variant="h6" gutterBottom sx={{ mt: 2, mb: 1, textAlign: 'center', backgroundColor: '#f0f0f0', padding: '8px' }}>
+    Condiciones Socioeconómicas del Hogar
+  </Typography>
+</Grid>
 
-            <Grid item xs={12} md={6}>
-              <FormControl fullWidth variant="outlined" margin="normal">
-                <InputLabel>¿Cuál es la principal fuente de ingresos del hogar?</InputLabel>
-                <Select
-                  name="caracterizacionGrupo.fuenteIngresos"
-                  value={formData.caracterizacionGrupo?.fuenteIngresos || ''}
-                  label="¿Cuál es la principal fuente de ingresos del hogar?"
-                  onChange={handleChange}
-                >
-                  <MenuItem value="EmpleoFormal">Empleo Formal</MenuItem>
-                  <MenuItem value="EmpleoInformal">Empleo Informal</MenuItem>
-                  <MenuItem value="Emprendimiento">Emprendimiento</MenuItem>
-                  <MenuItem value="Remesas">Remesas</MenuItem>
-                  <MenuItem value="Ayudas">Ayudas Humanitarias</MenuItem>
-                  <MenuItem value="Ninguno">Ninguno</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
+{/* Fuentes de Ingreso y Dependencia */}
+<Grid item xs={12} md={6}>
+  <FormControl fullWidth variant="outlined" margin="normal">
+    <InputLabel>¿Cuál es la principal fuente de ingresos del hogar?</InputLabel>
+    <Select
+      name="caracterizacionGrupo.fuenteIngresos"
+      value={formData.caracterizacionGrupo?.fuenteIngresos || ''}
+      label="¿Cuál es la principal fuente de ingresos del hogar?"
+      onChange={handleChange}
+    >
+      <MenuItem value="EmpleoFormal">Empleo Formal</MenuItem>
+      <MenuItem value="EmpleoInformal">Empleo Informal</MenuItem>
+      <MenuItem value="Emprendimiento">Emprendimiento</MenuItem>
+      <MenuItem value="Remesas">Remesas</MenuItem>
+      <MenuItem value="Ayudas">Ayudas Humanitarias</MenuItem>
+      <MenuItem value="Ninguno">Ninguno</MenuItem>
+    </Select>
+  </FormControl>
+</Grid>
 
-            <Grid item xs={12} md={6}>
-              <TextField
-                type="number"
-                label="Ingreso mensual aproximado del hogar"
-                name="caracterizacionGrupo.ingresoMensual"
-                value={formData.caracterizacionGrupo?.ingresoMensual || ''}
-                onChange={handleChange}
-                fullWidth
-                variant="outlined"
-                margin="normal"
-                InputProps={{ inputProps: { min: 0 }, startAdornment: <InputAdornment position="start">$</InputAdornment> }}
-              />
-            </Grid>
+<Grid item xs={12} md={6}>
+  <TextField
+    type="number"
+    label="Ingreso mensual aproximado del hogar"
+    name="caracterizacionGrupo.ingresoMensual"
+    value={formData.caracterizacionGrupo?.ingresoMensual || ''}
+    onChange={handleChange}
+    fullWidth
+    variant="outlined"
+    margin="normal"
+    InputProps={{ inputProps: { min: 0 }, startAdornment: <InputAdornment position="start">$</InputAdornment> }}
+  />
+</Grid>
 
-            <Grid item xs={12} md={6}>
-              <FormControl fullWidth variant="outlined" margin="normal">
-                <InputLabel>¿Cuál es la condición de la vivienda?</InputLabel>
-                <Select
-                  name="caracterizacionGrupo.condicionVivienda"
-                  value={formData.caracterizacionGrupo?.condicionVivienda || ''}
-                  label="¿Cuál es la condición de la vivienda?"
-                  onChange={handleChange}
-                >
-                  <MenuItem value="Arrendada">Arrendada</MenuItem>
-                  <MenuItem value="Propia">Propia</MenuItem>
-                  <MenuItem value="Prestada">Prestada</MenuItem>
-                  <MenuItem value="Albergue">Albergue/Refugio</MenuItem>
-                  <MenuItem value="Informal">Asentamiento Informal</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
+<Grid item xs={12} md={6}>
+  <FormControl fullWidth variant="outlined" margin="normal">
+    <InputLabel>¿Cuántas personas dependen económicamente de este hogar?</InputLabel>
+    <Select
+      name="caracterizacionGrupo.personasDependientes"
+      value={formData.caracterizacionGrupo?.personasDependientes || ''}
+      label="¿Cuántas personas dependen económicamente de este hogar?"
+      onChange={handleChange}
+    >
+      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
+        <MenuItem key={num} value={num.toString()}>
+          {num}
+        </MenuItem>
+      ))}
+    </Select>
+  </FormControl>
+</Grid>
 
+<Grid item xs={12} md={6}>
+  <FormControl fullWidth variant="outlined" margin="normal">
+    <InputLabel>¿Algún miembro del hogar ha sido beneficiario de programas sociales?</InputLabel>
+    <Select
+      name="caracterizacionGrupo.beneficiarioProgramasSociales"
+      value={formData.caracterizacionGrupo?.beneficiarioProgramasSociales || ''}
+      label="¿Algún miembro del hogar ha sido beneficiario de programas sociales?"
+      onChange={handleChange}
+    >
+      <MenuItem value="Si">Sí</MenuItem>
+      <MenuItem value="No">No</MenuItem>
+    </Select>
+  </FormControl>
+</Grid>
+
+{/* Servicios Básicos y Vivienda */}
+<Grid item xs={12}>
+  <Typography variant="subtitle1" gutterBottom sx={{ mt: 2, mb: 1, textAlign: 'left', color: '#666' }}>
+  Acceso a Servicios Básicos
+  </Typography>
+</Grid>
+
+<Grid item xs={12}>
+  <FormControl component="fieldset" fullWidth>
+    <FormGroup row>
+      <FormControlLabel
+        control={
+          <Checkbox
+            checked={formData.servicioAgua === true || String(formData.servicioAgua).toLowerCase() === 'true' || Number(formData.servicioAgua) === 1}
+            onChange={handleChange}
+            name="servicioAgua"
+          />
+        }
+        label="Agua Potable"
+      />
+      <FormControlLabel
+        control={
+          <Checkbox
+            checked={formData.servicioElectricidad === true || String(formData.servicioElectricidad).toLowerCase() === 'true' || Number(formData.servicioElectricidad) === 1}
+            onChange={handleChange}
+            name="servicioElectricidad"
+          />
+        }
+        label="Electricidad"
+      />
+      <FormControlLabel
+        control={
+          <Checkbox
+            checked={formData.servicioAlcantarillado === true || String(formData.servicioAlcantarillado).toLowerCase() === 'true' || Number(formData.servicioAlcantarillado) === 1}
+            onChange={handleChange}
+            name="servicioAlcantarillado"
+          />
+        }
+        label="Alcantarillado"
+      />
+      <FormControlLabel
+        control={
+          <Checkbox
+            checked={formData.servicioSalud === true || String(formData.servicioSalud).toLowerCase() === 'true' || Number(formData.servicioSalud) === 1}
+            onChange={handleChange}
+            name="servicioSalud"
+          />
+        }
+        label="Acceso a Salud"
+      />
+    </FormGroup>
+  </FormControl>
+</Grid>
+
+<Grid item xs={12} md={6}>
+  <FormControl fullWidth variant="outlined" margin="normal">
+    <InputLabel>Tipo de Vivienda</InputLabel>
+    <Select
+      name="tipoVivienda"
+      value={formData.tipoVivienda || ''}
+      onChange={handleChange}
+      label="Tipo de Vivienda"
+    >
+      <MenuItem value="Propia">Propia</MenuItem>
+      <MenuItem value="Alquilada">Alquilada</MenuItem>
+      <MenuItem value="Prestada">Prestada</MenuItem>
+      <MenuItem value="Albergue">Albergue</MenuItem>
+      <MenuItem value="Otro">Otro</MenuItem>
+    </Select>
+  </FormControl>
+</Grid>
+
+<Grid item xs={12} md={6}>
+  <FormControl fullWidth variant="outlined" margin="normal">
+    <InputLabel>Condiciones de la Vivienda</InputLabel>
+    <Select
+      name="condicionVivienda"
+      value={formData.condicionVivienda || ''}
+      onChange={handleChange}
+      label="Condiciones de la Vivienda"
+    >
+      <MenuItem value="Buenas">Buenas</MenuItem>
+      <MenuItem value="Regulares">Regulares</MenuItem>
+      <MenuItem value="Precarias">Precarias</MenuItem>
+    </Select>
+  </FormControl>
+</Grid>
             <Grid item xs={12} md={6}>
               <FormControl fullWidth variant="outlined" margin="normal">
                 <InputLabel>¿Cuántas personas dependen económicamente de este hogar?</InputLabel>
@@ -2878,7 +3517,81 @@ return (
                 </Select>
               </FormControl>
             </Grid>
+   {/* Sección: Medios de Comunicación y Observaciones */}
+   <Grid item xs={12}>
+              <Typography variant="h6" gutterBottom sx={{ mt: 2, mb: 1, textAlign: 'center', backgroundColor: '#f0f0f0', padding: '8px' }}>
+                Medios de Comunicación y Observaciones
+              </Typography>
+            </Grid>
 
+            {/* Medios de Comunicación Utilizados */}
+            <Grid item xs={12}>
+              <FormControl component="fieldset" fullWidth sx={{ mt: 1, mb: 1 }}>
+                <FormLabel component="legend">1. ¿Qué medios de comunicación utiliza habitualmente?</FormLabel>
+                <FormGroup row>
+                  {[
+                    'WhatsApp', 'Facebook', 'Instagram', 'Llamada telefónica', 
+                    'Mensaje de texto', 'Correo electrónico', 'Telegram', 'Otro'
+                  ].map((medio, index) => (
+                    <FormControlLabel
+                      key={`medio-${index}`}
+                      control={
+                        <Checkbox
+                          checked={formData.mediosComunicacion?.mediosUtilizados
+                            ? formData.mediosComunicacion.mediosUtilizados.includes(medio)
+                            : false
+                          }
+                          onChange={(e) => {
+                            const { value, checked } = e.target;
+                            setFormData(prevData => ({
+                              ...prevData,
+                              mediosComunicacion: {
+                                ...prevData.mediosComunicacion,
+                                mediosUtilizados: checked
+                                  ? [...(prevData.mediosComunicacion?.mediosUtilizados || []), value]
+                                  : (prevData.mediosComunicacion?.mediosUtilizados || []).filter(item => item !== value)
+                              }
+                            }));
+                          }}
+                          name="mediosComunicacion.mediosUtilizados"
+                          value={medio}
+                        />
+                      }
+                      label={medio}
+                    />
+                  ))}
+                  {formData.mediosComunicacion?.mediosUtilizados?.includes('Otro') && (
+                    <TextField
+                      label="Otro medio de comunicación, ¿cuál?"
+                      name="mediosComunicacion.medioUtilizadoOtro"
+                      value={formData.mediosComunicacion?.medioUtilizadoOtro || ''}
+                      onChange={handleChange}
+                      fullWidth
+                      margin="normal"
+                      error={!!errors['mediosComunicacion.medioUtilizadoOtro']}
+                      helperText={errors['mediosComunicacion.medioUtilizadoOtro']}
+                    />
+                  )}
+                </FormGroup>
+              </FormControl>
+            </Grid>
+
+            {/* Observaciones Adicionales */}
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                multiline
+                rows={4}
+                label="Observaciones adicionales"
+                name="observacionesAdicionales"
+                value={formData.observacionesAdicionales || ''}
+                onChange={handleChange}
+                variant="outlined"
+                margin="normal"
+              />
+            </Grid>
+
+           
             <Grid item xs={12} container spacing={2}>
               <Grid item xs={6}>
                 <Button

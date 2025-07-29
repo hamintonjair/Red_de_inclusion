@@ -12,89 +12,140 @@ poblacion_migrante_bp = Blueprint('poblacion_migrante', __name__)
 
 # Esquema de validación para población migrante
 class PoblacionMigranteSchema(Schema):
-    # Datos personales
+    # Datos del funcionario
     funcionario_id = fields.Str(required=True)
     funcionario_nombre = fields.Str(required=True)
     linea_trabajo = fields.Str(required=True)
     fecha_registro = fields.Str(required=True)
     
+    # Datos personales
     nombre_completo = fields.Str(required=True, validate=validate.Length(min=3, max=100))
     tipo_documento = fields.Str(required=True, validate=validate.OneOf([
+        'PPT - Permiso por Protección Temporal',
+        'PEP - Permiso Especial de Permanencia',
+        'Pasaporte',
         'Cédula de ciudadanía',
         'Cédula de extranjería',
-        'Pasaporte',
-        'Permiso especial de permanencia',
+        'No tiene',
         'Sin documento',
-        'PPT',
         'Otro'
     ]))
     numero_documento = fields.Str(required=True)
     fecha_nacimiento = fields.Str(required=False, allow_none=True)
-    sexo = fields.Str(required=False, allow_none=True, validate=validate.OneOf(['Masculino', 'Femenino', 'Otro', 'Prefiero no decirlo'])) # Añadido
+    sexo = fields.Str(required=False, allow_none=True, validate=validate.OneOf([
+        'Masculino', 
+        'Femenino', 
+        'Otro', 
+        'Prefiero no decirlo'
+    ]))
+    telefono = fields.Str(required=False, allow_none=True)
+    edad = fields.Int(required=False, allow_none=True)
     
     # Datos migratorios
     pais_origen = fields.Str(required=True)
     fecha_llegada = fields.Str(required=False, allow_none=True)
-    tiempoPermanenciaColombia = fields.Str(required=True, validate=validate.OneOf([
+    tiempo_permanencia_colombia = fields.Str(required=True, validate=validate.OneOf([
         '0-6', 
         '7-12', 
         '1-2', 
-        '2+'
+        '2+',
+        'Menos de 6 meses',
+        '6 meses a 1 año',
+        '1 a 2 años',
+        'Más de 2 años'
     ]))
-    tipoDocumentoMigratorio = fields.Str(required=False, allow_none=True, validate=validate.OneOf([
-        'PPT', 
-        'PEP', 
-        'Otro' 
+    tipo_documento_migratorio = fields.Str(required=False, allow_none=True, validate=validate.OneOf([
+        'PPT - Permiso por Protección Temporal',
+        'PEP - Permiso Especial de Permanencia',
+        'Pasaporte',
+        'Cédula de ciudadanía',
+        'Cédula de extranjería',
+        'No tiene',
+        'Sin documento',
+        'Otro'
     ]))
 
     # Ubicación
-    comunaResidencia = fields.Str(required=True)
+    comuna_residencia = fields.Str(required=True)
     barrio = fields.Str(required=True)
-    familyDisability = fields.Str(required=False, allow_none=True, validate=validate.OneOf(['Sí', 'No'])) 
-    healthSystemName = fields.Str(required=False, allow_none=True)
-    sisbenStatus = fields.Str(required=False, allow_none=True, validate=validate.OneOf(['Sí', 'No'])) # Ya tenía allow_none en otra parte, consolidar
-    needSisbenUpdate = fields.Str(required=False, allow_none=True, validate=validate.OneOf(['Sí', 'No'])) # Añadido
-    disability = fields.Str(required=False, allow_none=True, validate=validate.OneOf(['Sí', 'No']))  # Ya tenía allow_none en otra parte, consolidar
-    disabilityType = fields.Str(required=False, allow_none=True) 
-    disease = fields.Str(required=False, allow_none=True, validate=validate.OneOf(['Sí', 'No'])) # Ya tenía allow_none en otra parte, consolidar 
-
+    
+    # Salud y discapacidad
+    health_system = fields.Str(required=False, allow_none=True)
+    health_system_name = fields.Str(required=False, allow_none=True)
+    sisben_status = fields.Str(required=False, allow_none=True, validate=validate.OneOf(['Sí', 'No']))
+    need_sisben_update = fields.Str(required=False, allow_none=True, validate=validate.OneOf(['Sí', 'No']))
+    disability = fields.Str(required=False, allow_none=True, validate=validate.OneOf(['Sí', 'No']))
+    disability_type = fields.Str(required=False, allow_none=True)
+    disease = fields.Str(required=False, allow_none=True, validate=validate.OneOf(['Sí', 'No']))
+    family_disability = fields.Str(required=False, allow_none=True, validate=validate.OneOf(['Sí', 'No']))
+    
+    # Situación de vivienda
+    servicio_agua = fields.Bool(required=False, allow_none=True)
+    servicio_electricidad = fields.Bool(required=False, allow_none=True)
+    servicio_alcantarillado = fields.Bool(required=False, allow_none=True)
+    servicio_salud = fields.Bool(required=False, allow_none=True)
+    tipo_vivienda = fields.Str(required=False, allow_none=True, validate=validate.OneOf([
+        'Propia', 
+        'Alquilada', 
+        'Prestada', 
+        'Albergue',
+        'Invasión',
+        'Otro'
+    ]))
+    condicion_vivienda = fields.Str(required=False, allow_none=True, validate=validate.OneOf([
+        'Buenas', 
+        'Regulares', 
+        'Precarias',
+        'Inhabitable'
+    ]))
+    
+    # Información familiar
+    tamano_nucleo_familiar = fields.Str(required=False, allow_none=True)
+    cantidad_ninos_adolescentes = fields.Str(required=False, allow_none=True)
+    
+    # Situación de violencia
+    victim_of_armed_conflict = fields.Str(required=False, allow_none=True, validate=validate.OneOf(['Sí', 'No']))
+    conflict_victim_type = fields.Str(required=False, allow_none=True)
+    victim_of_violence = fields.Str(required=False, allow_none=True, validate=validate.OneOf(['Sí', 'No']))
+    
+    # Campos adicionales
+    tiene_antecedentes_familiares = fields.Str(required=False, allow_none=True, validate=validate.OneOf(['Sí', 'No']))
+    tiene_condicion_especial = fields.Str(required=False, allow_none=True, validate=validate.OneOf(['Sí', 'No']))
+    condicion_especial = fields.Str(required=False, allow_none=True)
+    en_tratamiento_medico = fields.Str(required=False, allow_none=True, validate=validate.OneOf(['Sí', 'No']))
+    detalle_tratamiento = fields.Str(required=False, allow_none=True)
+    tipo_discapacidad = fields.Str(required=False, allow_none=True)
+    numero_personas_discapacidad = fields.Str(required=False, allow_none=True)
+    tipo_victima = fields.Str(required=False, allow_none=True)
+    detalle_victima = fields.Str(required=False, allow_none=True)
+    ruta_atencion = fields.Str(required=False, allow_none=True)
+    observaciones = fields.Str(required=False, allow_none=True)
+    situacion_migratoria = fields.Str(required=False, allow_none=True)
+    
     # Datos socioculturales
     etnia = fields.Str(required=True, validate=validate.OneOf([
         'Ninguna', 
         'Afrodescendiente',
-        'Mestizo',  # Añadido
-        'Indigena', 
+        'Mestizo',
+        'Indígena', 
         'Raizal', 
         'Palenquero', 
+        'Rrom',
         'Otro'
     ]))
-    nivelEducativo = fields.Str(required=True, validate=validate.OneOf([
-        'Primaria_Incompleta',
-        'Primaria_Completa',
-        'Secundaria_Incompleta',
-        'Secundaria_Completa',
-        'Tecnico',
-        'Tecnologico',
-        'Universitario_Incompleto',
-        'Universitario_Completo',
-        'Postgrado',
-        'Ninguno'
-    ]))
-    servicioAgua = fields.Bool(required=False)
-    servicioElectricidad = fields.Bool(required=False)
-    servicioAlcantarillado = fields.Bool(required=False)
-    servicioSalud = fields.Bool(required=False)
-    tipoVivienda = fields.Str(required=False, validate=validate.OneOf([
-        'Propia', 
-        'Alquilada', 
-        'Prestada', 
-        'Albergue', 
-        'Otro'
-    ]))
-    condicionVivienda = fields.Str(required=False, validate=validate.OneOf([
-        'Buenas', 
-        'Regulares', 
-        'Precarias'
+    
+    nivel_educativo = fields.Str(required=True, validate=validate.OneOf([
+        'Primaria Incompleta',
+        'Primaria Completa',
+        'Bachillerato Incompleto',
+        'Bachillerato Completo',
+        'Técnico',
+        'Tecnológico',
+        'Universitario Incompleto',
+        'Universitario Completo',
+        'Posgrado',
+        'Ninguno',
+        'No sabe/No responde'
     ]))
 
     # Información familiar

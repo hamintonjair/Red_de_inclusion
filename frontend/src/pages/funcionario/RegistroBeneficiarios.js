@@ -60,6 +60,9 @@ const TIPOS_DOCUMENTO = [
   "Tarjeta de Identidad",
   "Pasaporte",
   "Registro Civil",
+  "PPT - Permiso por Protección Temporal",
+  "PEP - Permiso Especial de Permanencia",
+  "Cédula de extrangería",
 ];
 const GENEROS = ["Masculino", "Femenino", "Otro", "Prefiero no decir"];
 const RANGOS_EDAD = [
@@ -255,12 +258,7 @@ export default function RegistroBeneficiarios() {
         throw new Error('Formato de firma no válido');
       }
       
-      console.log('Guardando nueva firma:', { 
-        tipo: typeof firmaData,
-        longitud: firmaData.length,
-        inicio: firmaData.substring(0, 30) + '...'
-      });
-      
+        
       // Primero actualizamos el estado local
       setSignature(firmaData);
       
@@ -270,12 +268,7 @@ export default function RegistroBeneficiarios() {
         firma: firmaData
       };
       
-      console.log('Actualizando formData con firma:', { 
-        tieneFirma: !!firmaData,
-        tipo: typeof firmaData,
-        longitud: firmaData.length
-      });
-      
+        
       // Actualizamos el estado del formulario
       setFormData(nuevoFormData);
       
@@ -427,21 +420,14 @@ export default function RegistroBeneficiarios() {
   useEffect(() => {
     if (location.state?.beneficiario) {
       const beneficiario = location.state.beneficiario;
-      console.log('Cargando beneficiario para edición:', {
-        ...beneficiario,
-        firma: beneficiario.firma ? 'firma presente' : 'sin firma'
-      });
+    
       setModoEdicion(true);
       setBeneficiarioId(beneficiario.id);
 
       // Cargar la firma si existe
       if (beneficiario.firma) {
         const firmaData = beneficiario.firma;
-        console.log('Cargando firma existente:', {
-          longitud: firmaData.length,
-          tipo: typeof firmaData,
-          esValida: firmaData.startsWith('data:image/')
-        });
+       
         
         // Actualizar ambos estados de forma síncrona
         setSignature(firmaData);
@@ -452,11 +438,7 @@ export default function RegistroBeneficiarios() {
             ...prev,
             firma: firmaData
           };
-          console.log('Firma cargada en formData:', { 
-            tieneFirma: !!nuevoEstado.firma,
-            tipo: typeof nuevoEstado.firma,
-            longitud: firmaData.length
-          });
+    
           return nuevoEstado;
         });
       }
@@ -466,12 +448,6 @@ export default function RegistroBeneficiarios() {
         etnia.toLowerCase() === (beneficiario.etnia || '').toLowerCase().trim()
       ) || (ETNIAS.length > 0 ? ETNIAS[0] : '');
       
-      console.log('Cargando etnia:', {
-        original: beneficiario.etnia,
-        seleccionada: etniaEncontrada,
-        etniasDisponibles: ETNIAS,
-        firmaCargada: !!beneficiario.firma
-      }, 'Tipo de etnia:', typeof beneficiario.etnia);
 
       // Si el beneficiario tiene una comuna, cargar sus barrios
       if (beneficiario.comuna) {
@@ -515,12 +491,6 @@ export default function RegistroBeneficiarios() {
           barrioSeleccionado = "";
           barrioPersonalizado = "";
         }
-
-        console.log('Barrio - Original:', beneficiario.barrio, 
-                   'Seleccionado:', barrioSeleccionado, 
-                   'Personalizado:', barrioPersonalizado,
-                   'Es personalizado:', esBarrioPersonalizado,
-                   'Barrios disponibles:', barriosDeComuna.map(b => b.nombre));
 
         // Crear un nuevo objeto con los valores actualizados
         const datosActualizados = {

@@ -147,8 +147,79 @@ export const crearPoblacionMigrante = async (datos) => {
             return acc;
         }, {});
 
-        // Lista DEFINITIVA de campos requeridos basada en PoblacionMigranteSchema (required=True)
-        const camposRequeridos = [
+        // Primero, normalizamos todos los nombres de campos a snake_case para consistencia
+        const datosNormalizados = {};
+        Object.entries(datos).forEach(([key, value]) => {
+            // Convertir camelCase a snake_case
+            const snakeKey = key
+                .replace(/([A-Z])/g, '_$1')
+                .toLowerCase()
+                .replace(/^_/, '');
+            datosNormalizados[snakeKey] = value;
+        });
+
+        console.log('Datos normalizados a snake_case:', datosNormalizados);
+
+        // Mapeo de campos del formulario (camelCase) a campos del backend (snake_case)
+        const mapeoCampos = {
+            // Campos del formulario: campo del backend
+            'funcionarioId': 'funcionario_id',
+            'funcionarioNombre': 'funcionario_nombre',
+            'lineaTrabajo': 'linea_trabajo',
+            'fechaRegistro': 'fecha_registro',
+            'nombreCompleto': 'nombre_completo',
+            'tipoDocumento': 'tipo_documento',
+            'numeroDocumentoMigratorio': 'numero_documento',
+            'paisOrigen': 'pais_origen',
+            'tiempoPermanenciaColombia': 'tiempo_permanencia_colombia',
+            'comunaResidencia': 'comuna_residencia',
+            'barrio': 'barrio',
+            'etnia': 'etnia',
+            'nivelEducativo': 'nivel_educativo'
+        };
+
+        // Invertir el mapeo para búsqueda inversa
+        const mapeoInverso = Object.entries(mapeoCampos).reduce((acc, [key, value]) => {
+            acc[value] = key;
+            return acc;
+        }, {});
+
+        // Nombres de campos para mensajes de error (usando los nombres del formulario)
+        const nombresAmigables = {
+            'funcionarioId': 'ID del funcionario',
+            'funcionarioNombre': 'Nombre del funcionario',
+            'lineaTrabajo': 'Línea de trabajo',
+            'fechaRegistro': 'Fecha de registro',
+            'nombreCompleto': 'Nombre completo',
+            'tipoDocumento': 'Tipo de documento',
+            'numeroDocumentoMigratorio': 'Número de documento migratorio',
+            'paisOrigen': 'País de origen',
+            'tiempoPermanenciaColombia': 'Tiempo de permanencia en Colombia',
+            'comunaResidencia': 'Comuna de residencia',
+            'barrio': 'Barrio',
+            'etnia': 'Etnia',
+            'nivelEducativo': 'Nivel educativo'
+        };
+
+        // Validar campos requeridos
+        const camposFaltantes = [];
+        const datosFinales = {};
+        
+        // Crear un objeto con los datos del formulario en camelCase
+        const datosFormulario = { ...datos };
+        
+        // Si hay datos en datosNormalizados, combinarlos con los del formulario
+        Object.entries(datosNormalizados).forEach(([key, value]) => {
+            // Solo agregar si no existe ya en datosFormulario
+            if (datosFormulario[key] === undefined) {
+                datosFormulario[key] = value;
+            }
+        });
+        
+        console.log('Datos del formulario para validación:', datosFormulario);
+
+        // Campos requeridos en el formato del backend (snake_case)
+        const camposRequeridosBackend = [
             'funcionario_id',
             'funcionario_nombre',
             'linea_trabajo',
@@ -157,26 +228,66 @@ export const crearPoblacionMigrante = async (datos) => {
             'tipo_documento',
             'numero_documento',
             'pais_origen',
-            'tiempoPermanenciaColombia', // camelCase
-            'comunaResidencia', // camelCase
-            'barrio', // snake_case
-            'etnia', // snake_case
-            'nivelEducativo', // camelCase
-            'tamanoNucleoFamiliar', // camelCase
-            'cantidadNinosAdolescentes' // camelCase
+            'tiempo_permanencia_colombia',
+            'comuna_residencia',
+            'barrio',
+            'etnia',
+            'nivel_educativo'
         ];
 
-        // Validación frontend: Verificar que todos los campos requeridos están presentes y no son nulos/undefined/vacíos
-        const camposFaltantes = camposRequeridos.filter(campo => 
-            datosValidados[campo] === undefined || datosValidados[campo] === null || datosValidados[campo] === ''
-        );
+        // Validar cada campo requerido
+        camposRequeridosBackend.forEach(campoBackend => {
+            // Buscar el valor en los datos normalizados (ya en snake_case)
+            let valor = datosNormalizados[campoBackend];
+            
+            // Si no se encuentra en los normalizados, buscar en los datos originales
+            if (valor === undefined) {
+                const campoFormulario = mapeoInverso[campoBackend];
+                if (campoFormulario) {
+                    valor = datosFormulario[campoFormulario];
+                }
+            }
+            
+            // Verificar si el campo está vacío o no existe
+            if ((valor === undefined || valor === null || valor === '') && valor !== 0 && valor !== false) {
+                // Obtener el nombre del campo del formulario para el mensaje de error
+                const campoForm = mapeoInverso[campoBackend] || campoBackend;
+                camposFaltantes.push(nombresAmigables[campoForm] || campoForm);
+            } else if (valor !== undefined) {
+                // Si el campo tiene un valor, lo agregamos al objeto final
+                datosFinales[campoBackend] = valor;
+            }
+        });
+        
+        // Agregar campos adicionales que no son requeridos pero están presentes
+        Object.entries(datosNormalizados).forEach(([key, value]) => {
+            // Solo agregar si no es un campo requerido y tiene un valor
+            if (!camposRequeridosBackend.includes(key) && value !== undefined && value !== '') {
+                datosFinales[key] = value;
+            }
+        });
 
+        console.log('Datos validados para enviar al backend:', datosFinales);
+        console.log('Campos faltantes:', camposFaltantes);
+
+        // Si hay campos faltantes, lanzar un error con los nombres de los campos en el formato del formulario
         if (camposFaltantes.length > 0) {
             console.error('Validación Frontend Fallida - Campos Faltantes:', camposFaltantes);
-            throw new Error(`Campos requeridos faltantes en el frontend: ${camposFaltantes.join(', ')}`);
+            throw new Error(`Por favor complete los siguientes campos obligatorios: ${camposFaltantes.join(', ')}`);
         }
 
-        const response = await axiosInstance.post('/poblacion-migrante/registrar', datosValidados);
+        // Agregar el resto de los campos que no son requeridos pero están presentes
+        Object.entries(datosNormalizados).forEach(([key, value]) => {
+            // Verificar si la clave no está en los campos mapeados
+            const esCampoNoMapeado = !Object.values(mapeoCampos).includes(key) && 
+                                   !Object.keys(mapeoCampos).includes(key);
+            
+            if (esCampoNoMapeado && value !== undefined && value !== '') {
+                datosFinales[key] = value;
+            }
+        });
+
+        const response = await axiosInstance.post('/poblacion-migrante/registrar', datosFinales);
         return {
             data: {
                 success: true,
