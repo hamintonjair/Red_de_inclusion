@@ -22,7 +22,9 @@ import {
     DialogContent,
     DialogContentText,
     DialogTitle,
-    InputAdornment
+    InputAdornment,
+    useTheme,
+    useMediaQuery
 } from '@mui/material';
 import { 
     Add as AddIcon, 
@@ -176,70 +178,88 @@ const Actividades = () => {
     };
 
 
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+    const [sidebarOpen, setSidebarOpen] = useState(true);
+
+    // Efecto para detectar cambios en el estado del sidebar
+    useEffect(() => {
+        const handleSidebarToggle = (event) => {
+            if (event.detail && typeof event.detail.isOpen !== 'undefined') {
+                setSidebarOpen(event.detail.isOpen);
+            }
+        };
+
+        // Escuchar eventos de cambio en el sidebar
+        window.addEventListener('sidebarToggle', handleSidebarToggle);
+        return () => {
+            window.removeEventListener('sidebarToggle', handleSidebarToggle);
+        };
+    }, []);
+
     if (loading) {
+        const loadingStyles = {
+            position: 'fixed',
+            top: 0, // Comienza desde la parte superior
+            left: 0, // Comienza desde la izquierda
+            right: 0,
+            bottom: 0,
+            bgcolor: 'rgba(0,0,0,0.35)',
+            zIndex: 1199, // Siempre detrás del sidebar (1200)
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backdropFilter: 'blur(2px)',
+            // No necesitamos transición para el left/right ya que siempre será full width
+            transition: theme.transitions.create(['opacity']),
+            // Aseguramos que el padding superior sea igual a la altura del AppBar
+            paddingTop: isMobile ? '56px' : '64px',
+            boxSizing: 'border-box',
+        };
+
         return (
-            <Box sx={{
-                position: 'fixed',
-                top: 0,
-                left: 0,
-                width: '100vw',
-                height: '100vh',
-                bgcolor: 'rgba(0,0,0,0.35)',
-                zIndex: 2000,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-            }}>
-                <Box sx={{ position: 'relative', display: 'inline-flex' }}>
-                    <CircularProgress size={100} thickness={5} value={100} variant="determinate" color="secondary" />
-                    <Box
-                        sx={{
-                            top: 0,
-                            left: 0,
-                            bottom: 0,
-                            right: 0,
-                            position: 'absolute',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            width: '100%',
-                            height: '100%',
-                        }}
-                    >
-                        <Typography variant="h5" component="div" color="white">Cargando...</Typography>
+            <PageLayout title={pageTitle} description={pageDescription}>
+                <Box sx={loadingStyles}>
+                    <Box sx={{ 
+                        position: 'relative', 
+                        display: 'inline-flex', 
+                        bgcolor: 'background.paper', 
+                        p: 4, 
+                        borderRadius: 2, 
+                        boxShadow: 3 
+                    }}>
+                        <CircularProgress size={80} thickness={4} value={100} variant="determinate" color="secondary" />
+                        <Box sx={{ 
+                            top: 0, 
+                            left: 0, 
+                            bottom: 0, 
+                            right: 0, 
+                            position: 'absolute', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'center', 
+                            width: '100%', 
+                            height: '100%' 
+                        }}>
+                            <Typography variant="h6" component="div" color="text.primary">Cargando...</Typography>
+                        </Box>
                     </Box>
                 </Box>
-            </Box>
+            </PageLayout>
         );
     }
 
     return (
         <PageLayout title={pageTitle} description={pageDescription}>
-        <Box sx={{ p: 3 }}>
-            <Box sx={{ mb: 3 }}>
-                {/* <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                    <Typography variant="h4" component="h1">
-                        {pageTitle}
-                    </Typography>
-                    <Button
-                        variant="contained"
-                        color="primary"
-                        startIcon={<AddIcon />}
-                        component={Link}
-                        to="/funcionario/actividades/nueva"
-                    >
-                        Nueva Actividad
-                    </Button>
-                </Box> */}
-                
-                {/* Campo de búsqueda */}
-                <TextField
-                    fullWidth
-                    variant="outlined"
-                    placeholder="Buscar actividad..."
-                    value={searchTerm}
-                    onChange={handleSearch}
-                    InputProps={{
+            <Box sx={{ p: 3 }}>
+                <Box sx={{ mb: 3 }}>
+                    <TextField
+                        fullWidth
+                        variant="outlined"
+                        placeholder="Buscar actividad..."
+                        value={searchTerm}
+                        onChange={handleSearch}
+                        InputProps={{
                         startAdornment: (
                             <InputAdornment position="start">
                                 <SearchIcon />

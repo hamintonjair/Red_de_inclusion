@@ -651,6 +651,7 @@ def obtener_beneficiarios():
         por_pagina = int(request.args.get('por_pagina', 10))
         filtro = request.args.get('filtro', '')
         es_admin = request.args.get('admin', 'false').lower() == 'true'
+        incluir_total = request.args.get('incluir_total', 'false').lower() == 'true'
 
         # Configurar la colección de beneficiarios
         beneficiarios = current_app.config['MONGO_DB']['beneficiarios']
@@ -678,13 +679,24 @@ def obtener_beneficiarios():
                 '$match': {'estado': 'Activo'}
             })
 
-        # Etapa de conteo total
-        pipeline_conteo = pipeline.copy()
-        pipeline_conteo.append({'$count': 'total'})
-
-        # Contar total de registros
-        total_registros = list(beneficiarios.aggregate(pipeline_conteo))
-        total = total_registros[0]['total'] if total_registros else 0
+        # Si se requiere el total o es necesario para la paginación
+        total = 0
+        if incluir_total or por_pagina < 1000000:
+            # Etapa de conteo total
+            pipeline_conteo = pipeline.copy()
+            pipeline_conteo.append({'$count': 'total'})
+            
+            # Contar total de registros con allowDiskUse
+            try:
+                total_registros = list(beneficiarios.aggregate(pipeline_conteo, allowDiskUse=True))
+                total = total_registros[0]['total'] if total_registros else 0
+            except Exception as e:
+                current_app.logger.error(f"Error al contar beneficiarios: {str(e)}")
+                # En caso de error, intentar con un conteo simple
+                try:
+                    total = beneficiarios.count_documents({})
+                except:
+                    total = 0
 
         # Agregar paginación solo si no se solicitan todos los registros
         if por_pagina < 1000000:  
@@ -693,24 +705,22 @@ def obtener_beneficiarios():
                 {'$limit': por_pagina}
             ])
 
-        # Ejecutar pipeline
-        resultado = list(beneficiarios.aggregate(pipeline))
+        # Ejecutar pipeline con allowDiskUse para manejar grandes conjuntos de datos
+        resultado = list(beneficiarios.aggregate(pipeline, allowDiskUse=True))
 
-        # Si se solicitan todos los registros, devolver todo
-        if por_pagina >= 1000000:
-            return jsonify({
-                'beneficiarios': resultado,
-                'total': total,
-                'pagina': 1,
-                'por_pagina': total
-            }), 200
-
-        return jsonify({
+        # Preparar respuesta
+        response = {
             'beneficiarios': resultado,
             'total': total,
-            'pagina': pagina,
-            'por_pagina': por_pagina
-        }), 200
+            'pagina': 1 if por_pagina >= 1000000 else pagina,
+            'por_pagina': total if por_pagina >= 1000000 else por_pagina
+        }
+        
+        # Si se solicitó incluir el total, asegurarse de que esté en la respuesta
+        if incluir_total:
+            response['total_registros'] = total
+            
+        return jsonify(response), 200
 
     except Exception as e:
         current_app.logger.error(f"Error al obtener beneficiarios: {str(e)}")

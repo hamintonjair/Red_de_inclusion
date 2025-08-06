@@ -7,33 +7,48 @@ import {
     Card, 
     CardContent, 
     CardHeader, 
+    Checkbox, 
+    Chip, 
+    CircularProgress,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogContentText,
+    DialogTitle,
     Divider, 
+    FormControl,
+    FormControlLabel,
+    FormGroup,
+    FormLabel,
     Grid, 
     IconButton, 
+    InputAdornment,
+    InputLabel,
+    List,
+    ListItem,
+    ListItemButton,
+    ListItemIcon,
+    ListItemText,
+    MenuItem,
+    Paper,
+    Radio,
+    RadioGroup,
+    Select,
     Snackbar,
+    Step,
+    StepLabel,
+    Stepper,
     Table, 
     TableBody, 
     TableCell, 
     TableContainer, 
     TableHead, 
-    TableRow, 
     TablePagination,
+    TableRow, 
     TextField,
     Typography,
-    Paper,
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
-    DialogContentText,
-    FormControl,
-    InputLabel,
-    InputAdornment,
-    Select,
-    MenuItem,
-    Toolbar,
-    Input,
-    TableSortLabel
+    useTheme,
+    useMediaQuery
 } from '@mui/material';
 import { 
     Add as AddIcon, 
@@ -724,14 +739,94 @@ const Asistentes = () => {
         }
     };
 
+    // Obtener el tema actual
+    const theme = useTheme();
+    
+    // Estado para el sidebar
+    const [sidebarOpen, setSidebarOpen] = useState(true);
+
+    // Efecto para detectar cambios en el estado del sidebar
+    useEffect(() => {
+        const handleSidebarToggle = (event) => {
+            if (event.detail && typeof event.detail.isOpen !== 'undefined') {
+                setSidebarOpen(event.detail.isOpen);
+            }
+        };
+
+        // Escuchar eventos de cambio en el sidebar
+        window.addEventListener('sidebarToggle', handleSidebarToggle);
+        return () => {
+            window.removeEventListener('sidebarToggle', handleSidebarToggle);
+        };
+    }, []);
+
     // Renderizar la tabla de asistentes
     const renderTable = () => {
         if (loading) {
-            return <Typography>Cargando asistentes...</Typography>;
+            const loadingStyles = {
+                position: 'fixed',
+                top: 0, // Comienza desde la parte superior
+                left: 0, // Comienza desde la izquierda
+                right: 0,
+                bottom: 0,
+                bgcolor: 'rgba(0,0,0,0.35)',
+                zIndex: 1199, // Siempre detrás del sidebar (1200)
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backdropFilter: 'blur(2px)',
+                // No necesitamos transición para el left/right ya que siempre será full width
+                transition: theme.transitions.create(['opacity']),
+                // Aseguramos que el padding superior sea igual a la altura del AppBar
+                paddingTop: isMobile ? '56px' : '64px',
+                boxSizing: 'border-box',
+            };
+
+            return (
+                <Box sx={loadingStyles}>
+                    <Box sx={{ 
+                        position: 'relative', 
+                        display: 'inline-flex',
+                        bgcolor: 'background.paper',
+                        p: 4,
+                        borderRadius: 2,
+                        boxShadow: 3,
+                    }}>
+                        <CircularProgress size={80} thickness={4} value={100} variant="determinate" color="secondary" />
+                        <Box
+                            sx={{
+                                top: 0,
+                                left: 0,
+                                bottom: 0,
+                                right: 0,
+                                position: 'absolute',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: '100%',
+                                height: '100%',
+                            }}
+                        >
+                            <Typography variant="h6" component="div" color="text.primary">Cargando...</Typography>
+                        </Box>
+                    </Box>
+                </Box>
+            );
         }
 
         if (error) {
-            return <Typography color="error">{error}</Typography>;
+            return (
+                <Box sx={{ 
+                    p: 3, 
+                    bgcolor: 'error.light', 
+                    color: 'error.contrastText',
+                    borderRadius: 1,
+                    textAlign: 'center',
+                    mt: 2
+                }}>
+                    <Typography>{error}</Typography>
+                </Box>
+            );
         }
 
         return (

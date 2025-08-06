@@ -47,14 +47,11 @@ const estadisticasService = {
     },
     obtenerEstadisticasBeneficiarios: async (lineaTrabajoId) => {
         try {
-            console.log(`Obteniendo estadísticas para línea de trabajo: ${lineaTrabajoId}`);
             
             // Usar URL completa con el prefijo correcto de beneficiarios
             const urlCompleta = `${axiosInstance.defaults.baseURL}/api/beneficiario/estadisticas/${lineaTrabajoId}`;
-            console.log('URL de la solicitud:', urlCompleta);
             
             const response = await axiosInstance.get(urlCompleta);
-            console.log('Respuesta del servidor:', response.data);
             
             // Validar estructura de respuesta
             if (!response.data) {
@@ -84,22 +81,11 @@ const estadisticasService = {
                 }
             });
             
-            console.log('Estadísticas procesadas:', estadisticasProcesadas);
             return estadisticasProcesadas;
             
         } catch (error) {
             console.error('Error en obtenerEstadisticasBeneficiarios:', error);
-            console.error('Detalles del error:', {
-                message: error.message,
-                response: error.response?.data,
-                status: error.response?.status,
-                config: {
-                    url: error.config?.url,
-                    method: error.config?.method,
-                    data: error.config?.data
-                }
-            });
-            
+                     
             // Devolver un objeto con valores por defecto en caso de error
             return {
                 total_beneficiarios: 0,

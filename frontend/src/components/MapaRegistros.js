@@ -61,7 +61,7 @@ export function agruparPorComunaYBarrio(registros) {
   return resultadoFinal;
 }
 
-const MapaRegistros = ({ registros }) => {
+const MapaRegistros = ({ registros, totalRegistros = 0 }) => {
   // Agrupar registros por barrio y coordenadas
   // Mostrar cada registro individual como un punto, sin agrupar
   const barriosMarcados = useMemo(() => {
@@ -116,7 +116,71 @@ const MapaRegistros = ({ registros }) => {
           />
         );
       })}
-      <p>Registros totales: {registros.length}</p>
+      {/* Contador superior - Total de registros cargados */}
+      <div style={{ 
+        position: 'absolute', 
+        top: 10, 
+        left: 0, 
+        right: 0, 
+        textAlign: 'center', 
+        backgroundColor: 'rgba(255, 255, 255, 0.9)', 
+        padding: '8px 16px', 
+        borderRadius: '4px', 
+        boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+        margin: '0 auto',
+        width: 'fit-content',
+        zIndex: 10,
+        fontSize: '14px',
+        fontWeight: '500',
+        color: '#333',
+        border: '1px solid #e0e0e0'
+      }}>
+      </div>
+      
+      {/* Contador inferior - Progreso de carga */}
+      <div style={{ 
+        position: 'absolute', 
+        bottom: 20, 
+        left: 0, 
+        right: 0, 
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 10
+      }}>
+        <div style={{ 
+          backgroundColor: 'rgba(0, 0, 0, 0.7)', 
+          color: 'white',
+          padding: '8px 24px', 
+          borderRadius: '4px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+          fontSize: '14px',
+          fontWeight: '500',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '8px',
+          backdropFilter: 'blur(4px)'
+        }}>
+          <span>Mostrando</span>
+          <span style={{ 
+            fontWeight: 'bold',
+            color: '#fff',
+            backgroundColor: 'rgba(255,255,255,0.2)',
+            padding: '2px 8px',
+            borderRadius: '4px'
+          }}>
+            {Math.min(registros.length, 800)}
+          </span>
+          <span>de</span>
+          <span style={{ 
+            fontWeight: 'bold',
+            color: '#fff'
+          }}>
+            {totalRegistros}
+          </span>
+          <span>registros</span>
+        </div>
+      </div>
     </div>
   );
 };

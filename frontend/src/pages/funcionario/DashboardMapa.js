@@ -24,48 +24,81 @@ const DashboardMapa = () => {
     if (!user?.linea_trabajo) return;
 
     setLoading(true);
+    setError(null);
     setProgressRegistros({ loaded: 0, total: 0 });
+    
     try {
-      const pageSize = 100;
+      const MAX_RECORDS = 700; // Límite de registros para el mapa
+      const pageSize = 50; // Reducir el tamaño de página para cargas más rápidas
       let pagina = 1;
       let registrosAcumulados = [];
       let totalRegistros = 0;
-      let continuar = true;
 
-      while (continuar) {
-        const resp = await beneficiarioService.obtenerBeneficiarios({
-          linea_trabajo: user.linea_trabajo,
-          por_pagina: pageSize,
-          pagina,
+      // Primero obtenemos solo el conteo total
+      try {
+        const conteo = await beneficiarioService.contarBeneficiarios({
+          linea_trabajo: user.linea_trabajo
         });
+        totalRegistros = conteo?.total || 0;
+        setProgressRegistros(prev => ({ ...prev, total: totalRegistros }));
+      } catch (error) {
+        console.error('Error obteniendo conteo total:', error);
+        // Continuar aunque falle el conteo
+      }
 
-        // Normalizar respuesta
-        const lista = Array.isArray(resp)
-          ? resp
-          : Array.isArray(resp?.beneficiarios)
-            ? resp.beneficiarios
-            : [];
-        const total = resp?.total ?? lista.length + (pagina - 1) * pageSize;
+      // Luego cargamos los datos en lotes
+      while (registrosAcumulados.length < MAX_RECORDS) {
+        try {
+          const resp = await beneficiarioService.obtenerBeneficiarios({
+            linea_trabajo: user.linea_trabajo,
+            por_pagina: Math.min(pageSize, MAX_RECORDS - registrosAcumulados.length),
+            pagina,
+            campos: 'id,comuna,barrio,barrio_lat,barrio_lng,nombre_completo' // Solo los campos necesarios
+          });
 
-        // Acumular y actualizar estados
-        registrosAcumulados = registrosAcumulados.concat(lista);
-        totalRegistros = total;
-        setRegistros(pagina === 1 ? lista : [...registrosAcumulados]);
-        setProgressRegistros({ loaded: registrosAcumulados.length, total: totalRegistros });
+          // Normalizar respuesta
+          const lista = Array.isArray(resp)
+            ? resp
+            : Array.isArray(resp?.beneficiarios)
+              ? resp.beneficiarios
+              : [];
+          
+          // Si no hay más registros, salir
+          if (lista.length === 0) break;
 
-        // Salir si se acabaron los registros
-        if (lista.length < pageSize) {
-          continuar = false;
-        } else {
+          // Filtrar registros sin coordenadas
+          const registrosConCoordenadas = lista.filter(r => r.barrio_lat && r.barrio_lng);
+          
+          registrosAcumulados = [...registrosAcumulados, ...registrosConCoordenadas];
+          
+          // Actualizar el estado con los registros cargados
+          setRegistros(registrosAcumulados);
+          setProgressRegistros({ 
+            loaded: registrosAcumulados.length, 
+            total: totalRegistros || registrosAcumulados.length
+          });
+
+          // Si ya alcanzamos el límite o no hay más registros, salir
+          if (lista.length < pageSize || registrosAcumulados.length >= MAX_RECORDS) {
+            break;
+          }
+          
           pagina += 1;
+          
+        } catch (error) {
+          console.error(`Error cargando página ${pagina}:`, error);
+          setError('Error cargando algunos registros. Mostrando los disponibles.');
+          break; // Salir del bucle en caso de error
         }
       }
 
-      // Limpieza final
-      setError(null);
+      // Mostrar mensaje si no hay registros
+      if (registrosAcumulados.length === 0) {
+        setError('No se encontraron registros con coordenadas para mostrar en el mapa.');
+      }
     } catch (err) {
-      console.error('Error al cargar registros:', err);
-      setError('Error al cargar registros. Intente de nuevo más tarde.');
+      console.error('Error en la carga de registros:', err);
+      setError('Error al cargar los registros. Por favor, intente de nuevo más tarde.');
       setRegistros([]);
     } finally {
       setLoading(false);
@@ -118,7 +151,10 @@ const DashboardMapa = () => {
             </Grid>
             <Grid item xs={12} md={8} lg={9} sx={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: '70vh' }}>
   <Box sx={{ flex: 1, position: 'relative', minHeight: 500 }}>
-    <MapaRegistros registros={registros} loading={loading} />
+      <MapaRegistros 
+        registros={registros} 
+        totalRegistros={progressRegistros.total || registros.length}
+      /> 
 
     {/* Overlay de progreso */}
     {progressRegistros.total > 0 && progressRegistros.loaded < progressRegistros.total && (

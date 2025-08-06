@@ -182,39 +182,50 @@ const ListadoPoblacionMigrante = () => {
     return (
         <PageLayout title={pageTitle} description={pageDescription}>
             <Box sx={{ position: 'relative', minHeight: '100vh' }}>
+                {/* Overlay de carga - Cubre toda la pantalla */}
                 {loadingOverlay && (
-                <Box sx={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    width: '100vw',
-                    height: '100vh',
-                    bgcolor: 'rgba(0,0,0,0.35)',
-                    zIndex: 2000,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                }}>
-                    <Box sx={{ position: 'relative', display: 'inline-flex' }}>
-                        <CircularProgress size={100} thickness={5} value={100} variant="determinate" color="secondary" />
-                        <Box
-                            sx={{
-                                top: 0,
-                                left: 0,
-                                bottom: 0,
-                                right: 0,
-                                position: 'absolute',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                width: '100%',
-                                height: '100%',
-                            }}
-                        >
-                            <Typography variant="h5" component="div" color="white">Cargando...</Typography>
+                    <Box sx={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        bgcolor: 'rgba(0,0,0,0.35)',
+                        zIndex: 1199, /* Detrás del sidebar (1200) */
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backdropFilter: 'blur(2px)',
+                        paddingTop: '64px', /* Altura del AppBar */
+                        boxSizing: 'border-box',
+                    }}>
+                        <Box sx={{ 
+                            position: 'relative', 
+                            display: 'inline-flex',
+                            bgcolor: 'background.paper',
+                            p: 4,
+                            borderRadius: 2,
+                            boxShadow: 3,
+                        }}>
+                            <CircularProgress size={80} thickness={4} value={100} variant="determinate" color="secondary" />
+                            <Box
+                                sx={{
+                                    top: 0,
+                                    left: 0,
+                                    bottom: 0,
+                                    right: 0,
+                                    position: 'absolute',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    width: '100%',
+                                    height: '100%',
+                                }}
+                            >
+                                <Typography variant="h6" component="div" color="text.primary">Cargando...</Typography>
+                            </Box>
                         </Box>
                     </Box>
-                </Box>
             )}
             <Container maxWidth="lg" sx={{ mt: 4 }}>
                 <Typography variant="h5" gutterBottom>

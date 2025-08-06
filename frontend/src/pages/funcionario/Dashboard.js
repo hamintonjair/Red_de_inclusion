@@ -77,21 +77,32 @@ const Dashboard = () => {
 
     return (
         <Box sx={{ position: 'relative', minHeight: '100vh' }}>
+            {/* Overlay de carga - Cubre toda la pantalla */}
             {loadingOverlay && (
                 <Box sx={{
                     position: 'fixed',
                     top: 0,
                     left: 0,
-                    width: '100vw',
-                    height: '100vh',
+                    right: 0,
+                    bottom: 0,
                     bgcolor: 'rgba(0,0,0,0.35)',
-                    zIndex: 2000,
+                    zIndex: 1199, /* Detrás del sidebar (1200) */
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
+                    backdropFilter: 'blur(2px)',
+                    paddingTop: '64px', /* Altura del AppBar */
+                    boxSizing: 'border-box',
                 }}>
-                    <Box sx={{ position: 'relative', display: 'inline-flex' }}>
-                        <CircularProgress size={100} thickness={5} value={100} variant="determinate" color="secondary" />
+                    <Box sx={{ 
+                        position: 'relative', 
+                        display: 'inline-flex',
+                        bgcolor: 'background.paper',
+                        p: 4,
+                        borderRadius: 2,
+                        boxShadow: 3,
+                    }}>
+                        <CircularProgress size={80} thickness={4} value={100} variant="determinate" color="secondary" />
                         <Box
                             sx={{
                                 top: 0,
@@ -106,7 +117,7 @@ const Dashboard = () => {
                                 height: '100%',
                             }}
                         >
-                            <Typography variant="h5" component="div" color="white">Cargando...</Typography>
+                            <Typography variant="h6" component="div" color="text.primary">Cargando...</Typography>
                         </Box>
                     </Box>
                 </Box>

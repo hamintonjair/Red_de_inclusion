@@ -101,7 +101,14 @@ const FuncionarioLayout = ({ children }) => {
     );
 
     const toggleDrawer = () => {
-        setOpen(!open);
+        const newOpenState = !open;
+        setOpen(newOpenState);
+        
+        // Dispatch custom event when sidebar is toggled
+        const event = new CustomEvent('sidebarToggle', { 
+            detail: { isOpen: newOpenState } 
+        });
+        window.dispatchEvent(event);
     };
 
     const handleNavigation = (path) => {

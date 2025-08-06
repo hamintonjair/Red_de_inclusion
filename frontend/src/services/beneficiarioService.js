@@ -170,11 +170,12 @@ export const crearBeneficiario = async (datos) => {
  */
 export const obtenerBeneficiarios = async (filtros = {}) => {
     try {
-        // Configurar parámetros por defecto con valores más conservadores
+        // Extraer parámetros especiales
         const { 
             por_pagina = 50,  // Reducido para mejor rendimiento
             pagina = 1, 
             campos = '',
+            incluir_total = false,
             ...otrosFiltros 
         } = filtros;
 
@@ -194,6 +195,11 @@ export const obtenerBeneficiarios = async (filtros = {}) => {
         // Agregar parámetros de paginación
         queryParams.por_pagina = por_pagina_limitado;
         queryParams.pagina = pagina_actual;
+        
+        // Incluir el total en la respuesta si se solicita
+        if (incluir_total) {
+            queryParams.incluir_total = 'true';
+        }
         
         // Agregar campos si se especifican
         if (campos) {
@@ -824,7 +830,6 @@ export async function exportarBeneficiariosAExcel({ filtro, tipo_exportacion, fe
 
 // Función auxiliar para obtener una página de resultados
 const obtenerPaginaBeneficiarios = async (params, pagina = 1, porPagina = 100) => {
-    console.log(`Obteniendo página ${pagina} con ${porPagina} registros`);
     const response = await axiosInstance.get('/beneficiarios/listar', { 
         params: {
             ...params,
@@ -872,11 +877,7 @@ export const listarBeneficiariosPorRango = async ({ fecha_inicio, fecha_fin, fil
             return { data: [] };
         }
 
-        console.log('Buscando beneficiarios en rango de fechas:', {
-            fecha_inicio: fechaInicio.toISOString(),
-            fecha_fin: fechaFin.toISOString(),
-            diferenciaDias: (fechaFin - fechaInicio) / (1000 * 60 * 60 * 24)
-        });
+     
 
         // Ajustar fechas para incluir todo el día
         // Establecer la hora de inicio a las 00:00:00.000
@@ -884,10 +885,7 @@ export const listarBeneficiariosPorRango = async ({ fecha_inicio, fecha_fin, fil
         // Establecer la hora de fin a las 23:59:59.999
         fechaFin.setHours(23, 59, 59, 999);
         
-        console.log('Fechas ajustadas:', {
-            inicio: fechaInicio.toISOString(),
-            fin: fechaFin.toISOString()
-        });
+      
 
         // Parámetros base para la consulta
         const params = {
@@ -916,7 +914,6 @@ export const listarBeneficiariosPorRango = async ({ fecha_inicio, fecha_fin, fil
             });
         }
         
-        console.log(`Total de registros a exportar: ${totalRegistros}`);
         
         if (totalRegistros === 0) {
             return { data: [] };
@@ -932,7 +929,6 @@ export const listarBeneficiariosPorRango = async ({ fecha_inicio, fecha_fin, fil
         const totalPaginas = Math.ceil(totalRegistros / porPagina);
         let todosLosBeneficiarios = [...primeraPagina.data];
 
-        console.log(`Total de registros a descargar: ${totalRegistros} en ${totalPaginas} páginas`);
         
         // Si ya tenemos todos los registros en la primera página, devolverlos
         if (totalRegistros <= primeraPagina.data.length) {
@@ -968,35 +964,23 @@ export const listarBeneficiariosPorRango = async ({ fecha_inicio, fecha_fin, fil
         
         for (let i = 0; i < paginasRestantes.length; i += tamanoLote) {
             const lote = paginasRestantes.slice(i, i + tamanoLote);
-            console.log(`Procesando lote ${i/tamanoLote + 1}: páginas ${lote[0]} a ${lote[lote.length - 1]}`);
             
             const resultadosLote = await procesarLote(lote);
             todosLosBeneficiarios = [...todosLosBeneficiarios, ...resultadosLote];
             totalProcesados += resultadosLote.length;
             
-            console.log(`  - Páginas ${i + 2}-${Math.min(i + tamanoLote + 1, totalPaginas)}: ` +
-                        `${resultadosLote.length} registros (Total: ${totalProcesados}/${totalRegistros})`);
+
             
             // Pequeña pausa entre lotes para no sobrecargar el servidor
             await new Promise(resolve => setTimeout(resolve, 500));
         }
 
-        console.log(`\nResumen de la descarga:`);
-        console.log(`- Total de registros esperados: ${totalRegistros}`);
-        console.log(`- Total de registros obtenidos: ${todosLosBeneficiarios.length}`);
+       
         
         if (todosLosBeneficiarios.length > 0) {
-            console.log('\nPrimer registro:', {
-                fecha: todosLosBeneficiarios[0].fecha_registro,
-                id: todosLosBeneficiarios[0]._id,
-                nombre: todosLosBeneficiarios[0].nombre_completo
-            });
+           
             
-            console.log('Último registro:', {
-                fecha: todosLosBeneficiarios[todosLosBeneficiarios.length - 1].fecha_registro,
-                id: todosLosBeneficiarios[todosLosBeneficiarios.length - 1]._id,
-                nombre: todosLosBeneficiarios[todosLosBeneficiarios.length - 1].nombre_completo
-            });
+           
             
             // Verificar duplicados
             const ids = new Set();
@@ -1029,10 +1013,41 @@ export const listarBeneficiariosPorRango = async ({ fecha_inicio, fecha_fin, fil
     }
 };
 
+// Obtiene el conteo total de beneficiarios
+const contarBeneficiarios = async (filtros = {}) => {
+    try {
+        // Eliminar campos de paginación y ordenamiento para el conteo
+        const { pagina, por_pagina, orden, ...filtrosSinPaginacion } = filtros;
+        
+        // Usamos el endpoint /api/beneficiarios con incluir_total=true
+        // Esto devuelve el conteo total sin necesidad de traer los registros
+        const response = await axiosInstance.get('/api/beneficiarios', {
+            params: {
+                ...filtrosSinPaginacion,
+                pagina: 1,
+                por_pagina: 1, // Solo necesitamos 1 registro
+                incluir_total: true // Pedir el conteo total
+            },
+            timeout: 10000 // 10 segundos de timeout
+        });
+        
+        // El backend devuelve el total en response.data.total o response.data.total_registros
+        const total = response?.data?.total || 
+                     response?.data?.total_registros || 
+                     (response?.data?.paginacion?.total || 0);
+        
+        // Asegurarse de devolver un número
+        return parseInt(total) || 0;
+    } catch (error) {
+        return 0; // En caso de error, devolvemos 0
+    }
+};
+
 const beneficiarioService = {
     crearBeneficiario,
     obtenerBeneficiarios,
     obtenerTodosBeneficiarios,
+    contarBeneficiarios,
     obtenerBeneficiarioPorId,
     actualizarBeneficiario,
     eliminarBeneficiario,

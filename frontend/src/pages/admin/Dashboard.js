@@ -5,11 +5,11 @@ import LineaTrabajoFiltro from '../../components/LineaTrabajoFiltro';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { exportarDatosYGraficasAExcel } from './exportUtils';
-import { 
-    Grid, 
-    Typography, 
-    Box, 
-    Card, 
+import {
+    Grid,
+    Typography,
+    Box,
+    Card,
     CardContent,
     Button,
     Dialog,
@@ -17,7 +17,7 @@ import {
     DialogContent,
     DialogActions,
     CircularProgress,
-    LinearProgress,   
+    LinearProgress,
 } from '@mui/material';
 
 // Importaciones de iconos
@@ -58,75 +58,75 @@ const Dashboard = () => {
 
 
 
-const exportarMapaYListadoPDF = async () => {
-  // Tamaño oficio: 8.5 x 13 pulgadas = 612 x 936 pt
-  const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: [612, 936] });
-  const pageWidth = 612;
-  const pageHeight = 936;
-  const margin = 36;
-  const rowHeight = 22;
-  const col1 = margin + 20;
-  const col2 = pageWidth / 2 + 20;
-  let y = margin + 60;
+    const exportarMapaYListadoPDF = async () => {
+        // Tamaño oficio: 8.5 x 13 pulgadas = 612 x 936 pt
+        const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: [612, 936] });
+        const pageWidth = 612;
+        const pageHeight = 936;
+        const margin = 36;
+        const rowHeight = 22;
+        const col1 = margin + 20;
+        const col2 = pageWidth / 2 + 20;
+        let y = margin + 60;
 
-  // --- 1. LISTADO COMO TABLA TEXTO ---
-  pdf.setFontSize(22);
-  pdf.text('Listado de barrios x comunas y cantidad', pageWidth / 2, margin + 20, { align: 'center' });
-  pdf.setFontSize(13);
-  const agrupado = agruparPorComunaYBarrio(registros);
-  const comunas = Object.keys(agrupado).sort();
-  let columna = 0;
-  let itemsPorColumna = Math.floor((pageHeight - 120) / rowHeight);
-  let itemsEnColumna = 0;
-  let x = col1;
-  for (const comuna of comunas) {
-    const color = COMUNA_COLORS[comuna] || '#333';
-    if (itemsEnColumna > itemsPorColumna - 4) {
-      columna++;
-      if (columna > 1) {
-        pdf.addPage([pageWidth, pageHeight], 'portrait');
+        // --- 1. LISTADO COMO TABLA TEXTO ---
         pdf.setFontSize(22);
         pdf.text('Listado de barrios x comunas y cantidad', pageWidth / 2, margin + 20, { align: 'center' });
         pdf.setFontSize(13);
-        columna = 0;
-      }
-      x = columna === 0 ? col1 : col2;
-      y = margin + 60;
-      itemsEnColumna = 0;
-    }
-    pdf.setFont(undefined, 'bold');
-    pdf.setTextColor(color);
-    pdf.text(comuna, x, y);
-    y += rowHeight;
-    pdf.setFont(undefined, 'normal');
-    for (const [barrio, cantidad] of Object.entries(agrupado[comuna])) {
-      if (itemsEnColumna > itemsPorColumna - 2) {
-        columna++;
-        if (columna > 1) {
-          pdf.addPage([pageWidth, pageHeight], 'portrait');
-          pdf.setFontSize(22);
-          pdf.text('Listado de barrios x comunas y cantidad', pageWidth / 2, margin + 20, { align: 'center' });
-          pdf.setFontSize(13);
-          columna = 0;
+        const agrupado = agruparPorComunaYBarrio(registros);
+        const comunas = Object.keys(agrupado).sort();
+        let columna = 0;
+        let itemsPorColumna = Math.floor((pageHeight - 120) / rowHeight);
+        let itemsEnColumna = 0;
+        let x = col1;
+        for (const comuna of comunas) {
+            const color = COMUNA_COLORS[comuna] || '#333';
+            if (itemsEnColumna > itemsPorColumna - 4) {
+                columna++;
+                if (columna > 1) {
+                    pdf.addPage([pageWidth, pageHeight], 'portrait');
+                    pdf.setFontSize(22);
+                    pdf.text('Listado de barrios x comunas y cantidad', pageWidth / 2, margin + 20, { align: 'center' });
+                    pdf.setFontSize(13);
+                    columna = 0;
+                }
+                x = columna === 0 ? col1 : col2;
+                y = margin + 60;
+                itemsEnColumna = 0;
+            }
+            pdf.setFont(undefined, 'bold');
+            pdf.setTextColor(color);
+            pdf.text(comuna, x, y);
+            y += rowHeight;
+            pdf.setFont(undefined, 'normal');
+            for (const [barrio, cantidad] of Object.entries(agrupado[comuna])) {
+                if (itemsEnColumna > itemsPorColumna - 2) {
+                    columna++;
+                    if (columna > 1) {
+                        pdf.addPage([pageWidth, pageHeight], 'portrait');
+                        pdf.setFontSize(22);
+                        pdf.text('Listado de barrios x comunas y cantidad', pageWidth / 2, margin + 20, { align: 'center' });
+                        pdf.setFontSize(13);
+                        columna = 0;
+                    }
+                    x = columna === 0 ? col1 : col2;
+                    y = margin + 60;
+                    itemsEnColumna = 0;
+                }
+                pdf.setTextColor('#222');
+                pdf.text(barrio, x, y);
+                pdf.setTextColor(color);
+                pdf.text(String(cantidad), x + 180, y);
+                y += rowHeight;
+                itemsEnColumna++;
+            }
+            itemsEnColumna++;
+            pdf.setTextColor('#222');
         }
-        x = columna === 0 ? col1 : col2;
-        y = margin + 60;
-        itemsEnColumna = 0;
-      }
-      pdf.setTextColor('#222');
-      pdf.text(barrio, x, y);
-      pdf.setTextColor(color);
-      pdf.text(String(cantidad), x + 180, y);
-      y += rowHeight;
-      itemsEnColumna++;
-    }
-    itemsEnColumna++;
-    pdf.setTextColor('#222');
-  }
 
-  pdf.save('listado_barrios_x_comunas.pdf');
-  enqueueSnackbar('¡Exportación exitosa! El PDF se ha descargado.', { variant: 'success' });
-};
+        pdf.save('listado_barrios_x_comunas.pdf');
+        enqueueSnackbar('¡Exportación exitosa! El PDF se ha descargado.', { variant: 'success' });
+    };
 
 
 
@@ -135,20 +135,20 @@ const exportarMapaYListadoPDF = async () => {
 
     // Imprimir solo el mapa o mapa+lista
     const imprimirMapa = (conLista = false) => {
-      const mapa = document.getElementById('mapa-svg');
-      if (!mapa) return;
-      let htmlImprimir = '';
-      if (conLista) {
-        // Toma el HTML del div oculto (sidebar-comunas-print)
-        const sidebar = document.getElementById('sidebar-comunas-print');
-        htmlImprimir += sidebar ? sidebar.innerHTML : '';
-        htmlImprimir += '<hr style="margin:32px 0;">';
-      }
-      // Agrega el SVG del mapa
-      htmlImprimir += mapa.outerHTML;
-      // Ventana de impresión
-      const ventana = window.open('', '_blank');
-      ventana.document.write(`
+        const mapa = document.getElementById('mapa-svg');
+        if (!mapa) return;
+        let htmlImprimir = '';
+        if (conLista) {
+            // Toma el HTML del div oculto (sidebar-comunas-print)
+            const sidebar = document.getElementById('sidebar-comunas-print');
+            htmlImprimir += sidebar ? sidebar.innerHTML : '';
+            htmlImprimir += '<hr style="margin:32px 0;">';
+        }
+        // Agrega el SVG del mapa
+        htmlImprimir += mapa.outerHTML;
+        // Ventana de impresión
+        const ventana = window.open('', '_blank');
+        ventana.document.write(`
         <html>
           <head>
             <title>Imprimir Mapa y Listado</title>
@@ -196,12 +196,12 @@ const exportarMapaYListadoPDF = async () => {
           </body>
         </html>
       `);
-      ventana.document.close();
-      ventana.focus();
-      setTimeout(() => {
-        ventana.print();
-        ventana.close();
-      }, 500);
+        ventana.document.close();
+        ventana.focus();
+        setTimeout(() => {
+            ventana.print();
+            ventana.close();
+        }, 500);
     };
 
 
@@ -288,12 +288,12 @@ const exportarMapaYListadoPDF = async () => {
                     // CORRECCIÓN: Si la API devuelve null o undefined, usar []
                     if (!estadisticasMensuales) estadisticasMensuales = [];
                     const datosMensualesTransformados = Array.isArray(estadisticasMensuales)
-    ? estadisticasMensuales.map(item => ({
-        name: item.mes || item.nombre || item.label || '',
-        beneficiarios: item.cantidad ?? item.total ?? item.value ?? 0
-    }))
-    : [];
-setDatosMensuales(datosMensualesTransformados);
+                        ? estadisticasMensuales.map(item => ({
+                            name: item.mes || item.nombre || item.label || '',
+                            beneficiarios: item.cantidad ?? item.total ?? item.value ?? 0
+                        }))
+                        : [];
+                    setDatosMensuales(datosMensualesTransformados);
                 } catch (error) {
                     setDatosMensuales([]);
                     console.error('Error al obtener estadísticas mensuales:', error);
@@ -307,12 +307,12 @@ setDatosMensuales(datosMensualesTransformados);
 
                 setEstadisticasBeneficiarios(estadisticasBeneficiarios);
                 setEstadisticasGlobales(estadisticasBeneficiarios);
-                
+
                 // Procesar datos para gráficos
                 procesarDatosGraficos(estadisticasBeneficiarios);
             } catch (err) {
                 console.error('Error al cargar estadísticas:', err);
-            }finally {
+            } finally {
                 setLoading(false); // 4. Desactivar carga al finalizar (éxito o error)
             }
         };
@@ -329,6 +329,8 @@ setDatosMensuales(datosMensualesTransformados);
                 }
                 // Sólo solicitamos los campos necesarios para el mapa
                 filtros.campos = 'id,comuna,barrio,barrio_lat,barrio_lng';
+                // Limitamos a 800 registros para el mapa
+                const MAX_REGISTROS = 800;
                 // Carga paginada para evitar timeouts y mostrar progreso
                 const pageSize = 100;
                 let pagina = 1;
@@ -340,38 +342,59 @@ setDatosMensuales(datosMensualesTransformados);
                 // Reiniciar barra de progreso
                 setProgressRegistros({ loaded: 0, total: 0 });
 
-                while (mas) {
-                    const resp = await beneficiarioService.obtenerBeneficiarios({
-                        ...filtros,
-                        por_pagina: pageSize,
-                        pagina
-                    });
-                    const lista = Array.isArray(resp)
-                        ? resp
-                        : Array.isArray(resp?.beneficiarios)
-                            ? resp.beneficiarios
-                            : [];
-                    registros.push(...lista);
-                    cargados += lista.length;
+                while (mas && cargados < MAX_REGISTROS) {
+                    try {
+                        const resp = await beneficiarioService.obtenerBeneficiarios({
+                            ...filtros,
+                            por_pagina: Math.min(pageSize, MAX_REGISTROS - cargados),
+                            pagina
+                        });
 
-                    // Si la API devuelve total, usarlo
-                    if (!total && resp && resp.total) {
-                        total = resp.total;
-                    }
+                        const lista = Array.isArray(resp)
+                            ? resp
+                            : Array.isArray(resp?.beneficiarios)
+                                ? resp.beneficiarios
+                                : [];
 
-                    // Actualizar estado de progreso
-                    setProgressRegistros({ loaded: cargados, total });
+                        // Asegurarnos de no exceder el límite de 700 registros
+                        const espacioDisponible = MAX_REGISTROS - cargados;
+                        const registrosAAgregar = lista.slice(0, espacioDisponible);
 
-                    // Mostrar datos parciales tras la primera página
-                    if (pagina === 1) {
+                        registros.push(...registrosAAgregar);
+                        cargados += registrosAAgregar.length;
+
+                        // Si la API devuelve total, usarlo (pero no más de MAX_REGISTROS)
+                        if (!total && resp && resp.total) {
+                            total = Math.min(resp.total, MAX_REGISTROS);
+                        }
+
+                        // Actualizar estado de progreso
+                        setProgressRegistros({
+                            loaded: cargados,
+                            total: total || cargados
+                        });
+
+                        // Actualizar el estado con los registros cargados hasta ahora
                         setRegistros([...registros]);
-                        setLoadingRegistros(false);
-                    } else {
-                        setRegistros([...registros]);
-                    }
 
-                    mas = lista.length === pageSize; // si no llena la página, no hay más
-                    pagina += 1;
+                        // Si ya mostramos datos, podemos marcar como cargado
+                        if (pagina === 1) {
+                            setLoadingRegistros(false);
+                        }
+
+                        // Verificar si debemos continuar cargando
+                        mas = lista.length === pageSize && cargados < MAX_REGISTROS;
+                        pagina += 1;
+
+                        // Si ya alcanzamos el máximo, salir del bucle
+                        if (cargados >= MAX_REGISTROS) {
+                            break;
+                        }
+                    } catch (error) {
+                        console.error(`Error al cargar página ${pagina}:`, error);
+                        // Continuar con la siguiente página si hay un error
+                        mas = false;
+                    }
                 }
 
                 // Asegurar progreso completo
@@ -390,120 +413,125 @@ setDatosMensuales(datosMensualesTransformados);
     // ...
     // Handler para exportar todas las gráficas como una sola imagen PNG
     const handleExportarGraficasComoImagen = async () => {
-    setLoadingExportGraph(true);
-    setExportProgress(0);
-    try {
-        // Captura todas las gráficas (contenedor principal)
-        const container = document.getElementById('graficos-container');
-        if (!container) {
-            enqueueSnackbar('No se encontró el contenedor de gráficas', { variant: 'error' });
-            setLoadingExportGraph(false);
-            return;
+        setLoadingExportGraph(true);
+        setExportProgress(0);
+        try {
+            // Captura todas las gráficas (contenedor principal)
+            const container = document.getElementById('graficos-container');
+            if (!container) {
+                enqueueSnackbar('No se encontró el contenedor de gráficas', { variant: 'error' });
+                setLoadingExportGraph(false);
+                return;
+            }
+            window.scrollTo(0, 0);
+            await new Promise(resolve => setTimeout(resolve, 300));
+            const canvas = await html2canvas(container, { backgroundColor: '#fff', scale: 2 });
+            const url = canvas.toDataURL('image/png');
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'graficas_dashboard.png';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            setExportProgress(100);
+            enqueueSnackbar('¡Gráficas exportadas como imagen!', { variant: 'success' });
+        } catch (error) {
+            enqueueSnackbar('Error al exportar la imagen', { variant: 'error' });
+        } finally {
+            setTimeout(() => setLoadingExportGraph(false), 600);
         }
-        window.scrollTo(0, 0);
-        await new Promise(resolve => setTimeout(resolve, 300));
-        const canvas = await html2canvas(container, { backgroundColor: '#fff', scale: 2 });
-        const url = canvas.toDataURL('image/png');
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = 'graficas_dashboard.png';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        setExportProgress(100);
-        enqueueSnackbar('¡Gráficas exportadas como imagen!', { variant: 'success' });
-    } catch (error) {
-        enqueueSnackbar('Error al exportar la imagen', { variant: 'error' });
-    } finally {
-        setTimeout(() => setLoadingExportGraph(false), 600);
-    }
-};
+    };
 
     // ...
     // Handler para exportar estadísticas y gráficas a Excel
     const handleExportarEstadisticasExcel = async () => {
-    setLoadingExportGraph(true);
-    setExportProgress(0);
-    try {
-        // 1. Preparar datos tabulares
-        const datosTabulares = [
-            { Título: 'Total Funcionarios', Valor: stats.totalFuncionarios },
-            { Título: 'Total Líneas de Trabajo', Valor: stats.totalLineasTrabajo },
-            { Título: 'Total Beneficiarios', Valor: stats.totalBeneficiarios },
-            { Título: 'Total Víctimas', Valor: estadisticasBeneficiarios.total_victimas },
-            { Título: 'Total Discapacidad', Valor: estadisticasBeneficiarios.total_discapacidad },
-            { Título: 'Total Ayuda Humanitaria', Valor: estadisticasBeneficiarios.total_ayuda_humanitaria },
-            { Título: 'Total Menores de 13', Valor: estadisticasBeneficiarios.total_menores_13 },
-            { Título: 'Total 13-25', Valor: estadisticasBeneficiarios.total_13_25 },
-            { Título: 'Total Mayores de 56', Valor: estadisticasBeneficiarios.total_mayores_60 },
-            { Título: 'Total Alfabetizados', Valor: estadisticasBeneficiarios.total_alfabetizados },
-            { Título: 'Total Analfabetas', Valor: estadisticasBeneficiarios.total_analfabetas },
-            { Título: 'Total Mujeres Menores con Hijos', Valor: estadisticasBeneficiarios.total_mujeres_menores_con_hijos },
-        ];
-        // 2. Exportar solo datos a Excel
-        await exportarDatosYGraficasAExcel({ estadisticasTabulares: datosTabulares, graficas: [], nombreArchivo: 'estadisticas_de_beneficiarios.xlsx' });
-        setExportProgress(100);
-        enqueueSnackbar('Estadísticas exportadas a Excel', { variant: 'success' });
-    } catch (error) {
-        enqueueSnackbar('Error al exportar a Excel', { variant: 'error' });
-    } finally {
-        setTimeout(() => setLoadingExportGraph(false), 600);
-    }
-};
+        setLoadingExportGraph(true);
+        setExportProgress(0);
+        try {
+            // 1. Preparar datos tabulares
+            const datosTabulares = [
+                { Título: 'Total Funcionarios', Valor: stats.totalFuncionarios },
+                { Título: 'Total Líneas de Trabajo', Valor: stats.totalLineasTrabajo },
+                { Título: 'Total Beneficiarios', Valor: stats.totalBeneficiarios },
+                { Título: 'Total Víctimas', Valor: estadisticasBeneficiarios.total_victimas },
+                { Título: 'Total Discapacidad', Valor: estadisticasBeneficiarios.total_discapacidad },
+                { Título: 'Total Ayuda Humanitaria', Valor: estadisticasBeneficiarios.total_ayuda_humanitaria },
+                { Título: 'Total Menores de 13', Valor: estadisticasBeneficiarios.total_menores_13 },
+                { Título: 'Total 13-25', Valor: estadisticasBeneficiarios.total_13_25 },
+                { Título: 'Total Mayores de 56', Valor: estadisticasBeneficiarios.total_mayores_60 },
+                { Título: 'Total Alfabetizados', Valor: estadisticasBeneficiarios.total_alfabetizados },
+                { Título: 'Total Analfabetas', Valor: estadisticasBeneficiarios.total_analfabetas },
+                { Título: 'Total Mujeres Menores con Hijos', Valor: estadisticasBeneficiarios.total_mujeres_menores_con_hijos },
+            ];
+            // 2. Exportar solo datos a Excel
+            await exportarDatosYGraficasAExcel({ estadisticasTabulares: datosTabulares, graficas: [], nombreArchivo: 'estadisticas_de_beneficiarios.xlsx' });
+            setExportProgress(100);
+            enqueueSnackbar('Estadísticas exportadas a Excel', { variant: 'success' });
+        } catch (error) {
+            enqueueSnackbar('Error al exportar a Excel', { variant: 'error' });
+        } finally {
+            setTimeout(() => setLoadingExportGraph(false), 600);
+        }
+    };
 
     // Función para procesar datos y crear estructura para gráficos
     const procesarDatosGraficos = (datos) => {
         const totalBeneficiarios = datos.total_beneficiarios || 0;
-        
+
         // Crear datos procesados para cada categoría
         const datosVictimas = [
             { name: 'Son víctimas', value: datos.total_victimas || 0 },
             { name: 'No son víctimas', value: totalBeneficiarios - (datos.total_victimas || 0) }
         ];
-        
+
         const datosDiscapacidad = [
             { name: 'Con discapacidad', value: datos.total_discapacidad || 0 },
             { name: 'Sin discapacidad', value: totalBeneficiarios - (datos.total_discapacidad || 0) }
         ];
-        
+
         const datosAyudaHumanitaria = [
             { name: 'Recibieron ayuda', value: datos.total_ayuda_humanitaria || 0 },
             { name: 'No recibieron', value: totalBeneficiarios - (datos.total_ayuda_humanitaria || 0) }
         ];
-        
+
         const datosEdad = [
             { name: 'Menores de 13', value: datos.total_menores_13 || 0 },
             { name: 'Entre 13 y 25', value: datos.total_13_25 || 0 },
             { name: 'Mayores de 56', value: datos.total_mayores_60 || 0 }
         ];
-        
+
         const datosAlfabetizacion = [
             { name: 'Alfabeta', value: datos.total_alfabetizados || 0 },
             { name: 'Analfabetas', value: datos.total_analfabetas || 0 }
         ];
-        
+
         const datosMujeresMenores = [
             { name: 'Con hijos', value: datos.total_mujeres_menores_con_hijos || 0 },
             { name: 'No tiene', value: totalBeneficiarios - (datos.total_mujeres_menores_con_hijos || 0) }
         ];
-        
+
         const datosEstudian = [
             { name: 'Estudian', value: datos.menores_estudian || 0 },
             { name: 'No estudian', value: totalBeneficiarios - (datos.menores_estudian || 0) }
         ];
-        
+
         const datosTrabajo = [
             { name: 'Trabajan', value: datos.beneficiarios_trabajan || 0 },
             { name: 'No trabajan', value: totalBeneficiarios - (datos.beneficiarios_trabajan || 0) }
         ];
-        
+
         const datosVivienda = [
             { name: 'Propia', value: datos.vivienda_propia || 0 },
             { name: 'Arrendada', value: datos.vivienda_arrendada || 0 },
             { name: 'Familiar', value: datos.vivienda_familiar || 0 },
-            { name: 'Compartida', value: datos.vivienda_compartida || 0 }
+            { name: 'Compartida', value: datos.vivienda_compartida || 0 },
+            { name: 'Cedida / prestada', value: datos.vivienda_cedida || 0 },
+            { name: 'Habitación / Inquilinato', value: datos.vivienda_habitacion || 0 },
+            { name: 'Cambuche / Rancho', value: datos.vivienda_cambuche || 0 },
+            { name: 'Situación de calle', value: datos.vivienda_calle || 0 },
+            { name: 'Refugio / Albergue', value: datos.vivienda_refugio || 0 },
         ];
-        
+
         // Procesar datos de comunas
         const datosComunas = Object.entries(datos.total_comunas || {}).map(([nombre, cantidad]) => ({
             name: nombre,
@@ -523,77 +551,77 @@ setDatosMensuales(datosMensualesTransformados);
 
             comunas: datosComunas
         });
-        
+
         setMostrarGraficos(true);
     };
 
     // Handler para exportar TODAS las gráficas (como antes, pero con loader centrado)
     const handleExportarGrafica = async () => {
-    setLoadingExportGraph(true);
-    setExportProgress(0);
-    try {
-        const pdf = new jsPDF('p', 'mm', 'a4');
-        const pageWidth = pdf.internal.pageSize.getWidth();
-        const pageHeight = pdf.internal.pageSize.getHeight();
-        // --- Exportar TODAS las gráficas en el mismo orden visual (incluida la mensual) ---
-        const graficosContainer = document.getElementById('graficos-container');
-        const graficos = Array.from(graficosContainer.querySelectorAll('.grafico-card'));
-        let pageCount = 1;
-        for (let i = 0; i < graficos.length; i += 2) {
-            setExportProgress(Math.round((i / graficos.length) * 100));
-            if (i > 0) pdf.addPage();
-            // Primer gráfico (arriba)
-            const canvas1 = await html2canvas(graficos[i], { backgroundColor: '#fff', scale: 2 });
-            const imgData1 = canvas1.toDataURL('image/png');
-            // --- Calcular tamaño proporcional ---
-            let imgW1 = pageWidth - 20;
-            let imgH1 = (imgW1 * canvas1.height) / canvas1.width;
-            if (imgH1 > (pageHeight / 2) - 20) {
-                imgH1 = (pageHeight / 2) - 20;
-                imgW1 = (imgH1 * canvas1.width) / canvas1.height;
-            }
-            pdf.addImage(imgData1, 'PNG', (pageWidth - imgW1) / 2, 10, imgW1, imgH1);
-            // Título
-            pdf.setFontSize(10);
-            pdf.text(graficos[i].querySelector('.MuiTypography-root')?.textContent || `Gráfica ${i + 1}`, 14, 10 + imgH1 + 8);
-            // Segundo gráfico (abajo)
-            if (i + 1 < graficos.length) {
-                const canvas2 = await html2canvas(graficos[i + 1], { backgroundColor: '#fff', scale: 2 });
-                const imgData2 = canvas2.toDataURL('image/png');
-                let imgW2 = pageWidth - 20;
-                let imgH2 = (imgW2 * canvas2.height) / canvas2.width;
-                if (imgH2 > (pageHeight / 2) - 20) {
-                    imgH2 = (pageHeight / 2) - 20;
-                    imgW2 = (imgH2 * canvas2.width) / canvas2.height;
+        setLoadingExportGraph(true);
+        setExportProgress(0);
+        try {
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const pageHeight = pdf.internal.pageSize.getHeight();
+            // --- Exportar TODAS las gráficas en el mismo orden visual (incluida la mensual) ---
+            const graficosContainer = document.getElementById('graficos-container');
+            const graficos = Array.from(graficosContainer.querySelectorAll('.grafico-card'));
+            let pageCount = 1;
+            for (let i = 0; i < graficos.length; i += 2) {
+                setExportProgress(Math.round((i / graficos.length) * 100));
+                if (i > 0) pdf.addPage();
+                // Primer gráfico (arriba)
+                const canvas1 = await html2canvas(graficos[i], { backgroundColor: '#fff', scale: 2 });
+                const imgData1 = canvas1.toDataURL('image/png');
+                // --- Calcular tamaño proporcional ---
+                let imgW1 = pageWidth - 20;
+                let imgH1 = (imgW1 * canvas1.height) / canvas1.width;
+                if (imgH1 > (pageHeight / 2) - 20) {
+                    imgH1 = (pageHeight / 2) - 20;
+                    imgW1 = (imgH1 * canvas1.width) / canvas1.height;
                 }
-                const y2 = (pageHeight / 2) + 5;
-                pdf.addImage(imgData2, 'PNG', (pageWidth - imgW2) / 2, y2, imgW2, imgH2);
+                pdf.addImage(imgData1, 'PNG', (pageWidth - imgW1) / 2, 10, imgW1, imgH1);
+                // Título
                 pdf.setFontSize(10);
-                pdf.text(graficos[i + 1].querySelector('.MuiTypography-root')?.textContent || `Gráfica ${i + 2}`, 14, y2 + imgH2 + 8);
+                pdf.text(graficos[i].querySelector('.MuiTypography-root')?.textContent || `Gráfica ${i + 1}`, 14, 10 + imgH1 + 8);
+                // Segundo gráfico (abajo)
+                if (i + 1 < graficos.length) {
+                    const canvas2 = await html2canvas(graficos[i + 1], { backgroundColor: '#fff', scale: 2 });
+                    const imgData2 = canvas2.toDataURL('image/png');
+                    let imgW2 = pageWidth - 20;
+                    let imgH2 = (imgW2 * canvas2.height) / canvas2.width;
+                    if (imgH2 > (pageHeight / 2) - 20) {
+                        imgH2 = (pageHeight / 2) - 20;
+                        imgW2 = (imgH2 * canvas2.width) / canvas2.height;
+                    }
+                    const y2 = (pageHeight / 2) + 5;
+                    pdf.addImage(imgData2, 'PNG', (pageWidth - imgW2) / 2, y2, imgW2, imgH2);
+                    pdf.setFontSize(10);
+                    pdf.text(graficos[i + 1].querySelector('.MuiTypography-root')?.textContent || `Gráfica ${i + 2}`, 14, y2 + imgH2 + 8);
+                }
+                pdf.setFontSize(10);
+                pdf.text(`Página ${pageCount}`, pageWidth - 30, pageHeight - 10);
+                pageCount++;
             }
-            pdf.setFontSize(10);
-            pdf.text(`Página ${pageCount}`, pageWidth - 30, pageHeight - 10);
-            pageCount++;
+            setExportProgress(100);
+            pdf.save('graficos_dashboard.pdf');
+            enqueueSnackbar('Gráficas exportadas con éxito', { variant: 'success' });
+            setOpenExportDialog(false);
+        } catch (error) {
+            enqueueSnackbar('Error al exportar gráficas', { variant: 'error' });
+        } finally {
+            setTimeout(() => {
+                setLoadingExportGraph(false);
+                setExportProgress(0);
+            }, 600);
         }
-        setExportProgress(100);
-        pdf.save('graficos_dashboard.pdf');
-        enqueueSnackbar('Gráficas exportadas con éxito', { variant: 'success' });
-        setOpenExportDialog(false);
-    } catch (error) {
-        enqueueSnackbar('Error al exportar gráficas', { variant: 'error' });
-    } finally {
-        setTimeout(() => {
-            setLoadingExportGraph(false);
-            setExportProgress(0);
-        }, 600);
-    }
-};
+    };
 
     // Función para renderizar gráficos con porcentaje y cantidad
     const renderPieChart = (data, title, colors) => {
         // Calcular total para mostrar valores absolutos
         const total = data.reduce((sum, item) => sum + item.value, 0);
-        
+
         return (
             <Grid item xs={12} md={6} className="grafico-card">
                 <Card elevation={3} sx={{ height: 350, p: 2, width: '100%', maxWidth: 550, mx: 'auto' }}>
@@ -601,38 +629,38 @@ setDatosMensuales(datosMensualesTransformados);
                     <ResponsiveContainer width="100%" height="85%">
                         <PieChart>
                             <Pie
-    data={data}
-    cx="50%"
-    cy="50%"
-    labelLine={false}
-    outerRadius={80}
-    label={({ percent, cx, cy, midAngle, outerRadius } = {}) => {
-        // Calcula una posición más cercana al centro
-        const RADIAN = Math.PI / 180;
-        const radius = outerRadius - 20; // 20px más cerca del centro
-        const xPos = cx + radius * Math.cos(-midAngle * RADIAN);
-        const yPos = cy + radius * Math.sin(-midAngle * RADIAN);
-        const percentage = (percent * 100).toFixed(1);
-        return (
-            <text x={xPos} y={yPos} fill="#fff" textAnchor="middle" dominantBaseline="central" fontSize={13}>
-                {`${percentage}%`}
-            </text>
-        );
-    }}
-    fill="#8884d8"
-    dataKey="value"
+                                data={data}
+                                cx="50%"
+                                cy="50%"
+                                labelLine={false}
+                                outerRadius={80}
+                                label={({ percent, cx, cy, midAngle, outerRadius } = {}) => {
+                                    // Calcula una posición más cercana al centro
+                                    const RADIAN = Math.PI / 180;
+                                    const radius = outerRadius - 20; // 20px más cerca del centro
+                                    const xPos = cx + radius * Math.cos(-midAngle * RADIAN);
+                                    const yPos = cy + radius * Math.sin(-midAngle * RADIAN);
+                                    const percentage = (percent * 100).toFixed(1);
+                                    return (
+                                        <text x={xPos} y={yPos} fill="#fff" textAnchor="middle" dominantBaseline="central" fontSize={13}>
+                                            {`${percentage}%`}
+                                        </text>
+                                    );
+                                }}
+                                fill="#8884d8"
+                                dataKey="value"
                             >
                                 {data.map((entry, index) => (
                                     <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
                                 ))}
                             </Pie>
-                            <Tooltip 
+                            <Tooltip
                                 formatter={(value, name) => [
                                     `${value} (${((value / total) * 100).toFixed(1)}%)`,
                                     name
                                 ]}
                             />
-                            <Legend 
+                            <Legend
                                 formatter={(value, entry, index) => {
                                     const item = data[index];
                                     const percentage = ((item.value / total) * 100).toFixed(1);
@@ -669,56 +697,75 @@ setDatosMensuales(datosMensualesTransformados);
 
     return (
         <Box sx={{ position: 'relative', minHeight: '100vh' }}>
-            {/* Overlay de carga circular centrada con porcentaje */}
+            {/* Overlay de carga circular centrada con porcentaje - Solo cubre el área de contenido */}
             {loading && (
-                <Box sx={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    width: '100vw',
-                    height: '100vh',
-                    bgcolor: 'rgba(0,0,0,0.35)',
-                    zIndex: 2000,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                }}>
-                    <Box sx={{ position: 'relative', display: 'inline-flex' }}>
-                        <CircularProgress size={100} thickness={5} value={100} variant="determinate" color="secondary" />
-                        <Box
-                            sx={{
-                                top: 0,
-                                left: 0,
-                                bottom: 0,
-                                right: 0,
-                                position: 'absolute',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                width: '100%',
-                                height: '100%',
-                            }}
-                        >
-                            <Typography variant="h5" component="div" color="white">Cargando...</Typography>
-                        </Box>
-                    </Box>
-                </Box>
+                   <Box sx={{
+                                  position: 'fixed',
+                                  top: 0,
+                                  left: 0,
+                                  right: 0,
+                                  bottom: 0,
+                                  bgcolor: 'rgba(0,0,0,0.35)',
+                                  zIndex: 1199, /* Detrás del sidebar (1200) */
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  backdropFilter: 'blur(2px)',
+                                  paddingTop: '64px', /* Altura del AppBar */
+                                  boxSizing: 'border-box',
+                              }}>
+                                  <Box sx={{ 
+                                      position: 'relative', 
+                                      display: 'inline-flex',
+                                      bgcolor: 'background.paper',
+                                      p: 4,
+                                      borderRadius: 2,
+                                      boxShadow: 3,
+                                  }}>
+                                      <CircularProgress size={80} thickness={4} value={100} variant="determinate" color="secondary" />
+                                      <Box
+                                          sx={{
+                                              top: 0,
+                                              left: 0,
+                                              bottom: 0,
+                                              right: 0,
+                                              position: 'absolute',
+                                              display: 'flex',
+                                              alignItems: 'center',
+                                              justifyContent: 'center',
+                                              width: '100%',
+                                              height: '100%',
+                                          }}
+                                      >
+                                          <Typography variant="h6" component="div" color="text.primary">Cargando...</Typography>
+                                      </Box>
+                                  </Box>
+                              </Box>
             )}
+            {/* Overlay de exportación - Solo cubre el área de contenido */}
             {loadingExportGraph && (
                 <Box sx={{
                     position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    width: '100vw',
-                    height: '100vh',
+                    top: '64px', /* Deja espacio para la barra superior */
+                    left: '240px', /* Ancho típico de la barra lateral */
+                    right: 0,
+                    bottom: 0,
                     bgcolor: 'rgba(0,0,0,0.35)',
-                    zIndex: 2000,
+                    zIndex: 1200, /* Asegura que esté por encima del contenido pero debajo de la barra superior */
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
+                    backdropFilter: 'blur(2px)',
                 }}>
-                    <Box sx={{ position: 'relative', display: 'inline-flex' }}>
-                        <CircularProgress size={100} thickness={5} value={exportProgress} variant="determinate" color="secondary" />
+                    <Box sx={{ 
+                        position: 'relative', 
+                        display: 'inline-flex',
+                        bgcolor: 'background.paper',
+                        p: 4,
+                        borderRadius: 2,
+                        boxShadow: 3,
+                    }}>
+                        <CircularProgress size={80} thickness={4} value={exportProgress} variant="determinate" color="secondary" />
                         <Box
                             sx={{
                                 top: 0,
@@ -759,7 +806,7 @@ setDatosMensuales(datosMensualesTransformados);
                     Exportar Estadísticas a Excel
                 </Button>
             </Box>
-            
+
             <Grid container spacing={3} sx={{ marginBottom: 3 }}>
                 <Grid item xs={12} md={4}>
                     <Card elevation={3}>
@@ -817,59 +864,59 @@ setDatosMensuales(datosMensualesTransformados);
             <Typography variant="h5" gutterBottom sx={{ marginTop: 3 }}>
                 Estadísticas de Registros
             </Typography>
-            
+
             <Grid container spacing={3}>
                 {renderTarjetaEstadistica(
-                    'Total Víctimas de Conflicto', 
-                    estadisticasBeneficiarios.total_victimas, 
+                    'Total Víctimas de Conflicto',
+                    estadisticasBeneficiarios.total_victimas,
                     <GppMaybe color="warning" sx={{ fontSize: 50 }} />,
                     "warning"
                 )}
                 {renderTarjetaEstadistica(
-                    'Con Discapacidad', 
-                    estadisticasBeneficiarios.total_discapacidad, 
+                    'Con Discapacidad',
+                    estadisticasBeneficiarios.total_discapacidad,
                     <Accessibility color="secondary" sx={{ fontSize: 50 }} />,
                     "secondary"
                 )}
                 {renderTarjetaEstadistica(
-                    'Ayuda Humanitaria', 
-                    estadisticasBeneficiarios.total_ayuda_humanitaria, 
+                    'Ayuda Humanitaria',
+                    estadisticasBeneficiarios.total_ayuda_humanitaria,
                     <ChildCare color="success" sx={{ fontSize: 50 }} />,
                     "success"
                 )}
                 {renderTarjetaEstadistica(
-                    'Menores de 13', 
-                    estadisticasBeneficiarios.total_menores_13, 
+                    'Menores de 13',
+                    estadisticasBeneficiarios.total_menores_13,
                     <ChildCare color="info" sx={{ fontSize: 50 }} />,
                     "info"
                 )}
                 {renderTarjetaEstadistica(
-                    'Entre 13 y 25', 
-                    estadisticasBeneficiarios.total_13_25, 
+                    'Entre 13 y 25',
+                    estadisticasBeneficiarios.total_13_25,
                     <School color="info" sx={{ fontSize: 50 }} />,
                     "info"
                 )}
                 {renderTarjetaEstadistica(
-                    'Mayores de 56', 
-                    estadisticasBeneficiarios.total_mayores_60, 
+                    'Mayores de 56',
+                    estadisticasBeneficiarios.total_mayores_60,
                     <Elderly color="secondary" sx={{ fontSize: 50 }} />,
                     "secondary"
                 )}
                 {renderTarjetaEstadistica(
-                    'Alfabetizados', 
-                    estadisticasBeneficiarios.total_alfabetizados, 
+                    'Alfabetizados',
+                    estadisticasBeneficiarios.total_alfabetizados,
                     <School color="primary" sx={{ fontSize: 50 }} />,
                     "primary"
                 )}
                 {renderTarjetaEstadistica(
-                    'Analfabetas', 
-                    estadisticasBeneficiarios.total_analfabetas, 
+                    'Analfabetas',
+                    estadisticasBeneficiarios.total_analfabetas,
                     <School color="error" sx={{ fontSize: 50 }} />,
                     "error"
                 )}
                 {renderTarjetaEstadistica(
-                    'Mujeres Menores con Hijos', 
-                    estadisticasBeneficiarios.total_mujeres_menores_con_hijos, 
+                    'Mujeres Menores con Hijos',
+                    estadisticasBeneficiarios.total_mujeres_menores_con_hijos,
                     <ChildCare color="warning" sx={{ fontSize: 50 }} />,
                     "warning"
                 )}
@@ -878,169 +925,169 @@ setDatosMensuales(datosMensualesTransformados);
             <Typography variant="h5" gutterBottom sx={{ marginTop: 3 }}>
                 Estadísticas Globales
             </Typography>
-            
+
             <Grid container spacing={3}>
                 {renderTarjetaEstadistica(
-                    'Menores Estudiando', 
-                    estadisticasGlobales.menores_estudian, 
+                    'Menores Estudiando',
+                    estadisticasGlobales.menores_estudian,
                     <School color="primary" sx={{ fontSize: 50 }} />,
                     "primary"
                 )}
                 {renderTarjetaEstadistica(
-                    'Beneficiarios Trabajando', 
-                    estadisticasGlobales.beneficiarios_trabajan, 
+                    'Beneficiarios Trabajando',
+                    estadisticasGlobales.beneficiarios_trabajan,
                     <Work color="secondary" sx={{ fontSize: 50 }} />,
                     "secondary"
                 )}
                 {renderTarjetaEstadistica(
-                    'Vivienda Propia', 
-                    estadisticasGlobales.vivienda_propia, 
+                    'Vivienda Propia',
+                    estadisticasGlobales.vivienda_propia,
                     <House color="success" sx={{ fontSize: 50 }} />,
                     "success"
                 )}
                 {renderTarjetaEstadistica(
-                    'Vivienda Arrendada', 
-                    estadisticasGlobales.vivienda_arrendada, 
+                    'Vivienda Arrendada',
+                    estadisticasGlobales.vivienda_arrendada,
                     <House color="warning" sx={{ fontSize: 50 }} />,
                     "warning"
                 )}
                 {renderTarjetaEstadistica(
-                    'Vivienda Familiar', 
-                    estadisticasGlobales.vivienda_familiar, 
+                    'Vivienda Familiar',
+                    estadisticasGlobales.vivienda_familiar,
                     <FamilyRestroom color="info" sx={{ fontSize: 50 }} />,
                     "info"
                 )}
                 {renderTarjetaEstadistica(
-                    'Vivienda Compartida', 
-                    estadisticasGlobales.vivienda_compartida, 
+                    'Vivienda Compartida',
+                    estadisticasGlobales.vivienda_compartida,
                     <FamilyRestroom color="error" sx={{ fontSize: 50 }} />,
                     "error"
                 )}
             </Grid>
 
             {mostrarGraficos && (
-    <>
-        <Typography variant="h5" gutterBottom sx={{ marginTop: 4 }}>
-            Gráficos Estadísticos
-        </Typography>
-        
-        <Grid container spacing={3} id="graficos-container">
-    {/* Ajuste responsivo: cada gráfica ocupa toda la fila en móvil (xs=12) y media fila en desktop (md=6) */}
-            {/* Primera fila de gráficos circulares */}
-            {renderPieChart(datosGraficos.victimas, 'Víctimas de Conflicto', COLORS_VICTIMAS)}
-            {renderPieChart(datosGraficos.discapacidad, 'Personas con Discapacidad', COLORS_DISCAPACIDAD)}
+                <>
+                    <Typography variant="h5" gutterBottom sx={{ marginTop: 4 }}>
+                        Gráficos Estadísticos
+                    </Typography>
 
-            {/* Segunda fila de gráficos circulares */}
-            {renderPieChart(datosGraficos.ayudaHumanitaria, 'Ayuda Humanitaria', COLORS_AYUDA)}
-            {renderPieChart(datosGraficos.alfabetizacion, 'Alfabetización', COLORS_ALFABETIZACION)}
+                    <Grid container spacing={3} id="graficos-container">
+                        {/* Ajuste responsivo: cada gráfica ocupa toda la fila en móvil (xs=12) y media fila en desktop (md=6) */}
+                        {/* Primera fila de gráficos circulares */}
+                        {renderPieChart(datosGraficos.victimas, 'Víctimas de Conflicto', COLORS_VICTIMAS)}
+                        {renderPieChart(datosGraficos.discapacidad, 'Personas con Discapacidad', COLORS_DISCAPACIDAD)}
 
-            {/* Tercera fila de gráficos circulares */}
-            {renderPieChart(datosGraficos.mujeresMenores, 'Mujeres Menores con Hijos', COLORS_MUJERES_HIJOS)}
-            {renderPieChart(datosGraficos.trabajo, 'Situación Laboral', COLORS_LABORAL)}
+                        {/* Segunda fila de gráficos circulares */}
+                        {renderPieChart(datosGraficos.ayudaHumanitaria, 'Ayuda Humanitaria', COLORS_AYUDA)}
+                        {renderPieChart(datosGraficos.alfabetizacion, 'Alfabetización', COLORS_ALFABETIZACION)}
 
-            {/* Cuarta fila de gráficos circulares */}
-            {renderPieChart(datosGraficos.edad, 'Distribución por Edad', COLORS)}
-            {renderPieChart(datosGraficos.vivienda, 'Tipo de Vivienda', COLORS)}
+                        {/* Tercera fila de gráficos circulares */}
+                        {renderPieChart(datosGraficos.mujeresMenores, 'Mujeres Menores con Hijos', COLORS_MUJERES_HIJOS)}
+                        {renderPieChart(datosGraficos.trabajo, 'Situación Laboral', COLORS_LABORAL)}
 
-            {/* Gráfica de Comunas */}
-            <Grid item xs={12} md={6} className="grafico-card">
-                <Card elevation={3} sx={{ height: 350, p: 2, width: '100%', maxWidth: 550, mx: 'auto' }}>
-                    <Typography variant="h6" gutterBottom>Beneficiarios por Comuna</Typography>
-                    <ResponsiveContainer width="100%" height="85%">
-                        <PieChart>
-                            <Pie
-                                data={datosGraficos.comunas}
-                                cx="50%"
-                                cy="50%"
-                                labelLine={false}
-                                label={({ percent, cx, cy, midAngle, outerRadius }) => {
-    // Calcula una posición más cercana al centro
-    const RADIAN = Math.PI / 180;
-    const radius = outerRadius - 20; // 20px más cerca del centro
-    const xPos = cx + radius * Math.cos(-midAngle * RADIAN);
-    const yPos = cy + radius * Math.sin(-midAngle * RADIAN);
-    const percentage = (percent * 100).toFixed(0);
-    return (
-        <text x={xPos} y={yPos} fill="#fff" textAnchor="middle" dominantBaseline="central" fontSize={13}>
-            {`${percentage}%`}
-        </text>
-    );
-}}
-                                outerRadius={80}
-                                fill="#8884d8"
-                                dataKey="value"
-                            >
-                                {datosGraficos.comunas && datosGraficos.comunas.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={COLORS_COMUNAS[index % COLORS_COMUNAS.length]} />
-                                ))}
-                            </Pie>
-                            <Tooltip 
-                                formatter={(value, name) => [
-                                    `${value} beneficiarios`, 
-                                    name
-                                ]} 
-                            />
-                            <Legend />
-                        </PieChart>
-                    </ResponsiveContainer>
-                </Card>
-            </Grid>
-            
-            {/* Gráfica de crecimiento mensual/anual */}
-            {/* --- Filtro y gráfica de crecimiento mensual/anual con filtro de año --- */}
-{Array.isArray(datosMensuales) && datosMensuales.length > 0 && (
-    (() => {
-        // Obtener los años únicos
-        const aniosDisponibles = Array.from(new Set(datosMensuales.map(d => (d.name ? d.name.split('-')[0] : '')))).filter(Boolean);
-        // Estado y efecto deben estar fuera del callback
-        return (
-    <>
-        <Grid item xs={12} className="grafico-card" id="grafica-mensual-visible">
-            <Card elevation={3} sx={{ p: 2, width: '100%', maxWidth: 700, mx: 'auto', height: 'auto' }}>
-                <FiltroGraficaAnio
-                    aniosDisponibles={aniosDisponibles}
-                    datosMensuales={datosMensuales}
-                    exportMode={false}
-                />
-            </Card>
-        </Grid>
-        {/* Contenedor oculto para exportación tamaño grande */}
-        <div style={{ position: 'absolute', left: '-9999px', top: 0, width: 1200, height: 600, pointerEvents: 'none', zIndex: -1 }} id="grafica-mensual-export">
-            <div style={{ width: 1200, height: 600, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <FiltroGraficaAnio
-                    aniosDisponibles={aniosDisponibles}
-                    datosMensuales={datosMensuales}
-                    exportMode={true}
-                />
-            </div>
-        </div>
-    </>
-);
-    })()
-)}
-        </Grid>
-    </>
-)}
+                        {/* Cuarta fila de gráficos circulares */}
+                        {renderPieChart(datosGraficos.edad, 'Distribución por Edad', COLORS)}
+                        {renderPieChart(datosGraficos.vivienda, 'Tipo de Vivienda', COLORS)}
 
-<Button 
-    variant="contained" 
-    color="primary" 
-    startIcon={<Download />}
-    onClick={() => setOpenExportDialog(true)}
-    sx={{ my: 2, mr: 2 }}
-    disabled={loadingExportGraph}
->
-    Exportar Gráficas
-</Button>
-<Button
-    variant="contained"
-    color="primary"
-    onClick={exportarMapaYListadoPDF}
-    startIcon={<PictureAsPdfIcon />}
->
-    Exportar Barrios x Comunas PDF
-</Button>
-{/*
+                        {/* Gráfica de Comunas */}
+                        <Grid item xs={12} md={6} className="grafico-card">
+                            <Card elevation={3} sx={{ height: 350, p: 2, width: '100%', maxWidth: 550, mx: 'auto' }}>
+                                <Typography variant="h6" gutterBottom>Beneficiarios por Comuna</Typography>
+                                <ResponsiveContainer width="100%" height="85%">
+                                    <PieChart>
+                                        <Pie
+                                            data={datosGraficos.comunas}
+                                            cx="50%"
+                                            cy="50%"
+                                            labelLine={false}
+                                            label={({ percent, cx, cy, midAngle, outerRadius }) => {
+                                                // Calcula una posición más cercana al centro
+                                                const RADIAN = Math.PI / 180;
+                                                const radius = outerRadius - 20; // 20px más cerca del centro
+                                                const xPos = cx + radius * Math.cos(-midAngle * RADIAN);
+                                                const yPos = cy + radius * Math.sin(-midAngle * RADIAN);
+                                                const percentage = (percent * 100).toFixed(0);
+                                                return (
+                                                    <text x={xPos} y={yPos} fill="#fff" textAnchor="middle" dominantBaseline="central" fontSize={13}>
+                                                        {`${percentage}%`}
+                                                    </text>
+                                                );
+                                            }}
+                                            outerRadius={80}
+                                            fill="#8884d8"
+                                            dataKey="value"
+                                        >
+                                            {datosGraficos.comunas && datosGraficos.comunas.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={COLORS_COMUNAS[index % COLORS_COMUNAS.length]} />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip
+                                            formatter={(value, name) => [
+                                                `${value} beneficiarios`,
+                                                name
+                                            ]}
+                                        />
+                                        <Legend />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            </Card>
+                        </Grid>
+
+                        {/* Gráfica de crecimiento mensual/anual */}
+                        {/* --- Filtro y gráfica de crecimiento mensual/anual con filtro de año --- */}
+                        {Array.isArray(datosMensuales) && datosMensuales.length > 0 && (
+                            (() => {
+                                // Obtener los años únicos
+                                const aniosDisponibles = Array.from(new Set(datosMensuales.map(d => (d.name ? d.name.split('-')[0] : '')))).filter(Boolean);
+                                // Estado y efecto deben estar fuera del callback
+                                return (
+                                    <>
+                                        <Grid item xs={12} className="grafico-card" id="grafica-mensual-visible">
+                                            <Card elevation={3} sx={{ p: 2, width: '100%', maxWidth: 800, mx: 'auto', height: 'auto' }}>
+                                                <FiltroGraficaAnio
+                                                    aniosDisponibles={aniosDisponibles}
+                                                    datosMensuales={datosMensuales}
+                                                    exportMode={false}
+                                                />
+                                            </Card>
+                                        </Grid>
+                                        {/* Contenedor oculto para exportación tamaño grande */}
+                                        <div style={{ position: 'absolute', left: '-9999px', top: 0, width: 1200, height: 600, pointerEvents: 'none', zIndex: -1 }} id="grafica-mensual-export">
+                                            <div style={{ width: 1200, height: 600, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                <FiltroGraficaAnio
+                                                    aniosDisponibles={aniosDisponibles}
+                                                    datosMensuales={datosMensuales}
+                                                    exportMode={true}
+                                                />
+                                            </div>
+                                        </div>
+                                    </>
+                                );
+                            })()
+                        )}
+                    </Grid>
+                </>
+            )}
+
+            <Button
+                variant="contained"
+                color="primary"
+                startIcon={<Download />}
+                onClick={() => setOpenExportDialog(true)}
+                sx={{ my: 2, mr: 2 }}
+                disabled={loadingExportGraph}
+            >
+                Exportar Gráficas
+            </Button>
+            <Button
+                variant="contained"
+                color="primary"
+                onClick={exportarMapaYListadoPDF}
+                startIcon={<PictureAsPdfIcon />}
+            >
+                Exportar Barrios x Comunas PDF
+            </Button>
+            {/*
 <Button
     variant="outlined"
     color="secondary"
@@ -1050,104 +1097,107 @@ setDatosMensuales(datosMensualesTransformados);
     Copiar mapa al portapapeles
 </Button>
 */}
-<Button
-    variant="outlined"
-    color="secondary"
-    sx={{ display: 'block', ml: 0, mt: 2 }}
-    onClick={imprimirMapa}
->
-    Imprimir mapa
-</Button>
+            <Button
+                variant="outlined"
+                color="secondary"
+                sx={{ display: 'block', ml: 0, mt: 2 }}
+                onClick={imprimirMapa}
+            >
+                Imprimir mapa
+            </Button>
 
-<Dialog open={openExportDialog} onClose={() => setOpenExportDialog(false)}>
-    <DialogTitle>Exportar Gráficas</DialogTitle>
-    <DialogContent>
-        <Typography variant="body1" gutterBottom>
-            Esta opción exportará todas las gráficas estadísticas mostradas en el dashboard
-            en formato PDF o como una sola imagen PNG para su posterior análisis.
-        </Typography>
-        <Button 
-            fullWidth 
-            variant="contained" 
-            color="primary"
-            onClick={handleExportarGrafica}
-            sx={{ mt: 2 }}
-            disabled={loadingExportGraph}
-        >
-            Exportar Gráficas a PDF
-        </Button>
-        <Button 
-            fullWidth 
-            variant="outlined" 
-            color="secondary"
-            onClick={handleExportarGraficasComoImagen}
-            sx={{ mt: 2 }}
-            disabled={loadingExportGraph}
-        >
-            Exportar Gráficas como Imagen
-        </Button>
-    </DialogContent>
-    <DialogActions>
-        <Button onClick={() => setOpenExportDialog(false)} color="primary">
-            Cancelar
-        </Button>
-    </DialogActions>
-</Dialog>
-        {/* --- MAPA DE REGISTROS DE BENEFICIARIOS --- */}
-        <Box sx={{ mt: 4, mb: 4 }}>
-            <Typography variant="h6" gutterBottom>
-                Mapa de registros de beneficiarios
-            </Typography>
-            {loadingRegistros ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 400 }}>
-                    <CircularProgress />
-                </Box>
-            ) : errorRegistros ? (
-                <Typography color="error">{errorRegistros}</Typography>
-            ) : (
-                <Box
-                  sx={{
-                    display: 'flex',
-                    flexDirection: { xs: 'column', md: 'row' },
-                    gap: 4,
-                    alignItems: 'stretch',
-                    overflowX: 'auto',
-                  }}
-                >
-                  <Box sx={{ width: { xs: '100%', md: 320 }, mb: { xs: 2, md: 0 } }}>
-                    {/* Sidebar de comunas */}
-                    <ComunasSidebar agrupadoPorComuna={require('../../components/MapaRegistros').agruparPorComunaYBarrio(registros)} />
-                  </Box>
-                  <Box id="mapa-svg" sx={{ flex: 1, mt: { xs: 2, md: 0 }, position: 'relative' }}>
-                    {/* {console.log('Registros para el mapa:', registros)} */}
-                    {registros && registros.length > 0 && registros.some(r => r.barrio_lat && r.barrio_lng) ? (
-                      <MapaRegistros registros={registros} />
-                    ) : (
-                      <Typography color="text.secondary" sx={{ mt: 4 }}>
-                        No hay datos georreferenciados para mostrar en el mapa.
-                      </Typography>
-                    )}
-                    {progressRegistros.total > 0 && progressRegistros.loaded < progressRegistros.total && (
-                       <Box sx={{
-                         position: 'absolute',
-                         inset: 0,
-                         bgcolor: 'rgba(255,255,255,0.7)',
-                         display: 'flex',
-                         flexDirection: 'column',
-                         alignItems: 'center',
-                         justifyContent: 'center',
-                         zIndex: 1300,
-                       }}>
-                         <Typography variant="body2" sx={{ mb: 2 }}>
-                           Cargando registros {progressRegistros.loaded} de {progressRegistros.total}...
-                         </Typography>
-                         <LinearProgress variant="determinate" value={(progressRegistros.loaded / progressRegistros.total) * 100} sx={{ width: '80%' }} />
-                       </Box>
-                     )}
-                  </Box>
-                </Box>
-            )}
-        </Box>
+            <Dialog open={openExportDialog} onClose={() => setOpenExportDialog(false)}>
+                <DialogTitle>Exportar Gráficas</DialogTitle>
+                <DialogContent>
+                    <Typography variant="body1" gutterBottom>
+                        Esta opción exportará todas las gráficas estadísticas mostradas en el dashboard
+                        en formato PDF o como una sola imagen PNG para su posterior análisis.
+                    </Typography>
+                    <Button
+                        fullWidth
+                        variant="contained"
+                        color="primary"
+                        onClick={handleExportarGrafica}
+                        sx={{ mt: 2 }}
+                        disabled={loadingExportGraph}
+                    >
+                        Exportar Gráficas a PDF
+                    </Button>
+                    <Button
+                        fullWidth
+                        variant="outlined"
+                        color="secondary"
+                        onClick={handleExportarGraficasComoImagen}
+                        sx={{ mt: 2 }}
+                        disabled={loadingExportGraph}
+                    >
+                        Exportar Gráficas como Imagen
+                    </Button>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setOpenExportDialog(false)} color="primary">
+                        Cancelar
+                    </Button>
+                </DialogActions>
+            </Dialog>
+            {/* --- MAPA DE REGISTROS DE BENEFICIARIOS --- */}
+            <Box sx={{ mt: 4, mb: 4 }}>
+                <Typography variant="h6" gutterBottom>
+                    Mapa de registros de beneficiarios
+                </Typography>
+                {loadingRegistros ? (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 400 }}>
+                        <CircularProgress />
+                    </Box>
+                ) : errorRegistros ? (
+                    <Typography color="error">{errorRegistros}</Typography>
+                ) : (
+                    <Box
+                        sx={{
+                            display: 'flex',
+                            flexDirection: { xs: 'column', md: 'row' },
+                            gap: 4,
+                            alignItems: 'stretch',
+                            overflowX: 'auto',
+                        }}
+                    >
+                        <Box sx={{ width: { xs: '100%', md: 320 }, mb: { xs: 2, md: 0 } }}>
+                            {/* Sidebar de comunas */}
+                            <ComunasSidebar agrupadoPorComuna={require('../../components/MapaRegistros').agruparPorComunaYBarrio(registros)} />
+                        </Box>
+                        <Box id="mapa-svg" sx={{ flex: 1, mt: { xs: 2, md: 0 }, position: 'relative' }}>
+                            {/* {console.log('Registros para el mapa:', registros)} */}
+                            {registros && registros.length > 0 && registros.some(r => r.barrio_lat && r.barrio_lng) ? (
+                                <MapaRegistros
+                                    registros={registros}
+                                    totalRegistros={estadisticasBeneficiarios.total_beneficiarios || registros.length}
+                                />
+                            ) : (
+                                <Typography color="text.secondary" sx={{ mt: 4 }}>
+                                    No hay datos georreferenciados para mostrar en el mapa.
+                                </Typography>
+                            )}
+                            {progressRegistros.total > 0 && progressRegistros.loaded < progressRegistros.total && (
+                                <Box sx={{
+                                    position: 'absolute',
+                                    inset: 0,
+                                    bgcolor: 'rgba(255,255,255,0.7)',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    zIndex: 1300,
+                                }}>
+                                    <Typography variant="body2" sx={{ mb: 2 }}>
+                                        Cargando registros {progressRegistros.loaded} de {progressRegistros.total}...
+                                    </Typography>
+                                    <LinearProgress variant="determinate" value={(progressRegistros.loaded / progressRegistros.total) * 100} sx={{ width: '80%' }} />
+                                </Box>
+                            )}
+                        </Box>
+                    </Box>
+                )}
+            </Box>
         </Box>
     );
 };
@@ -1185,7 +1235,7 @@ function FiltroGraficaAnio({ aniosDisponibles, datosMensuales, exportMode = fals
                 <ResponsiveContainer width={exportMode ? 1200 : "100%"} height={exportMode ? 600 : 350}>
                     <LineChart data={datosFiltrados} margin={{ top: 40, right: 60, left: 40, bottom: 40 }}>
                         <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis 
+                        <XAxis
                             dataKey="name"
                             tickFormatter={(str) => {
                                 if (!str) return '';
@@ -1196,15 +1246,15 @@ function FiltroGraficaAnio({ aniosDisponibles, datosMensuales, exportMode = fals
                             }}
                         />
                         <YAxis allowDecimals={false} />
-                        <Tooltip formatter={value => [`${value}`, 'Cantidad']} labelFormatter={label => `Mes: ${label}`}/>
+                        <Tooltip formatter={value => [`${value}`, 'Cantidad']} labelFormatter={label => `Mes: ${label}`} />
                         <Legend />
-                        <Line 
-                            type="monotone" 
-                            dataKey="beneficiarios" 
-                            stroke="#1976d2" 
-                            strokeWidth={3} 
-                            dot={{ r: 8, stroke: "#1976d2", strokeWidth: 3, fill: "#fff" }} 
-                            activeDot={{ r: 12 }} 
+                        <Line
+                            type="monotone"
+                            dataKey="beneficiarios"
+                            stroke="#1976d2"
+                            strokeWidth={3}
+                            dot={{ r: 8, stroke: "#1976d2", strokeWidth: 3, fill: "#fff" }}
+                            activeDot={{ r: 12 }}
                         />
                     </LineChart>
                 </ResponsiveContainer>
@@ -1215,10 +1265,10 @@ function FiltroGraficaAnio({ aniosDisponibles, datosMensuales, exportMode = fals
                     </Typography>
                 </Box>
             )}
-        {/* Div oculto para impresión/exportación de la lista colorida */}
-        <div id="sidebar-comunas-print" style={{display: 'none'}}>
-          <ComunasSidebar agrupadoPorComuna={agruparPorComunaYBarrio(registros)} />
-        </div>
+            {/* Div oculto para impresión/exportación de la lista colorida */}
+            <div id="sidebar-comunas-print" style={{ display: 'none' }}>
+                <ComunasSidebar agrupadoPorComuna={agruparPorComunaYBarrio(registros)} />
+            </div>
         </>
     );
 }
