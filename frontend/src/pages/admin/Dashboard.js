@@ -269,6 +269,7 @@ const Dashboard = () => {
                 setLoading(true); // 3. Activar carga al inicio
 
                 const funcionarios = await funcionarioService.obtenerFuncionarios();
+           
                 const lineasTrabajoCount = await usuarioService.obtenerLineasTrabajo();
 
                 let estadisticasBeneficiarios = {};
@@ -304,6 +305,8 @@ const Dashboard = () => {
                     totalLineasTrabajo: lineasTrabajoCount.length,
                     totalBeneficiarios: estadisticasBeneficiarios.total_beneficiarios
                 });
+                
+    
 
                 setEstadisticasBeneficiarios(estadisticasBeneficiarios);
                 setEstadisticasGlobales(estadisticasBeneficiarios);
@@ -330,7 +333,7 @@ const Dashboard = () => {
                 // Sólo solicitamos los campos necesarios para el mapa
                 filtros.campos = 'id,comuna,barrio,barrio_lat,barrio_lng';
                 // Limitamos a 800 registros para el mapa
-                const MAX_REGISTROS = 800;
+                const MAX_REGISTROS = 9999;
                 // Carga paginada para evitar timeouts y mostrar progreso
                 const pageSize = 100;
                 let pagina = 1;

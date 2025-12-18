@@ -51,6 +51,79 @@ def registrar_beneficiario():
         return jsonify({"msg": f"Error interno al registrar beneficiario. Consulte los logs del servidor."}), 500
 
 
+@beneficiarios_bp.route('/debug-fechas-public', methods=['GET'])
+def debug_fechas_public():
+    try:
+        beneficiarios = current_app.config['MONGO_DB']['beneficiarios']
+        
+        # Obtener algunas fechas de ejemplo
+        pipeline = [
+            {'$match': {'fecha_registro': {'$exists': True}}},
+            {'$limit': 10},
+            {'$project': {
+                '_id': 0,
+                'nombre_completo': 1,
+                'fecha_registro': 1,
+                'tipo_fecha': {'$type': '$fecha_registro'}
+            }}
+        ]
+        
+        resultados = list(beneficiarios.aggregate(pipeline))
+        
+        # Contar fechas por formato
+        fechas_string = beneficiarios.count_documents({'fecha_registro': {'$type': 'string'}})
+        fechas_date = beneficiarios.count_documents({'fecha_registro': {'$type': 'date'}})
+        total = beneficiarios.count_documents({'fecha_registro': {'$exists': True}})
+        
+        # Obtener fechas únicas
+        fechas_unicas = beneficiarios.distinct('fecha_registro', {'fecha_registro': {'$exists': True}})
+        fechas_unicas.sort()
+        
+        return jsonify({
+            'total_con_fecha': total,
+            'fechas_string': fechas_string,
+            'fechas_date': fechas_date,
+            'fechas_unicas': fechas_unicas[:20], # Primeras 20 fechas
+            'ejemplos': resultados
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@beneficiarios_bp.route('/debug-fechas', methods=['GET'])
+@jwt_required()
+def debug_fechas():
+    try:
+        beneficiarios = current_app.config['MONGO_DB']['beneficiarios']
+        
+        # Obtener algunas fechas de ejemplo
+        pipeline = [
+            {'$match': {'fecha_registro': {'$exists': True}}},
+            {'$limit': 10},
+            {'$project': {
+                'nombre_completo': 1,
+                'fecha_registro': 1,
+                'tipo_fecha': {'$type': '$fecha_registro'}
+            }}
+        ]
+        
+        resultados = list(beneficiarios.aggregate(pipeline))
+        
+        # Contar fechas por formato
+        fechas_string = beneficiarios.count_documents({'fecha_registro': {'$type': 'string'}})
+        fechas_date = beneficiarios.count_documents({'fecha_registro': {'$type': 'date'}})
+        total = beneficiarios.count_documents({'fecha_registro': {'$exists': True}})
+        
+        return jsonify({
+            'total_con_fecha': total,
+            'fechas_string': fechas_string,
+            'fechas_date': fechas_date,
+            'ejemplos': resultados
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @beneficiarios_bp.route('/listar', methods=['GET'])
 @jwt_required()
 def listar_beneficiarios():
@@ -60,6 +133,7 @@ def listar_beneficiarios():
         por_pagina = int(request.args.get('por_pagina', 10))
         filtro = request.args.get('filtro', '')
         linea_trabajo = request.args.get('linea_trabajo')
+        campos = request.args.get('campos', '')  # Nuevo parámetro para campos específicos
 
         # Obtener ID del usuario desde el token
         funcionario_id = get_jwt_identity()
@@ -111,22 +185,57 @@ def listar_beneficiarios():
                     fin = fin.replace(hour=23, minute=59, second=59, microsecond=999999)
                 else:
                     fin = datetime.fromisoformat(fecha_fin)
-                # Filtro robusto: por tipo fecha y por string ISO
-                filtro_query['$or'] = [
-                    {
-                        'fecha_registro': {
-                            '$gte': inicio,
-                            '$lte': fin
-                        }
-                    },
-                    {
-                        'fecha_registro': {
-                            '$gte': fecha_inicio,
-                            '$lte': fecha_fin
-                        }
+                
+                current_app.logger.info(f"Filtrando por fechas: {inicio} a {fin}")
+                
+                # Para fechas en formato ISO string, usar regex
+                fecha_inicio_str = fecha_inicio
+                fecha_fin_str = fecha_fin
+                
+                # Filtro para strings ISO (2025-07-03T21:12:47.276Z)
+                filtro_iso = {
+                    'fecha_registro': {
+                        '$regex': f'^{fecha_inicio_str}',
+                        '$options': 'i'
                     }
-                ]
+                }
+                
+                # Filtro para strings simples (2025-07-03)
+                filtro_simple = {
+                    'fecha_registro': {
+                        '$gte': fecha_inicio_str,
+                        '$lte': fecha_fin_str
+                    }
+                }
+                
+                # Filtro para objetos datetime
+                filtro_datetime = {
+                    'fecha_registro': {
+                        '$gte': inicio,
+                        '$lte': fin
+                    }
+                }
+                
+                # Probar cada filtro
+                test_iso = beneficiarios.count_documents(filtro_iso)
+                test_simple = beneficiarios.count_documents(filtro_simple)
+                test_datetime = beneficiarios.count_documents(filtro_datetime)
+                
+                current_app.logger.info(f"Registros - ISO: {test_iso}, Simple: {test_simple}, DateTime: {test_datetime}")
+                
+                # Usar el filtro que encuentre más resultados
+                if test_iso > 0:
+                    filtro_query.update(filtro_iso)
+                    current_app.logger.info("Usando filtro ISO")
+                elif test_simple > 0:
+                    filtro_query.update(filtro_simple)
+                    current_app.logger.info("Usando filtro simple")
+                else:
+                    filtro_query.update(filtro_datetime)
+                    current_app.logger.info("Usando filtro datetime")
+                
             except Exception as e:
+                current_app.logger.error(f"Error en filtro de fechas: {e}")
                 pass
         
         # Filtro adicional por texto
@@ -139,27 +248,75 @@ def listar_beneficiarios():
 
         # Obtener lista de beneficiarios con paginación y orden descendente por fecha_registro
         total_beneficiarios = beneficiarios.count_documents(filtro_query)
-        lista_beneficiarios = list(beneficiarios.find(filtro_query)
-            .sort('fecha_registro', -1)
-            .skip((pagina - 1) * por_pagina)
-            .limit(por_pagina)
-        )
+        current_app.logger.info(f"Total beneficiarios encontrados: {total_beneficiarios}")
+        current_app.logger.info(f"Página solicitada: {pagina}, Por página: {por_pagina}")
+        
+        # Validar que la página solicitada no exceda el total de páginas
+        total_paginas = math.ceil(total_beneficiarios / por_pagina) if por_pagina > 0 else 1
+        if pagina > total_paginas and total_paginas > 0:
+            current_app.logger.warning(f"Página {pagina} excede el total de páginas {total_paginas}")
+            return jsonify({
+                "beneficiarios": [],
+                "total": total_beneficiarios,
+                "pagina_actual": pagina,
+                "total_paginas": total_paginas,
+                "msg": f"Página {pagina} no encontrada. Total de páginas: {total_paginas}"
+            }), 200
+        
+        # Construir proyección de campos si se especifica
+        projection = None
+        if campos:
+            campos_lista = [campo.strip() for campo in campos.split(',')]
+            # Siempre incluir _id para el procesamiento
+            if '_id' not in campos_lista:
+                campos_lista.append('_id')
+            projection = {campo: 1 for campo in campos_lista}
+            current_app.logger.info(f"Proyección de campos: {projection}")
+        
+        try:
+            # Para el mapa, no necesitamos ordenamiento por fecha, solo coordenadas
+            if campos and ('barrio_lat' in campos or 'barrio_lng' in campos):
+                # Para solicitudes del mapa, omitir ordenamiento para evitar problemas de memoria
+                lista_beneficiarios = list(beneficiarios.find(filtro_query, projection)
+                    .skip((pagina - 1) * por_pagina)
+                    .limit(por_pagina)
+                )
+            else:
+                # Para otras solicitudes, mantener ordenamiento con allowDiskUse
+                lista_beneficiarios = list(beneficiarios.find(filtro_query, projection)
+                    .sort('fecha_registro', -1)
+                    .skip((pagina - 1) * por_pagina)
+                    .limit(por_pagina)
+                )
+            current_app.logger.info(f"Registros devueltos: {len(lista_beneficiarios)}")
+        except Exception as e:
+            current_app.logger.error(f"Error en consulta MongoDB: {str(e)}")
+            raise
 
         # Enriquecer beneficiarios con nombre de línea de trabajo y fecha legible
         from datetime import datetime
-        for beneficiario in lista_beneficiarios:
-            beneficiario['_id'] = str(beneficiario['_id'])
-            
-            # Obtener nombre de línea de trabajo
-            if 'linea_trabajo' in beneficiario:
-                linea_trabajo_obj = lineas_trabajo.find_one({'_id': ObjectId(beneficiario['linea_trabajo'])})
-                beneficiario['nombre_linea_trabajo'] = linea_trabajo_obj['nombre'] if linea_trabajo_obj else 'Sin línea de trabajo'
-            # Normalizar fecha_registro
-            if 'fecha_registro' in beneficiario:
-                if isinstance(beneficiario['fecha_registro'], datetime):
-                    beneficiario['fecha_registro'] = beneficiario['fecha_registro'].strftime('%Y-%m-%d')
-                else:
-                    beneficiario['fecha_registro'] = str(beneficiario['fecha_registro'])[:10]
+        try:
+            for beneficiario in lista_beneficiarios:
+                beneficiario['_id'] = str(beneficiario['_id'])
+                
+                # Solo enriquecer si no se especificaron campos específicos o si se incluyen los campos necesarios
+                if not campos or 'linea_trabajo' in campos:
+                    # Obtener nombre de línea de trabajo
+                    if 'linea_trabajo' in beneficiario:
+                        linea_trabajo_obj = lineas_trabajo.find_one({'_id': ObjectId(beneficiario['linea_trabajo'])})
+                        beneficiario['nombre_linea_trabajo'] = linea_trabajo_obj['nombre'] if linea_trabajo_obj else 'Sin línea de trabajo'
+                
+                # Solo normalizar fecha si no se especificaron campos o si se incluye el campo fecha_registro
+                if not campos or 'fecha_registro' in campos:
+                    # Normalizar fecha_registro
+                    if 'fecha_registro' in beneficiario:
+                        if isinstance(beneficiario['fecha_registro'], datetime):
+                            beneficiario['fecha_registro'] = beneficiario['fecha_registro'].strftime('%Y-%m-%d')
+                        else:
+                            beneficiario['fecha_registro'] = str(beneficiario['fecha_registro'])[:10]
+        except Exception as e:
+            current_app.logger.error(f"Error procesando beneficiarios: {str(e)}")
+            raise
        
        
         # Retornar resultados

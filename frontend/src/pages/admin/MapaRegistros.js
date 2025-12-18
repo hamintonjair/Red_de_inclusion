@@ -82,12 +82,7 @@ const MapaRegistrosPage = () => {
           }}>
             <Box>
               <Typography variant="body2" color="textSecondary">
-                Mostrando {Math.min(registros.length, 800)} de {totalRegistros} registros
-              </Typography>
-            </Box>
-            <Box>
-              <Typography variant="body2" color="textSecondary">
-                Límite: 800 registros
+                  Total de registros: {totalRegistros}
               </Typography>
             </Box>
           </Box>

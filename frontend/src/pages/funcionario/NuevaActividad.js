@@ -90,27 +90,49 @@ const NuevaActividad = () => {
     });
 
     // Función para cargar beneficiarios con caché
-    const cargarBeneficiarios = useCallback(async (lineaTrabajoId, forzarActualizacion = false, fecha = null) => {
+    const cargarBeneficiarios = useCallback(async (lineaTrabajoId, forzarActualizacion = false, terminoBusquedaParam = '', fechaParam = null) => {
         if (!lineaTrabajoId) return;
 
         setLoadingBeneficiarios(true);
 
-        // Verificar caché
-        const ahora = Date.now();
-        const cacheEntry = beneficiariosCache[lineaTrabajoId];
-        
-        if (!forzarActualizacion && cacheEntry && (ahora - cacheEntry.timestamp < CACHE_DURATION)) {
-            setBeneficiarios(cacheEntry.data);
-            return;
-        }
-
-        setLoadingBeneficiarios(true);
         try {
+            // Si hay término de búsqueda o fecha específica, buscar directamente sin caché
+            if (terminoBusquedaParam || fechaParam) {
+                const params = {
+                    linea_trabajo: lineaTrabajoId,
+                    por_pagina: 100, // Límite razonable para búsqueda
+                    _t: Date.now()
+                };
+                
+                if (terminoBusquedaParam.trim()) {
+                    params.filtro = terminoBusquedaParam.trim();
+                }
+                
+                if (fechaParam) {
+                    // Para filtrar por fecha específica, usar rango de fecha inicio y fin iguales
+                    params.fecha_inicio = fechaParam;
+                    params.fecha_fin = fechaParam;
+                }
+
+                const response = await obtenerBeneficiarios(params);
+                const data = response.beneficiarios || [];
+                setBeneficiarios(data);
+                return;
+            }
+
+            // Verificar caché solo para carga inicial sin filtros
+            const ahora = Date.now();
+            const cacheEntry = beneficiariosCache[lineaTrabajoId];
+            
+            if (!forzarActualizacion && cacheEntry && (ahora - cacheEntry.timestamp < CACHE_DURATION)) {
+                setBeneficiarios(cacheEntry.data);
+                return;
+            }
+
             const response = await obtenerBeneficiarios({ 
                 linea_trabajo: lineaTrabajoId,
-                por_pagina: 2000,
-                _t: ahora, // Evitar caché del navegador
-                fecha_registro: fecha // Pasar la fecha si existe
+                por_pagina: 500, // Reducido para mejor rendimiento
+                _t: ahora
             });
 
             const data = response.beneficiarios || [];
@@ -121,12 +143,11 @@ const NuevaActividad = () => {
                 timestamp: ahora
             };
 
-            setLoadingBeneficiarios(false);
-
             setBeneficiarios(data);
         } catch (error) {
             console.error('Error al cargar beneficiarios:', error);
             // Si hay caché, usarlo a pesar del error
+            const cacheEntry = beneficiariosCache[lineaTrabajoId];
             if (cacheEntry?.data) {
                 setBeneficiarios(cacheEntry.data);
             }
@@ -138,10 +159,10 @@ const NuevaActividad = () => {
     // Efecto para cargar beneficiarios cuando cambia la línea de trabajo
     useEffect(() => {
         const lineaTrabajoId = formData.linea_trabajo_id || user?.linea_trabajo_id;
-        if (lineaTrabajoId) {
-            cargarBeneficiarios(lineaTrabajoId);
+        if (lineaTrabajoId && !terminoBusqueda && !filtroFecha) {
+            cargarBeneficiarios(lineaTrabajoId, false, '', null);
         }
-    }, [formData.linea_trabajo_id, user?.linea_trabajo_id, cargarBeneficiarios]);
+    }, [formData.linea_trabajo_id, user?.linea_trabajo_id]);
 
     // Cargar datos iniciales al montar el componente
     useEffect(() => {
@@ -190,61 +211,13 @@ const NuevaActividad = () => {
 
     // Filtrar beneficiarios según la fecha seleccionada y término de búsqueda
     const beneficiariosFiltrados = useMemo(() => {
-        let filtrados = [...beneficiarios];
-        
-        // Filtrar por fecha si hay una fecha seleccionada
-        if (filtroFecha) {
-            const fechaSeleccionada = format(filtroFecha, 'yyyy-MM-dd');
-            filtrados = filtrados.filter(b => {
-                if (!b.fecha_registro) return false;
-                return b.fecha_registro === fechaSeleccionada;
-            });
+        // Si hay búsqueda activa, devolver los resultados directamente del backend
+        if (terminoBusqueda.trim() || filtroFecha) {
+            return beneficiarios;
         }
         
-        // Filtrar por término de búsqueda si existe
-        if (terminoBusqueda.trim() !== '') {
-            const termino = terminoBusqueda.toLowerCase().trim();
-            const terminoNormalizado = termino.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); // Eliminar acentos
-            
-            // Si el término es muy corto (menos de 3 caracteres), no filtrar a menos que sea un número de documento
-            if (termino.length < 3 && !/^\d+$/.test(termino)) {
-                return filtrados;
-            }
-            
-            filtrados = filtrados.filter(b => {
-                // Normalizar los campos para búsqueda sin acentos
-                const nombreCompleto = (b.nombre_completo || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-                const documento = (b.numero_documento || '').toLowerCase();
-                const email = (b.correo_electronico || '').toLowerCase();
-                
-                // Buscar coincidencias parciales en el nombre completo sin dividir por palabras
-                const coincideNombreCompleto = nombreCompleto.includes(terminoNormalizado);
-                
-                // Si el término tiene espacios, buscar coincidencia exacta en el orden de las palabras
-                let coincideOrdenPalabras = false;
-                if (terminoNormalizado.includes(' ')) {
-                    const palabrasBusqueda = terminoNormalizado.split(/\s+/);
-                    const regexBusqueda = new RegExp(palabrasBusqueda.join('.*'), 'i');
-                    coincideOrdenPalabras = regexBusqueda.test(nombreCompleto);
-                }
-                
-                // Buscar en cada palabra individual
-                const coincideAlgunaPalabra = terminoNormalizado.split(/\s+/).some(palabra => {
-                    if (palabra.length < 3) return false; // Ignorar palabras muy cortas
-                    return nombreCompleto.includes(palabra);
-                });
-                
-                return (
-                    coincideNombreCompleto || // Coincidencia en cualquier parte del nombre completo
-                    coincideOrdenPalabras || // Coincidencia en el orden de las palabras
-                    coincideAlgunaPalabra || // Coincidencia en cualquier palabra individual
-                    documento.includes(termino) || // Coincidencia en documento
-                    email.includes(termino) // Coincidencia en email
-                );
-            });
-        }
-        
-        return filtrados;
+        // Para carga inicial, mostrar todos los beneficiarios cargados
+        return [...beneficiarios];
     }, [beneficiarios, filtroFecha, terminoBusqueda]);
 
     // Función para forzar la actualización de beneficiarios
@@ -257,8 +230,14 @@ const NuevaActividad = () => {
 
     // Función para manejar el cambio de búsqueda con debounce
     const handleBuscarBeneficiario = useMemo(
-        () => debounce((valor) => setTerminoBusqueda(valor), 300),
-        [setTerminoBusqueda]
+        () => debounce((valor) => {
+            setTerminoBusqueda(valor);
+            const lineaTrabajoId = formData.linea_trabajo_id || user?.linea_trabajo_id;
+            if (lineaTrabajoId) {
+                cargarBeneficiarios(lineaTrabajoId, false, valor, filtroFecha);
+            }
+        }, 150), // Reducido de 300ms a 150ms para mayor responsividad
+        [formData.linea_trabajo_id, user?.linea_trabajo_id, filtroFecha]
     );
 
     // Limpiar el debounce al desmontar
@@ -267,22 +246,6 @@ const NuevaActividad = () => {
             handleBuscarBeneficiario.cancel();
         };
     }, [handleBuscarBeneficiario]);
-
-    // Efecto para cargar beneficiarios cuando cambia la línea de trabajo
-    useEffect(() => {
-        const cargarDatos = async () => {
-            try {
-                const lineaTrabajoId = formData.linea_trabajo_id || user?.linea_trabajo_id;
-                if (lineaTrabajoId) {
-                    await cargarBeneficiarios(lineaTrabajoId);
-                }
-            } catch (error) {
-                console.error('Error al cargar beneficiarios:', error);
-            }
-        };
-        
-        cargarDatos();
-    }, [formData.linea_trabajo_id, user?.linea_trabajo_id, cargarBeneficiarios]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -727,11 +690,11 @@ const NuevaActividad = () => {
                                             onChange={(date) => {
                                                 const fechaFormateada = date ? format(date, 'yyyy-MM-dd') : null;
                                                 setFiltroFecha(date);
+                                                setTerminoBusqueda(''); // Limpiar búsqueda al cambiar fecha
                                                 const lineaTrabajoId = formData.linea_trabajo_id || user?.linea_trabajo_id;
                                                 if (lineaTrabajoId) {
-                                                    cargarBeneficiarios(lineaTrabajoId, true, fechaFormateada);
+                                                    cargarBeneficiarios(lineaTrabajoId, false, '', fechaFormateada);
                                                 }
-                                                cargarBeneficiarios(date ? { fecha: fechaFormateada } : {});
                                             }}
                                             renderInput={(params) => (
                                                 <TextField 
@@ -764,7 +727,13 @@ const NuevaActividad = () => {
                                             variant="outlined"
                                             placeholder="Buscar por nombre o documento..."
                                             value={terminoBusqueda}
-                                            onChange={(e) => handleBuscarBeneficiario(e.target.value)}
+                                            onChange={(e) => {
+                                                const valor = e.target.value;
+                                                // Actualizar inmediatamente el input
+                                                setTerminoBusqueda(valor);
+                                                // Llamar a la búsqueda con debounce
+                                                handleBuscarBeneficiario(valor);
+                                            }}
                                             InputProps={{
                                                 startAdornment: (
                                                     <InputAdornment position="start">
@@ -775,7 +744,10 @@ const NuevaActividad = () => {
                                                     <InputAdornment position="end">
                                                         <IconButton 
                                                             size="small" 
-                                                            onClick={() => setTerminoBusqueda('')}
+                                                            onClick={() => {
+                                                                setTerminoBusqueda('');
+                                                                handleBuscarBeneficiario('');
+                                                            }}
                                                         >
                                                             <ClearIcon fontSize="small" />
                                                         </IconButton>

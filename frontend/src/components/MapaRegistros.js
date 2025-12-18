@@ -169,7 +169,7 @@ const MapaRegistros = ({ registros, totalRegistros = 0 }) => {
             padding: '2px 8px',
             borderRadius: '4px'
           }}>
-            {Math.min(registros.length, 800)}
+            {registros.length}
           </span>
           <span>de</span>
           <span style={{ 
