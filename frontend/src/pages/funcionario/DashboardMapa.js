@@ -129,7 +129,7 @@ const DashboardMapa = () => {
           <CircularProgress />
         </Box>
       ) : error ? (
-        <Box sx={{ p: 3, bgcolor: 'error.light', color: 'white', borderRadius: 1, mb: 2 }}>
+        <Box sx={{ p: 3, bgcolor: 'error.light', color: 'black', borderRadius: 1, mb: 2 }}>
           <Typography>{error}</Typography>
           <Button 
             variant="contained" 
