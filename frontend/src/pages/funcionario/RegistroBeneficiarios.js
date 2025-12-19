@@ -15,24 +15,16 @@ import {
   FormLabel,
   FormGroup,
   FormHelperText,
-  Checkbox,
   Switch,
   Paper,
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions,
   Box,
 } from "@mui/material";
 import {
   Save as SaveIcon,
-  Cancel as CancelIcon,
-  ArrowBack as ArrowBackIcon,
-  Add as AddIcon,
   Edit as EditIcon,
-  Delete as DeleteIcon,
-  PersonSearch as PersonSearchIcon,
-  Search as SearchIcon,
   Close as CloseIcon,
   Clear as ClearIcon,
 } from "@mui/icons-material";
@@ -76,16 +68,6 @@ const RANGOS_EDAD = [
   "66 o más",
 ];
 const ETNIAS = ["Afrodescendiente", "Indígena", "Raizal", "Palenquero", "Mestizo"];
-
-// Función para manejar la lógica de la etnia
-const getEtniaValue = (etnia, etniaPersonalizada = '') => {
-  if (etnia === 'Otro') {
-    return etniaPersonalizada || 'Otra';
-  } else if (etnia === 'Ninguna') {
-    return '';
-  }
-  return etnia || '';
-};
 const TIPOS_DISCAPACIDAD = [
   "Física",
   "Visual",
@@ -184,11 +166,7 @@ export default function RegistroBeneficiarios() {
   
   // Effect to keep signature state in sync with formData
   useEffect(() => {
-    console.log('Signature state updated:', { 
-      hasSignature: !!signature,
-      type: typeof signature,
-      length: signature ? signature.length : 0
-    });
+    
   }, [signature]);
 
   const [comunas, setComunas] = useState([]);
@@ -516,7 +494,6 @@ export default function RegistroBeneficiarios() {
           firma: beneficiario.firma || null
         };
 
-        console.log('Datos actualizados para el formulario:', datosActualizados);
         setFormData(datosActualizados);
       } else {
         // Si no hay comuna, actualizar formData con los datos del beneficiario
@@ -543,16 +520,6 @@ export default function RegistroBeneficiarios() {
       }
     }
   }, [location.state, VALORES_INICIALES, obtenerBarriosPorComuna]);
-
-  // Función para obtener el valor de etnia para envío
-  const getEtniaValue = (etnia, etniaPersonalizada = '') => {
-    if (etnia === 'Otro') {
-      return etniaPersonalizada || 'Otra';
-    } else if (etnia === 'Ninguna') {
-      return '';
-    }
-    return etnia || '';
-  };
 
   // Estados del componentevalidación
   const [errores, setErrores] = useState({});

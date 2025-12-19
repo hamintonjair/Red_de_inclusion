@@ -1019,9 +1019,9 @@ const contarBeneficiarios = async (filtros = {}) => {
         // Eliminar campos de paginación y ordenamiento para el conteo
         const { pagina, por_pagina, orden, ...filtrosSinPaginacion } = filtros;
         
-        // Usamos el endpoint /api/beneficiarios con incluir_total=true
+        // Usamos el endpoint /beneficiarios/listar con incluir_total=true
         // Esto devuelve el conteo total sin necesidad de traer los registros
-        const response = await axiosInstance.get('/api/beneficiarios', {
+        const response = await axiosInstance.get('/beneficiarios/listar', {
             params: {
                 ...filtrosSinPaginacion,
                 pagina: 1,

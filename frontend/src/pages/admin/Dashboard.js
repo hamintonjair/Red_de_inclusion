@@ -49,6 +49,119 @@ import ComunasSidebar from '../../components/ComunasSidebar';
 
 import { agruparPorComunaYBarrio, COMUNA_COLORS } from '../../components/MapaRegistros';
 
+// Componente Error Boundary para manejar errores de DOM
+class ErrorBoundary extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = { hasError: false, error: null };
+    }
+
+    static getDerivedStateFromError(error) {
+        // No establecer hasError para errores de DOM específicos
+        if (error.message.includes('removeChild') || error.message.includes('Node')) {
+            return null; // No actualizar estado
+        }
+        return { hasError: true, error };
+    }
+
+    componentDidCatch(error, errorInfo) {
+        console.error('Error capturado por ErrorBoundary:', error, errorInfo);
+        
+        // Ignorar errores específicos de DOM que son seguros
+        if (error.message.includes('removeChild') || error.message.includes('Node')) {
+            console.warn('Error de DOM ignorado, la aplicación continuará funcionando');
+            // NO establecer hasError en true para no mostrar el modal
+            return;
+        }
+    }
+
+    render() {
+        if (this.state.hasError) {
+            return (
+                <Box sx={{ p: 2, textAlign: 'center' }}>
+                    <Typography color="error">
+                        Ocurrió un error inesperado. Recarga la página.
+                    </Typography>
+                </Box>
+            );
+        }
+
+        return this.props.children;
+    }
+}
+
+// --- FiltroGraficaAnio: componente auxiliar para filtrar y mostrar la gráfica por año ---
+function FiltroGraficaAnio({ aniosDisponibles, datosMensuales, exportMode = false, registros = [] }) {
+    const [anioSeleccionado, setAnioSeleccionado] = React.useState(
+        aniosDisponibles.length > 0 ? aniosDisponibles[aniosDisponibles.length - 1] : ''
+    );
+    React.useEffect(() => {
+        if (aniosDisponibles.length > 0 && !aniosDisponibles.includes(anioSeleccionado)) {
+            setAnioSeleccionado(aniosDisponibles[aniosDisponibles.length - 1]);
+        }
+    }, [aniosDisponibles]); // Eliminado anioSeleccionado para evitar bucle
+    const datosFiltrados = datosMensuales.filter(d => d.name && d.name.startsWith(anioSeleccionado));
+    return (
+        <>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                <Typography variant="h6" gutterBottom>Crecimiento mensual de registros</Typography>
+                <Box>
+                    <label htmlFor="select-anio" style={{ marginRight: 8 }}>Año:</label>
+                    <select
+                        id="select-anio"
+                        value={anioSeleccionado}
+                        onChange={e => setAnioSeleccionado(e.target.value)}
+                        style={{ padding: '4px 8px', borderRadius: 4 }}
+                    >
+                        {aniosDisponibles.map(anio => (
+                            <option key={anio} value={anio}>{anio}</option>
+                        ))}
+                    </select>
+                </Box>
+            </Box>
+            {datosFiltrados.length > 0 ? (
+                <ResponsiveContainer width={exportMode ? 1200 : "100%"} height={exportMode ? 600 : 350}>
+                    <LineChart data={datosFiltrados} margin={{ top: 40, right: 60, left: 40, bottom: 40 }}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis 
+                            dataKey="name" 
+                            angle={-45}
+                            textAnchor="end"
+                            height={80}
+                            interval={0}
+                            tick={{ fontSize: 11 }}
+                        />
+                        <YAxis />
+                        <Tooltip 
+                            formatter={(value) => [`${value} beneficiarios`, 'Cantidad']}
+                            labelFormatter={(label) => `Mes: ${label}`}
+                        />
+                        <Legend />
+                        <Line 
+                            type="monotone" 
+                            dataKey="beneficiarios" 
+                            stroke="#2196F3" 
+                            strokeWidth={2}
+                            dot={{ fill: '#2196F3', r: 4 }}
+                            activeDot={{ r: 6 }}
+                        />
+                    </LineChart>
+                </ResponsiveContainer>
+            ) : (
+                <Box sx={{ minHeight: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Typography variant="body1" color="text.secondary">
+                        No hay datos mensuales para mostrar la gráfica en el año seleccionado.
+                    </Typography>
+                </Box>
+            )}
+            {/* Div oculto para impresión/exportación de la lista colorida */}
+            <div id="sidebar-comunas-print" style={{ display: 'none' }}>
+                <ComunasSidebar agrupadoPorComuna={agruparPorComunaYBarrio(registros)} />
+            </div>
+        </>
+    );
+}
+
 const Dashboard = () => {
     // Estado para los registros de beneficiarios
     const [registros, setRegistros] = useState([]);
@@ -654,7 +767,7 @@ const Dashboard = () => {
                                 dataKey="value"
                             >
                                 {data.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
+                                    <Cell key={`cell-${entry.name || entry.id || index}`} fill={colors[index % colors.length]} />
                                 ))}
                             </Pie>
                             <Tooltip
@@ -699,7 +812,8 @@ const Dashboard = () => {
     );
 
     return (
-        <Box sx={{ position: 'relative', minHeight: '100vh' }}>
+        <ErrorBoundary>
+            <Box sx={{ position: 'relative', minHeight: '100vh' }}>
             {/* Overlay de carga circular centrada con porcentaje - Solo cubre el área de contenido */}
             {loading && (
                    <Box sx={{
@@ -981,19 +1095,20 @@ const Dashboard = () => {
                         {renderPieChart(datosGraficos.discapacidad, 'Personas con Discapacidad', COLORS_DISCAPACIDAD)}
 
                         {/* Segunda fila de gráficos circulares */}
-                        {renderPieChart(datosGraficos.ayudaHumanitaria, 'Ayuda Humanitaria', COLORS_AYUDA)}
-                        {renderPieChart(datosGraficos.alfabetizacion, 'Alfabetización', COLORS_ALFABETIZACION)}
+                        {/* Gráficas temporales comentadas para debug */}
+                        {/* {renderPieChart(datosGraficos.ayudaHumanitaria, 'Ayuda Humanitaria', COLORS_AYUDA)}
+                        {renderPieChart(datosGraficos.alfabetizacion, 'Alfabetización', COLORS_ALFABETIZACION)} */}
 
                         {/* Tercera fila de gráficos circulares */}
-                        {renderPieChart(datosGraficos.mujeresMenores, 'Mujeres Menores con Hijos', COLORS_MUJERES_HIJOS)}
-                        {renderPieChart(datosGraficos.trabajo, 'Situación Laboral', COLORS_LABORAL)}
+                        {/* {renderPieChart(datosGraficos.mujeresMenores, 'Mujeres Menores con Hijos', COLORS_MUJERES_HIJOS)}
+                        {renderPieChart(datosGraficos.trabajo, 'Situación Laboral', COLORS_LABORAL)} */}
 
                         {/* Cuarta fila de gráficos circulares */}
-                        {renderPieChart(datosGraficos.edad, 'Distribución por Edad', COLORS)}
-                        {renderPieChart(datosGraficos.vivienda, 'Tipo de Vivienda', COLORS)}
+                        {/* {renderPieChart(datosGraficos.edad, 'Distribución por Edad', COLORS)}
+                        {renderPieChart(datosGraficos.vivienda, 'Tipo de Vivienda', COLORS)} */}
 
                         {/* Gráfica de Comunas */}
-                        <Grid item xs={12} md={6} className="grafico-card">
+                        {/* <Grid item xs={12} md={6} className="grafico-card">
                             <Card elevation={3} sx={{ height: 350, p: 2, width: '100%', maxWidth: 550, mx: 'auto' }}>
                                 <Typography variant="h6" gutterBottom>Beneficiarios por Comuna</Typography>
                                 <ResponsiveContainer width="100%" height="85%">
@@ -1003,16 +1118,15 @@ const Dashboard = () => {
                                             cx="50%"
                                             cy="50%"
                                             labelLine={false}
-                                            label={({ percent, cx, cy, midAngle, outerRadius }) => {
-                                                // Calcula una posición más cercana al centro
+                                            label={({ percent, cx, cy, midAngle, outerRadius, value }) => {
                                                 const RADIAN = Math.PI / 180;
-                                                const radius = outerRadius - 20; // 20px más cerca del centro
+                                                const radius = outerRadius - 20;
                                                 const xPos = cx + radius * Math.cos(-midAngle * RADIAN);
                                                 const yPos = cy + radius * Math.sin(-midAngle * RADIAN);
                                                 const percentage = (percent * 100).toFixed(0);
                                                 return (
                                                     <text x={xPos} y={yPos} fill="#fff" textAnchor="middle" dominantBaseline="central" fontSize={13}>
-                                                        {`${percentage}%`}
+                                                        {`${value} (${percentage}%)`}
                                                     </text>
                                                 );
                                             }}
@@ -1021,7 +1135,7 @@ const Dashboard = () => {
                                             dataKey="value"
                                         >
                                             {datosGraficos.comunas && datosGraficos.comunas.map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={COLORS_COMUNAS[index % COLORS_COMUNAS.length]} />
+                                                <Cell key={`cell-${entry.name || entry.id || index}`} fill={COLORS_COMUNAS[index % COLORS_COMUNAS.length]} />
                                             ))}
                                         </Pie>
                                         <Tooltip
@@ -1030,17 +1144,20 @@ const Dashboard = () => {
                                                 name
                                             ]}
                                         />
-                                        <Legend />
+                                        <Legend 
+                                            formatter={(value, entry) => {
+                                                return `${value}: ${entry.payload.value} registros`;
+                                            }}
+                                        />
                                     </PieChart>
                                 </ResponsiveContainer>
                             </Card>
-                        </Grid>
+                        </Grid> */}
 
                         {/* Gráfica de crecimiento mensual/anual */}
                         {/* --- Filtro y gráfica de crecimiento mensual/anual con filtro de año --- */}
                         {Array.isArray(datosMensuales) && datosMensuales.length > 0 && (
                             (() => {
-                                // Obtener los años únicos
                                 const aniosDisponibles = Array.from(new Set(datosMensuales.map(d => (d.name ? d.name.split('-')[0] : '')))).filter(Boolean);
                                 // Estado y efecto deben estar fuera del callback
                                 return (
@@ -1202,78 +1319,8 @@ const Dashboard = () => {
                 )}
             </Box>
         </Box>
+        </ErrorBoundary>
     );
 };
-
-// --- FiltroGraficaAnio: componente auxiliar para filtrar y mostrar la gráfica por año ---
-function FiltroGraficaAnio({ aniosDisponibles, datosMensuales, exportMode = false, registros = [] }) {
-    const [anioSeleccionado, setAnioSeleccionado] = React.useState(
-        aniosDisponibles.length > 0 ? aniosDisponibles[aniosDisponibles.length - 1] : ''
-    );
-    React.useEffect(() => {
-        if (aniosDisponibles.length > 0 && !aniosDisponibles.includes(anioSeleccionado)) {
-            setAnioSeleccionado(aniosDisponibles[aniosDisponibles.length - 1]);
-        }
-    }, [aniosDisponibles, anioSeleccionado]);
-    const datosFiltrados = datosMensuales.filter(d => d.name && d.name.startsWith(anioSeleccionado));
-    return (
-        <>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-                <Typography variant="h6" gutterBottom>Crecimiento mensual de registros</Typography>
-                <Box>
-                    <label htmlFor="select-anio" style={{ marginRight: 8 }}>Año:</label>
-                    <select
-                        id="select-anio"
-                        value={anioSeleccionado}
-                        onChange={e => setAnioSeleccionado(e.target.value)}
-                        style={{ padding: '4px 8px', borderRadius: 4 }}
-                    >
-                        {aniosDisponibles.map(anio => (
-                            <option key={anio} value={anio}>{anio}</option>
-                        ))}
-                    </select>
-                </Box>
-            </Box>
-            {datosFiltrados.length > 0 ? (
-                <ResponsiveContainer width={exportMode ? 1200 : "100%"} height={exportMode ? 600 : 350}>
-                    <LineChart data={datosFiltrados} margin={{ top: 40, right: 60, left: 40, bottom: 40 }}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis
-                            dataKey="name"
-                            tickFormatter={(str) => {
-                                if (!str) return '';
-                                const [year, month] = str.split("-");
-                                const meses = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-                                if (!year || !month) return str;
-                                return `${meses[parseInt(month, 10) - 1]} ${year}`;
-                            }}
-                        />
-                        <YAxis allowDecimals={false} />
-                        <Tooltip formatter={value => [`${value}`, 'Cantidad']} labelFormatter={label => `Mes: ${label}`} />
-                        <Legend />
-                        <Line
-                            type="monotone"
-                            dataKey="beneficiarios"
-                            stroke="#1976d2"
-                            strokeWidth={3}
-                            dot={{ r: 8, stroke: "#1976d2", strokeWidth: 3, fill: "#fff" }}
-                            activeDot={{ r: 12 }}
-                        />
-                    </LineChart>
-                </ResponsiveContainer>
-            ) : (
-                <Box sx={{ minHeight: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Typography variant="body1" color="text.secondary">
-                        No hay datos mensuales para mostrar la gráfica en el año seleccionado.
-                    </Typography>
-                </Box>
-            )}
-            {/* Div oculto para impresión/exportación de la lista colorida */}
-            <div id="sidebar-comunas-print" style={{ display: 'none' }}>
-                <ComunasSidebar agrupadoPorComuna={agruparPorComunaYBarrio(registros)} />
-            </div>
-        </>
-    );
-}
 
 export default Dashboard;
